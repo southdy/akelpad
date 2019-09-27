@@ -1,0 +1,7 @@
+@ECHO OFF
+set PROCESSOR=x64
+if %PROCESSOR_ARCHITECTURE% == x86 (
+  if not defined PROCESSOR_ARCHITEW6432 set PROCESSOR=x86
+)
+start regsvr32    shellext-%PROCESSOR%.dll
+CLS
