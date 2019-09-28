@@ -2844,7 +2844,7 @@ void DrawVisualEndOfLine(HDC hDC, const RECTL *rc, COLORREF color, int lbType)
 {
     const LONG x=rc->left, y=rc->top, cx=rc->right-rc->left, cy=rc->bottom-rc->top;
 
-    POINT pt[10] = { 0 };
+    POINT pt[17] = { 0 };
     int nPtCount = _countof(pt);
     if (lbType == AELB_RN)
     {
@@ -2973,6 +2973,42 @@ void DrawVisualEndOfLine(HDC hDC, const RECTL *rc, COLORREF color, int lbType)
         pt[6].y = y5;
 
         nPtCount = 8;
+    } else if (lbType == AELB_EOF) {
+        //    \/\/      |
+        //    /  \      |
+        //    \  /      |
+        //    /\/\      |
+
+        LONG xCenter = x + cx / 2;
+        LONG yCenter = y + cy / 2;
+        LONG dx = cx * 5 / 8 / 4;
+        LONG dy = cy * 5 / 8 / 4;
+
+        LONG x0 = xCenter - 2 * dx;
+        LONG x1 = xCenter - 1 * dx;
+        LONG x2 = xCenter;
+        LONG x3 = xCenter + 1 * dx;
+        LONG x4 = xCenter + 2 * dx;
+
+        LONG y0 = yCenter - 2 * dy;
+        LONG y1 = yCenter - 1 * dy;
+        LONG y2 = yCenter;
+        LONG y3 = yCenter + 1 * dy;
+        LONG y4 = yCenter + 2 * dy;
+
+        pt[0].x = pt[16].x = pt[2].x = pt[4].x = x0;
+        pt[1].x = pt[15].x = pt[3].x = pt[5].x = x1;
+        pt[14].x = pt[6].x = x2;
+        pt[13].x = pt[11].x = pt[7].x = pt[9].x = x3;
+        pt[12].x = pt[10].x = pt[8].x = x4;
+
+        pt[0].y = pt[16].y = pt[14].y = pt[12].y = y0;
+        pt[1].y = pt[15].y = pt[13].y = pt[11].y = y1;
+        pt[2].y = pt[10].y = y2;
+        pt[3].y = pt[5].y = pt[7].y = pt[9].y = y3;
+        pt[4].y = pt[6].y = pt[8].y = y4;
+
+        nPtCount = 17;
     } else {
         assert(FALSE);
     }
