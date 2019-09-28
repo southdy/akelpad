@@ -115,6 +115,9 @@
       <SubSystem>Console</SubSystem>
       <ModuleDefinitionFile>.\Scripts.def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy ..\Plugs\Scripts\*.* $(OutDir)\Scripts\ /e /s /y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -150,6 +153,9 @@
       <ModuleDefinitionFile>.\Scripts.def</ModuleDefinitionFile>
       <AdditionalDependencies>ISystemFunction64.obj;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy ..\Plugs\Scripts\*.* $(OutDir)\Scripts\ /e /s /y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -184,6 +190,9 @@
       <EntryPointSymbol>DllMain</EntryPointSymbol>
       <ModuleDefinitionFile>.\Scripts.def</ModuleDefinitionFile>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy ..\Plugs\Scripts\*.* $(OutDir)\Scripts\ /e /s /y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -218,6 +227,9 @@
       <ModuleDefinitionFile>.\Scripts.def</ModuleDefinitionFile>
       <AdditionalDependencies>ISystemFunction64.obj;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy ..\Plugs\Scripts\*.* $(OutDir)\Scripts\ /e /s /y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="IActiveScriptSite.c" />
