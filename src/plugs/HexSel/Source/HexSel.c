@@ -1,8 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <richedit.h>
-#include "x64Func.h"
 #include "StrFunc.h"
+#include "x64Func.h"
 #include "WideFunc.h"
 #include "AkelEdit.h"
 #include "AkelDLL.h"
