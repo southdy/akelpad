@@ -1,13 +1,18 @@
-//// Spell check using Microsoft Word.
-//// Проверка орфографии, используя Microsoft Word.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.3
+// Author: Shengalts Aleksander aka Instructor
+//
+// Description(1033): Spell check using Microsoft Word.
+// Description(1049): Проверка орфографии, используя Microsoft Word.
 
 //Variables
 var Word=new ActiveXObject("Word.application");
 var hMainWnd=AkelPad.GetMainWnd();
+var hWndEdit=AkelPad.GetEditWnd();
 var oSys=AkelPad.SystemFunction();
 var pSelText=AkelPad.GetSelText();
 
-if (hMainWnd)
+if (hWndEdit)
 {
   if (Word)
   {
@@ -23,8 +28,14 @@ if (hMainWnd)
 
       if (oSpellDoc=Word.Documents.Add())
       {
-        Word.ActiveWindow.WindowState=2;  //wdWindowStateMinimize
         oSpellDoc.Content.Text=pSelText;
+        Word.ActiveWindow.WindowState=2;  //wdWindowStateMinimize
+        if (parseInt(Word.Version) >= 15)
+        {
+          //MS Word 2013 and higher
+          Word.Visible=false;
+          oSys.Call("user32::SetForegroundWindow", oSpellDoc.ActiveWindow.Hwnd);
+        }
 
         pTextIn=oSpellDoc.Content.Text;
         if (Word.Options.CheckGrammarWithSpelling == true)
@@ -36,6 +47,7 @@ if (hMainWnd)
         oSpellDoc.Close(false);
       }
       Word.Quit(true);
+      Word=0;
 
       if (pTextIn == pTextOut)
       {
@@ -45,7 +57,7 @@ if (hMainWnd)
       {
         if (AkelPad.MessageBox(hMainWnd, GetLangString(3), WScript.ScriptName, 36 /*MB_ICONQUESTION|MB_YESNO*/) == 6 /*IDYES*/)
         {
-          AkelPad.ReplaceSel(pTextOut.substr(0, pTextOut.length - 1), true);
+          AkelPad.ReplaceSel(pTextOut.substr(0, pTextOut.length - 1), -2);
         }
       }
     }
@@ -53,6 +65,7 @@ if (hMainWnd)
   }
   else AkelPad.MessageBox(hMainWnd, GetLangString(0), WScript.ScriptName, 48 /*MB_ICONEXCLAMATION*/);
 }
+if (Word) Word.Quit(true);
 
 
 //Functions

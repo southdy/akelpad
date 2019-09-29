@@ -1,4 +1,9 @@
-//// JScript test file
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.0
+// Author: Shengalts Aleksander aka Instructor
+//
+// Description(1033): JScript test file.
+// Description(1049): Тестовый файл JScript.
 
 //Defines
 var WM_COMMAND=273

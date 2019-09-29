@@ -27,7 +27,7 @@ rc /R /DRC_VERSIONBIT=%BIT% /Fo"Scripts.res" "Resources\Scripts.rc"
 if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
 ML64 /c ISystemFunction64.asm
 if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
-cl /O1 %CLFLAGS% Scripts.c IServer.c IWScript.c IWArguments.c IDocument.c IScriptSettings.c ISystemFunction.c IConstants.c IActiveScriptSite.c Scripts.res Scripts.def /LD /link ISystemFunction64.obj kernel32.lib user32.lib gdi32.lib advapi32.lib oleaut32.lib ole32.lib uuid.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:DllMain /OUT:"Scripts.dll"
+cl /O1 %CLFLAGS% /DSCRIPTS_MAXHANDLE=0x7FFFFFFF Scripts.c IServer.c IWScript.c IWArguments.c IDocument.c IGlobal.c IScriptSettings.c ISystemFunction.c IConstants.c IActiveScriptSite.c Scripts.res Scripts.def /LD /link ISystemFunction64.obj kernel32.lib user32.lib gdi32.lib advapi32.lib oleaut32.lib ole32.lib shell32.lib uuid.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:DllMain /OUT:"Scripts.dll"
 if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
 
 ::### Clean up ###::
@@ -40,6 +40,7 @@ if exist IServer.obj del IServer.obj
 if exist IWScript.obj del IWScript.obj
 if exist IWArguments.obj del IWArguments.obj
 if exist IDocument.obj del IDocument.obj
+if exist IGlobal.obj del IGlobal.obj
 if exist IScriptSettings.obj del IScriptSettings.obj
 if exist ISystemFunction.obj del ISystemFunction.obj
 if exist ISystemFunction64.obj del ISystemFunction64.obj

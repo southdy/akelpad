@@ -1,6 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <activscp.h>
 #include <richedit.h>
 #include "Scripts.h"
 
@@ -9,6 +8,7 @@
 CALLBACKSTACK g_hSubclassCallbackStack={0};
 CALLBACKSTACK g_hHookCallbackStack={0};
 ITypeInfo *g_DocumentTypeInfo=NULL;
+BOOL g_bScriptArg=FALSE;
 WNDPROCDATA *g_lpSubclassMainProc=NULL;
 WNDPROCDATA *g_lpSubclassEditProc=NULL;
 WNDPROCDATA *g_lpSubclassFrameProc=NULL;
@@ -22,20 +22,20 @@ const IDocumentVtbl MyIDocumentVtbl={
   Document_GetIDsOfNames,
   Document_Invoke,
   Document_Constants,
+  Document_Global,
   Document_GetMainWnd,
   Document_GetAkelDir,
   Document_GetInstanceExe,
   Document_GetInstanceDll,
   Document_GetLangId,
   Document_IsOldWindows,
-  Document_IsOldRichEdit,
-  Document_IsOldComctl32,
   Document_IsAkelEdit,
   Document_IsMDI,
   Document_GetEditWnd,
   Document_SetEditWnd,
   Document_GetEditDoc,
   Document_GetEditFile,
+  Document_GetFilePath,
   Document_GetEditCodePage,
   Document_GetEditBOM,
   Document_GetEditNewLine,
@@ -78,12 +78,15 @@ const IDocumentVtbl MyIDocumentVtbl={
   Document_MemCopy,
   Document_MemRead,
   Document_MemStrPtr,
+  Document_MemPtrStr,
   Document_MemFree,
   Document_DebugJIT,
   Document_Debug,
   Document_VarType,
+  Document_VarDispatch,
   Document_GetArgLine,
   Document_GetArgValue,
+  Document_CreateDialog,
   Document_WindowRegisterClass,
   Document_WindowUnregisterClass,
   Document_WindowRegisterDialog,
@@ -96,7 +99,11 @@ const IDocumentVtbl MyIDocumentVtbl={
   Document_ThreadHook,
   Document_ThreadUnhook,
   Document_ScriptNoMutex,
-  Document_ScriptHandle
+  Document_ScriptExitCode,
+  Document_ScriptHandle,
+  Document_ConnectObject,
+  Document_DisconnectObject,
+  Document_ActiveXThis
 };
 
 CALLBACKBUSYNESS g_cbHook[]={{(INT_PTR)HookCallback1Proc,  FALSE},
@@ -230,9 +237,14 @@ HRESULT STDMETHODCALLTYPE Document_Constants(IDocument *this, IDispatch **objCon
   return Class_CreateInstance(NULL, NULL, &IID_IConstants, (void **)objConstants);
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetMainWnd(IDocument *this, HWND *hWnd)
+HRESULT STDMETHODCALLTYPE Document_Global(IDocument *this, IDispatch **objGlobal)
 {
-  *hWnd=hMainWnd;
+  return Class_CreateInstance(NULL, NULL, &IID_IGlobal, (void **)objGlobal);
+}
+
+HRESULT STDMETHODCALLTYPE Document_GetMainWnd(IDocument *this, VARIANT *vtWnd)
+{
+  SetVariantInt(vtWnd, (INT_PTR)hMainWnd);
   return NOERROR;
 }
 
@@ -263,15 +275,15 @@ HRESULT STDMETHODCALLTYPE Document_GetAkelDir(IDocument *this, int nSubDir, BSTR
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetInstanceExe(IDocument *this, INT_PTR *hInstance)
+HRESULT STDMETHODCALLTYPE Document_GetInstanceExe(IDocument *this, VARIANT *vtInstance)
 {
-  *hInstance=(INT_PTR)hInstanceEXE;
+  SetVariantInt(vtInstance, (INT_PTR)hInstanceEXE);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetInstanceDll(IDocument *this, INT_PTR *hInstance)
+HRESULT STDMETHODCALLTYPE Document_GetInstanceDll(IDocument *this, VARIANT *vtInstance)
 {
-  *hInstance=(INT_PTR)hInstanceDLL;
+  SetVariantInt(vtInstance, (INT_PTR)hInstanceDLL);
   return NOERROR;
 }
 
@@ -292,27 +304,17 @@ HRESULT STDMETHODCALLTYPE Document_IsOldWindows(IDocument *this, BOOL *bIsOld)
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_IsOldRichEdit(IDocument *this, BOOL *bIsOld)
+HRESULT STDMETHODCALLTYPE Document_IsAkelEdit(IDocument *this, VARIANT vtWnd, int *nIsAkelEdit)
 {
-  *bIsOld=bOldRichEdit;
-  return NOERROR;
-}
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
 
-HRESULT STDMETHODCALLTYPE Document_IsOldComctl32(IDocument *this, BOOL *bIsOld)
-{
-  *bIsOld=bOldComctl32;
-  return NOERROR;
-}
-
-HRESULT STDMETHODCALLTYPE Document_IsAkelEdit(IDocument *this, HWND hWnd, int *nIsAkelEdit)
-{
   if (hWnd)
   {
     char szName[MAX_PATH];
 
     if (GetClassNameA(hWnd, szName, MAX_PATH) &&
-        (xstrcmpinA("AkelEdit", szName, (DWORD)-1) ||
-         xstrcmpinA("RichEdit20", szName, (DWORD)-1)))
+        (!xstrcmpinA("AkelEdit", szName, (UINT_PTR)-1) ||
+         !xstrcmpinA("RichEdit20", szName, (UINT_PTR)-1)))
     {
       if (SendMessage(hMainWnd, AKD_FRAMEFIND, FWF_BYEDITWINDOW, (LPARAM)hWnd))
         *nIsAkelEdit=ISAEW_PROGRAM;
@@ -332,42 +334,52 @@ HRESULT STDMETHODCALLTYPE Document_IsMDI(IDocument *this, int *nIsMDI)
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditWnd(IDocument *this, HWND *hWnd)
+HRESULT STDMETHODCALLTYPE Document_GetEditWnd(IDocument *this, VARIANT *vtWnd)
 {
-  *hWnd=GetCurEdit(this);
+  SetVariantInt(vtWnd, (INT_PTR)GetCurEdit(this));
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetEditWnd(IDocument *this, HWND hWnd, HWND *hWndResult)
+HRESULT STDMETHODCALLTYPE Document_SetEditWnd(IDocument *this, VARIANT vtWnd, VARIANT *vtWndResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   int nIsAkelEdit;
 
-  Document_IsAkelEdit(this, hWnd, &nIsAkelEdit);
+  if (hWnd)
+  {
+    if ((INT_PTR)hWnd == SEW_FOCUS)
+      hWnd=(HWND)SendMessage(hMainWnd, AKD_GETFOCUS, 0, 0);
+    SetVariantInt(&vtWnd, (INT_PTR)hWnd);
+    Document_IsAkelEdit(this, vtWnd, &nIsAkelEdit);
 
-  if (nIsAkelEdit == ISAEW_PLUGIN)
-    lpScriptThread->hWndPluginEdit=hWnd;
-  else
-    lpScriptThread->hWndPluginEdit=NULL;
-  *hWndResult=lpScriptThread->hWndPluginEdit;
+    if (nIsAkelEdit != ISAEW_NONE)
+      lpScriptThread->hWndPluginEdit=hWnd;
+    else
+      lpScriptThread->hWndPluginEdit=NULL;
+  }
+  else lpScriptThread->hWndPluginEdit=NULL;
 
+  SetVariantInt(vtWndResult, (INT_PTR)lpScriptThread->hWndPluginEdit);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditDoc(IDocument *this, INT_PTR *hDoc)
+HRESULT STDMETHODCALLTYPE Document_GetEditDoc(IDocument *this, VARIANT *vtDoc)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  AEHDOC hDoc;
 
-  if (lpScriptThread->hWndPluginEdit)
-    *hDoc=SendMessage(lpScriptThread->hWndPluginEdit, AEM_GETDOCUMENT, 0, 0);
+  if (lpScriptThread && lpScriptThread->hWndPluginEdit)
+    hDoc=(AEHDOC)SendMessage(lpScriptThread->hWndPluginEdit, AEM_GETDOCUMENT, 0, 0);
   else
-    *hDoc=SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_DOCEDIT, (LPARAM)NULL);
-
+    hDoc=(AEHDOC)SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_DOCEDIT, (LPARAM)NULL);
+  SetVariantInt(vtDoc, (INT_PTR)hDoc);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditFile(IDocument *this, HWND hWnd, BSTR *wpFile)
+HRESULT STDMETHODCALLTYPE Document_GetEditFile(IDocument *this, VARIANT vtWnd, BSTR *wpFile)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
   HRESULT hr=NOERROR;
 
@@ -380,8 +392,52 @@ HRESULT STDMETHODCALLTYPE Document_GetEditFile(IDocument *this, HWND hWnd, BSTR 
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditCodePage(IDocument *this, HWND hWnd, int *nCodePage)
+HRESULT STDMETHODCALLTYPE Document_GetFilePath(IDocument *this, BSTR wpFile, int nPart, BSTR *wpPath)
 {
+  int nFileLen;
+  HRESULT hr=NOERROR;
+
+  *wpPath=NULL;
+  nFileLen=SysStringLen(wpFile);
+
+  if (nPart == CPF_DIR)
+  {
+    if (!GetFileDir(wpFile, nFileLen, wszBuffer, BUFFER_SIZE))
+      wszBuffer[0]=L'\0';
+    if (!(*wpPath=SysAllocString(wszBuffer)))
+      hr=E_OUTOFMEMORY;
+  }
+  else if (nPart == CPF_FILENAME)
+  {
+    const wchar_t *wpFileName;
+
+    if (!(wpFileName=GetFileNameWide(wpFile, nFileLen)))
+      wpFileName=L"";
+    if (!(*wpPath=SysAllocString(wpFileName)))
+      hr=E_OUTOFMEMORY;
+  }
+  else if (nPart == CPF_FILEBASENAME)
+  {
+    if (!GetBaseName(wpFile, nFileLen, wszBuffer, BUFFER_SIZE))
+      wszBuffer[0]=L'\0';
+    if (!(*wpPath=SysAllocString(wszBuffer)))
+      hr=E_OUTOFMEMORY;
+  }
+  else if (nPart == CPF_FILEEXT)
+  {
+    const wchar_t *wpExt;
+
+    if (!(wpExt=GetFileExt(wpFile, nFileLen)))
+      wpExt=L"";
+    if (!(*wpPath=SysAllocString(wpExt)))
+      hr=E_OUTOFMEMORY;
+  }
+  return hr;
+}
+
+HRESULT STDMETHODCALLTYPE Document_GetEditCodePage(IDocument *this, VARIANT vtWnd, int *nCodePage)
+{
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWnd, (LPARAM)&ei))
@@ -391,8 +447,9 @@ HRESULT STDMETHODCALLTYPE Document_GetEditCodePage(IDocument *this, HWND hWnd, i
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditBOM(IDocument *this, HWND hWnd, BOOL *bBOM)
+HRESULT STDMETHODCALLTYPE Document_GetEditBOM(IDocument *this, VARIANT vtWnd, BOOL *bBOM)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWnd, (LPARAM)&ei))
@@ -402,8 +459,9 @@ HRESULT STDMETHODCALLTYPE Document_GetEditBOM(IDocument *this, HWND hWnd, BOOL *
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditNewLine(IDocument *this, HWND hWnd, int *nNewLine)
+HRESULT STDMETHODCALLTYPE Document_GetEditNewLine(IDocument *this, VARIANT vtWnd, int *nNewLine)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWnd, (LPARAM)&ei))
@@ -413,8 +471,9 @@ HRESULT STDMETHODCALLTYPE Document_GetEditNewLine(IDocument *this, HWND hWnd, in
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditModified(IDocument *this, HWND hWnd, BOOL *bModified)
+HRESULT STDMETHODCALLTYPE Document_GetEditModified(IDocument *this, VARIANT vtWnd, BOOL *bModified)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWnd, (LPARAM)&ei))
@@ -424,8 +483,9 @@ HRESULT STDMETHODCALLTYPE Document_GetEditModified(IDocument *this, HWND hWnd, B
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditReadOnly(IDocument *this, HWND hWnd, BOOL *bReadOnly)
+HRESULT STDMETHODCALLTYPE Document_GetEditReadOnly(IDocument *this, VARIANT vtWnd, BOOL *bReadOnly)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWnd, (LPARAM)&ei))
@@ -435,8 +495,10 @@ HRESULT STDMETHODCALLTYPE Document_GetEditReadOnly(IDocument *this, HWND hWnd, B
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *this, FRAMEDATA *lpFrame, int nType, UINT_PTR dwData, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *this, VARIANT vtFrame, int nType, VARIANT vtData, BOOL *bResult)
 {
+  FRAMEDATA *lpFrame=(FRAMEDATA *)GetVariantInt(&vtFrame, NULL);
+  UINT_PTR dwData=GetVariantInt(&vtData, NULL);
   FRAMEINFO fi;
 
   fi.nType=nType;
@@ -446,34 +508,112 @@ HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *this, FRAMEDATA *lpFr
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SendMessage(IDocument *this, HWND hWnd, UINT uMsg, VARIANT vtwParam, VARIANT vtlParam, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE Document_SendMessage(IDocument *this, VARIANT vtWnd, UINT uMsg, VARIANT vtWParam, VARIANT vtLParam, VARIANT *vtResult)
 {
-  VARIANT *pvtwParam=&vtwParam;
-  VARIANT *pvtlParam=&vtlParam;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
+  VARIANT *pvtWParam=&vtWParam;
+  VARIANT *pvtLParam=&vtLParam;
   WPARAM wParam;
   LPARAM lParam;
+  LRESULT lResult;
 
-  if (pvtwParam->vt == (VT_VARIANT|VT_BYREF))
-    pvtwParam=pvtwParam->pvarVal;
-  wParam=GetVariantValue(pvtwParam, bOldWindows);
-
-  if (pvtlParam->vt == (VT_VARIANT|VT_BYREF))
-    pvtlParam=pvtlParam->pvarVal;
-  lParam=GetVariantValue(pvtlParam, bOldWindows);
-
-  if (bOldWindows)
+  if (lpScriptThread->bLockSendMessage)
   {
-    *nResult=SendMessageA(hWnd, uMsg, wParam, lParam);
-    if (pvtwParam->vt == VT_BSTR) GlobalFree((HGLOBAL)wParam);
-    if (pvtlParam->vt == VT_BSTR) GlobalFree((HGLOBAL)lParam);
-  }
-  else *nResult=SendMessageW(hWnd, uMsg, wParam, lParam);
+    wParam=GetVariantValue(pvtWParam, &pvtWParam, bOldWindows);
+    lParam=GetVariantValue(pvtLParam, &pvtLParam, bOldWindows);
 
+    if (bOldWindows)
+    {
+      lResult=SendMessageA(hWnd, uMsg, wParam, lParam);
+      if (pvtWParam->vt == VT_BSTR) GlobalFree((HGLOBAL)wParam);
+      if (pvtLParam->vt == VT_BSTR) GlobalFree((HGLOBAL)lParam);
+    }
+    else lResult=SendMessageW(hWnd, uMsg, wParam, lParam);
+  }
+  else
+  {
+    MSGMUTEX mm;
+
+    if (!nMutexMsgCount++)
+    {
+      //Optimization: don't create first mutex, if it already created
+      if (!hMutexMsgFirst)
+      {
+        xprintfW(wszBuffer, wszMutexMsgName, nMutexMsgCount);
+        hMutexMsgFirst=CreateEventWide(NULL, FALSE, FALSE, wszBuffer);
+      }
+      else ResetEvent(hMutexMsgFirst);
+
+      mm.hMutex=hMutexMsgFirst;
+    }
+    else
+    {
+      xprintfW(wszBuffer, wszMutexMsgName, nMutexMsgCount);
+      mm.hMutex=CreateEventWide(NULL, FALSE, FALSE, wszBuffer);
+    }
+    mm.bSignaled=FALSE;
+
+    if (mm.hMutex)
+    {
+      MSG msg;
+      BOOL bExitLoop=FALSE;
+
+      wParam=GetVariantValue(pvtWParam, &pvtWParam, bOldWindows);
+      lParam=GetVariantValue(pvtLParam, &pvtLParam, bOldWindows);
+
+      if (bOldWindows)
+      {
+        SendMessageCallbackA(hWnd, uMsg, wParam, lParam, (SENDASYNCPROC)SendMessageAsyncProc, (LPARAM)&mm);
+        if (pvtWParam->vt == VT_BSTR) GlobalFree((HGLOBAL)wParam);
+        if (pvtLParam->vt == VT_BSTR) GlobalFree((HGLOBAL)lParam);
+      }
+      else SendMessageCallbackW(hWnd, uMsg, wParam, lParam, (SENDASYNCPROC)SendMessageAsyncProc, (LPARAM)&mm);
+
+      if (!mm.bSignaled)
+      {
+        //Wait for mm.hMutex and process messages.
+        for (;;)
+        {
+          while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+          {
+            if (msg.message == WM_QUIT)
+              bExitLoop=TRUE;
+            else
+            {
+              if (TranslateMessageProc)
+                TranslateMessageProc(TMSG_ALL, &msg);
+            }
+          }
+          if (bExitLoop)
+            break;
+          if (MsgWaitForMultipleObjects(1, &mm.hMutex, FALSE, INFINITE, QS_ALLINPUT) == WAIT_OBJECT_0)
+            break;
+        }
+      }
+      if (mm.hMutex != hMutexMsgFirst)
+        CloseHandle(mm.hMutex);
+      lResult=mm.lResult;
+    }
+    --nMutexMsgCount;
+  }
+
+  SetVariantInt(vtResult, lResult);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MessageBox(IDocument *this, HWND hWnd, BSTR pText, BSTR pCaption, UINT uType, SAFEARRAY **psa, int *nResult)
+void CALLBACK SendMessageAsyncProc(HWND hWnd, UINT uMsg, UINT_PTR dwData, LRESULT lResult)
 {
+  MSGMUTEX *mm=(MSGMUTEX *)dwData;
+
+  SetEvent(mm->hMutex);
+  mm->bSignaled=TRUE;
+  mm->lResult=lResult;
+}
+
+HRESULT STDMETHODCALLTYPE Document_MessageBox(IDocument *this, VARIANT vtWnd, BSTR pText, BSTR pCaption, UINT uType, SAFEARRAY **psa, int *nResult)
+{
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   DIALOGMESSAGEBOX dmb;
   BUTTONMESSAGEBOX *bmb;
 
@@ -509,9 +649,7 @@ BUTTONMESSAGEBOX* FillButtonsArray(SAFEARRAY *psa, HICON *hIcon)
 
   //DIALOGMESSAGEBOX.hIcon
   pvtParameter=(VARIANT *)lpData;
-  if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
-    pvtParameter=pvtParameter->pvarVal;
-  *hIcon=(HICON)GetVariantInt(pvtParameter);
+  *hIcon=(HICON)GetVariantInt(pvtParameter, NULL);
   lpData+=sizeof(VARIANT);
   --dwElementSum;
 
@@ -529,26 +667,17 @@ BUTTONMESSAGEBOX* FillButtonsArray(SAFEARRAY *psa, HICON *hIcon)
     {
       //BUTTONMESSAGEBOX.nButtonControlID
       pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
-      if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
-        pvtParameter=pvtParameter->pvarVal;
-      bmbNext->nButtonControlID=(int)GetVariantInt(pvtParameter);
+      bmbNext->nButtonControlID=(int)GetVariantInt(pvtParameter, NULL);
       ++dwElement;
 
       //BUTTONMESSAGEBOX.wpButtonStr
       pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
-      if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
-        pvtParameter=pvtParameter->pvarVal;
-      if (pvtParameter->vt == VT_BSTR)
-        bmbNext->wpButtonStr=pvtParameter->bstrVal;
-      else
-        bmbNext->wpButtonStr=(wchar_t *)GetVariantInt(pvtParameter);
+      bmbNext->wpButtonStr=(wchar_t *)GetVariantValue(pvtParameter, NULL, FALSE);
       ++dwElement;
 
       //BUTTONMESSAGEBOX.dwFlags
       pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
-      if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
-        pvtParameter=pvtParameter->pvarVal;
-      bmbNext->dwFlags=(DWORD)GetVariantInt(pvtParameter);
+      bmbNext->dwFlags=(DWORD)GetVariantInt(pvtParameter, NULL);
       ++dwElement;
 
       ++bmbNext;
@@ -557,8 +686,9 @@ BUTTONMESSAGEBOX* FillButtonsArray(SAFEARRAY *psa, HICON *hIcon)
   return bmb;
 }
 
-HRESULT STDMETHODCALLTYPE Document_InputBox(IDocument *this, HWND hWnd, BSTR wpCaption, BSTR wpLabel, BSTR wpEdit, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_InputBox(IDocument *this, VARIANT vtWnd, BSTR wpCaption, BSTR wpLabel, BSTR wpEdit, VARIANT *vtResult)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   INPUTBOX db;
 
   VariantInit(vtResult);
@@ -568,7 +698,6 @@ HRESULT STDMETHODCALLTYPE Document_InputBox(IDocument *this, HWND hWnd, BSTR wpC
   db.wpEdit=wpEdit;
   db.vtResult=vtResult;
   db.hr=NOERROR;
-
   DialogBoxParamWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_INPUTBOX), hWnd, (DLGPROC)InputBoxProc, (LPARAM)&db);
 
   return db.hr;
@@ -612,20 +741,20 @@ BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       if (nLines > 0)
       {
-        GetWindowPos(hWndLabel, hDlg, &rc);
+        GetWindowSize(hWndLabel, hDlg, &rc);
         nHeight=rc.bottom * nLines;
         SetWindowPos(hWndLabel, 0, 0, 0, rc.right, rc.bottom + nHeight, SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
 
-        GetWindowPos(hDlg, NULL, &rc);
+        GetWindowSize(hDlg, NULL, &rc);
         SetWindowPos(hDlg, 0, 0, 0, rc.right, rc.bottom + nHeight, SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
 
-        GetWindowPos(hWndEditBox, hDlg, &rc);
+        GetWindowSize(hWndEditBox, hDlg, &rc);
         SetWindowPos(hWndEditBox, 0, rc.left, rc.top + nHeight, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
 
-        GetWindowPos(hWndOK, hDlg, &rc);
+        GetWindowSize(hWndOK, hDlg, &rc);
         SetWindowPos(hWndOK, 0, rc.left, rc.top + nHeight, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
 
-        GetWindowPos(hWndCancel, hDlg, &rc);
+        GetWindowSize(hWndCancel, hDlg, &rc);
         SetWindowPos(hWndCancel, 0, rc.left, rc.top + nHeight, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
       }
     }
@@ -661,38 +790,32 @@ BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   return FALSE;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetSelStart(IDocument *this, INT_PTR *nSelStart)
+HRESULT STDMETHODCALLTYPE Document_GetSelStart(IDocument *this, VARIANT *vtSelStart)
 {
   HWND hWndCurEdit;
   CHARRANGE64 cr={0};
 
   if (hWndCurEdit=GetCurEdit(this))
-  {
     SendMessage(hWndCurEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
-    *nSelStart=cr.cpMin;
-  }
-  else *nSelStart=0;
-
+  SetVariantInt(vtSelStart, cr.cpMin);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetSelEnd(IDocument *this, INT_PTR *nSelEnd)
+HRESULT STDMETHODCALLTYPE Document_GetSelEnd(IDocument *this, VARIANT *vtSelEnd)
 {
   HWND hWndCurEdit;
   CHARRANGE64 cr={0};
 
   if (hWndCurEdit=GetCurEdit(this))
-  {
     SendMessage(hWndCurEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
-    *nSelEnd=cr.cpMax;
-  }
-  else *nSelEnd=0;
-
+  SetVariantInt(vtSelEnd, cr.cpMax);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *this, INT_PTR nSelStart, INT_PTR nSelEnd, DWORD dwFlags, DWORD dwType)
+HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *this, VARIANT vtSelStart, VARIANT vtSelEnd, DWORD dwFlags, DWORD dwType)
 {
+  INT_PTR nSelStart=GetVariantInt(&vtSelStart, NULL);
+  INT_PTR nSelEnd=GetVariantInt(&vtSelEnd, NULL);
   HWND hWndCurEdit;
 
   if (hWndCurEdit=GetCurEdit(this))
@@ -739,8 +862,10 @@ HRESULT STDMETHODCALLTYPE Document_GetSelText(IDocument *this, int nNewLine, BST
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetTextRange(IDocument *this, INT_PTR nRangeStart, INT_PTR nRangeEnd, int nNewLine, BSTR *wpText)
+HRESULT STDMETHODCALLTYPE Document_GetTextRange(IDocument *this, VARIANT vtRangeStart, VARIANT vtRangeEnd, int nNewLine, BSTR *wpText)
 {
+  INT_PTR nRangeStart=GetVariantInt(&vtRangeStart, NULL);
+  INT_PTR nRangeEnd=GetVariantInt(&vtRangeEnd, NULL);
   HWND hWndCurEdit;
   HRESULT hr=NOERROR;
 
@@ -790,7 +915,7 @@ HRESULT GetTextRange(HWND hWnd, INT_PTR nRangeStart, INT_PTR nRangeEnd, int nNew
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, BOOL bSelect)
+HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, int nSelect)
 {
   HWND hWndCurEdit;
 
@@ -802,6 +927,13 @@ HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, BOOL
       AESELECTION aesInitial;
       AESELECTION aesNew;
       AECHARINDEX ciInitialCaret;
+      int nFirstLine;
+
+      if (nSelect == RST_SELECTRESTORESCROLL)
+      {
+        //Save scroll
+        nFirstLine=SaveLineScroll(hWndCurEdit);
+      }
 
       SendMessage(hWndCurEdit, AEM_GETSEL, (WPARAM)&ciInitialCaret, (LPARAM)&aesInitial);
       rs.pText=wpText;
@@ -812,7 +944,7 @@ HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, BOOL
       rs.ciInsertEnd=&aesNew.crSel.ciMax;
       SendMessage(hWndCurEdit, AEM_REPLACESELW, 0, (LPARAM)&rs);
 
-      if (bSelect)
+      if (nSelect == RST_SELECT || nSelect == RST_SELECTRESTORESCROLL)
       {
         aesNew.dwFlags=aesInitial.dwFlags;
         aesNew.dwType=aesInitial.dwType;
@@ -821,35 +953,48 @@ HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, BOOL
         else
           SendMessage(hWndCurEdit, AEM_SETSEL, (WPARAM)&aesNew.crSel.ciMax, (LPARAM)&aesNew);
       }
+      if (nSelect == RST_SELECTRESTORESCROLL)
+      {
+        //Restore scroll
+        RestoreLineScroll(hWndCurEdit, nFirstLine);
+      }
     }
   }
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_TextFind(IDocument *this, HWND hWnd, BSTR wpFindIt, DWORD dwFlags, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE Document_TextFind(IDocument *this, VARIANT vtWnd, BSTR wpFindIt, DWORD dwFlags, VARIANT *vtResult)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   TEXTFINDW tf;
+  INT_PTR nResult;
 
   tf.dwFlags=dwFlags;
   tf.pFindIt=wpFindIt;
   tf.nFindItLen=SysStringLen(wpFindIt);
-  *nResult=SendMessage(hMainWnd, AKD_TEXTFINDW, (WPARAM)hWnd, (LPARAM)&tf);
+  nResult=SendMessage(hMainWnd, AKD_TEXTFINDW, (WPARAM)hWnd, (LPARAM)&tf);
 
+  SetVariantInt(vtResult, nResult);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_TextReplace(IDocument *this, HWND hWnd, BSTR wpFindIt, BSTR wpReplaceWith, DWORD dwFlags, BOOL bAll, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE Document_TextReplace(IDocument *this, VARIANT vtWnd, BSTR wpFindIt, BSTR wpReplaceWith, DWORD dwFindFlags, DWORD dwReplaceFlags, VARIANT *vtResult)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   TEXTREPLACEW tr;
+  INT_PTR nResult;
 
-  tr.dwFlags=dwFlags;
+  tr.dwFindFlags=dwFindFlags;
   tr.pFindIt=wpFindIt;
   tr.nFindItLen=SysStringLen(wpFindIt);
   tr.pReplaceWith=wpReplaceWith;
   tr.nReplaceWithLen=SysStringLen(wpReplaceWith);
-  tr.bAll=bAll;
-  *nResult=SendMessage(hMainWnd, AKD_TEXTREPLACEW, (WPARAM)hWnd, (LPARAM)&tr);
+  tr.dwReplaceFlags=dwReplaceFlags;
+  nResult=SendMessage(hMainWnd, AKD_TEXTREPLACEW, (WPARAM)hWnd, (LPARAM)&tr);
+  if ((dwReplaceFlags & RRF_ALL) && nResult == -1)
+    nResult=tr.nChanges;
 
+  SetVariantInt(vtResult, nResult);
   return NOERROR;
 }
 
@@ -953,37 +1098,37 @@ HRESULT STDMETHODCALLTYPE Document_IsPluginRunning(IDocument *this, BSTR wpFunct
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Call(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_Call(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  return CallPlugin(0, 0, wpFunction, psa, nResult);
+  return CallPlugin(0, 0, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallA(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_CallA(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  return CallPlugin(0, PDS_STRANSI, wpFunction, psa, nResult);
+  return CallPlugin(0, PDS_STRANSI, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallW(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_CallW(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  return CallPlugin(0, PDS_STRWIDE, wpFunction, psa, nResult);
+  return CallPlugin(0, PDS_STRWIDE, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallEx(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_CallEx(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  return CallPlugin(dwFlags, 0, wpFunction, psa, nResult);
+  return CallPlugin(dwFlags, 0, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallExA(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_CallExA(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  return CallPlugin(dwFlags, PDS_STRANSI, wpFunction, psa, nResult);
+  return CallPlugin(dwFlags, PDS_STRANSI, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallExW(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_CallExW(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  return CallPlugin(dwFlags, PDS_STRWIDE, wpFunction, psa, nResult);
+  return CallPlugin(dwFlags, PDS_STRWIDE, wpFunction, psa, vtResult);
 }
 
-HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **psa, int *nResult)
+HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   POINTERSTACK hStringsStack={0};
   POINTERITEM *lpElement=NULL;
@@ -996,6 +1141,7 @@ HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **
   DWORD dwStructSize;
   DWORD dwOffset;
   HRESULT hr=NOERROR;
+  INT_PTR nResult;
 
   lpData=(unsigned char *)((*psa)->pvData);
   dwElementSum=(*psa)->rgsabound[0].cElements;
@@ -1015,7 +1161,7 @@ HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **
         pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
         dwParameter=0;
 
-        if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
+        if (pvtParameter->vt == (VT_BYREF|VT_VARIANT))
           pvtParameter=pvtParameter->pvarVal;
 
         if (pvtParameter->vt == VT_BSTR)
@@ -1043,14 +1189,8 @@ HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **
           }
           else dwParameter=(UINT_PTR)pvtParameter->bstrVal;
         }
-        else if (pvtParameter->vt == VT_BOOL)
-        {
-          dwParameter=pvtParameter->boolVal?TRUE:FALSE;
-        }
-        else
-        {
-          dwParameter=GetVariantInt(pvtParameter);
-        }
+        else dwParameter=GetVariantInt(pvtParameter, NULL);
+
         *(UINT_PTR *)(lpStructure + dwOffset)=dwParameter;
         dwOffset+=sizeof(UINT_PTR);
       }
@@ -1064,7 +1204,21 @@ HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **
     pcs.pFunction=wpFunction;
     pcs.lParam=(LPARAM)lpStructure;
     pcs.dwSupport=dwSupport;
-    *nResult=(int)SendMessage(hMainWnd, AKD_DLLCALLW, (WPARAM)dwFlags, (LPARAM)&pcs);
+    pcs.nResult=0;
+    nResult=(int)SendMessage(hMainWnd, AKD_DLLCALLW, (WPARAM)dwFlags, (LPARAM)&pcs);
+
+    //Return AkelPad.ScriptExitCode when script called
+    if (pcs.lParam && !xstrcmpiW(wpFunction, L"Scripts::Main"))
+    {
+      INT_PTR nAction=GetExtCallParam(pcs.lParam, 1);
+
+      if (nAction == DLLA_SCRIPTS_EXEC ||
+          nAction == DLLA_SCRIPTS_EXECWAIT ||
+          nAction == DLLA_SCRIPTS_EXECMAINTHREAD)
+      {
+        nResult=pcs.nResult;
+      }
+    }
   }
 
   //Free structure
@@ -1073,10 +1227,11 @@ HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **
   //Free strings stack
   StackFreePointers(&hStringsStack);
 
+  SetVariantInt(vtResult, nResult);
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wpWorkDir, int nWait, DWORD *dwExit)
+HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wpWorkDir, int nWait, int nShowWindow, DWORD *dwExit)
 {
   STARTUPINFOW si;
   PROCESS_INFORMATION pi;
@@ -1103,6 +1258,11 @@ HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wp
         {
           xmemset(&si, 0, sizeof(STARTUPINFOW));
           si.cb=sizeof(STARTUPINFOW);
+          if (nShowWindow >= 0)
+          {
+            si.dwFlags=STARTF_USESHOWWINDOW;
+            si.wShowWindow=(WORD)nShowWindow;
+          }
           if (CreateProcessWide(NULL, wszExecuteCommandExp, NULL, NULL, FALSE, 0, NULL, (wszExecuteDirectoryExp && *wszExecuteDirectoryExp)?wszExecuteDirectoryExp:NULL, &si, &pi))
           {
             if (nWait == 1)
@@ -1114,6 +1274,8 @@ HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wp
             {
               WaitForInputIdle(pi.hProcess, INFINITE);
             }
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
           }
         }
         GlobalFree((HGLOBAL)wszExecuteDirectoryExp);
@@ -1124,9 +1286,15 @@ HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wp
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Command(IDocument *this, int nCommand, LPARAM lParam, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE Document_Command(IDocument *this, int nCommand, VARIANT vtLParam, VARIANT *vtResult)
 {
-  *nResult=SendMessage(hMainWnd, WM_COMMAND, (WPARAM)nCommand, lParam);
+  VARIANT vtWnd;
+  VARIANT vtWParam;
+
+  SetVariantInt(&vtWnd, (INT_PTR)hMainWnd);
+  SetVariantInt(&vtWParam, nCommand);
+  Document_SendMessage(this, vtWnd, WM_COMMAND, vtWParam, vtLParam, vtResult);
+
   return NOERROR;
 }
 
@@ -1180,7 +1348,7 @@ HRESULT STDMETHODCALLTYPE Document_Recode(IDocument *this, int nCodePageFrom, in
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Include(IDocument *this, BSTR wpFileName, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_Include(IDocument *this, BSTR wpFileName, DWORD dwFlags, int nCodePage, BOOL bBOM, BOOL *bResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
   INCLUDEITEM *lpIncludeItem;
@@ -1196,7 +1364,7 @@ HRESULT STDMETHODCALLTYPE Document_Include(IDocument *this, BSTR wpFileName, BOO
     xprintfW(lpScriptThread->wszScriptInclude, L"%s\\AkelFiles\\Plugs\\Scripts\\Include\\%s", wszAkelPadDir, wpFileName);
     xstrcpynW(lpIncludeItem->wszInclude, lpScriptThread->wszScriptInclude, MAX_PATH);
 
-    if (ReadFileContent(lpScriptThread->wszScriptInclude, OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM, 0, 0, &wpContent, (UINT_PTR)-1))
+    if (DetectAndReadFile(NULL, lpScriptThread->wszScriptInclude, dwFlags, &nCodePage, &bBOM, &wpContent, (UINT_PTR)-1))
     {
       lpScriptThread->objActiveScript->lpVtbl->SetScriptState(lpScriptThread->objActiveScript, SCRIPTSTATE_DISCONNECTED);
       if ((hr=lpScriptThread->objActiveScriptParse->lpVtbl->ParseScriptText(lpScriptThread->objActiveScriptParse, wpContent, NULL, NULL, NULL, lpScriptThread->hIncludesStack.nElements, 0, 0, NULL, NULL)) == S_OK)
@@ -1235,20 +1403,21 @@ HRESULT STDMETHODCALLTYPE Document_OpenFile(IDocument *this, BSTR wpFile, DWORD 
   od.dwFlags=dwFlags;
   od.nCodePage=nCodePage;
   od.bBOM=bBOM;
+  od.hDoc=NULL;
   *nResult=(int)SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *this, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, INT_PTR nBytesMax, BSTR *wpText)
+HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *this, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, VARIANT vtBytesMax, BSTR *wpText)
 {
+  INT_PTR nBytesMax=GetVariantInt(&vtBytesMax, NULL);
   wchar_t *wpContent=NULL;
-  HRESULT hr=NOERROR;
   INT_PTR nContentLen;
+  HRESULT hr=NOERROR;
 
   *wpText=NULL;
-
-  nContentLen=ReadFileContent(wpFile, dwFlags, nCodePage, bBOM, &wpContent, (UINT_PTR)nBytesMax);
+  nContentLen=DetectAndReadFile(NULL, wpFile, dwFlags, &nCodePage, &bBOM, &wpContent, (UINT_PTR)nBytesMax);
 
   if (wpContent)
   {
@@ -1259,17 +1428,17 @@ HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *this, BSTR wpFile, DWORD 
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BSTR wpContent, INT_PTR nContentLen, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BSTR wpContent, VARIANT vtContentLen, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult)
 {
   VARIANT *pvtFile=&vtFile;
+  INT_PTR nContentLen=GetVariantInt(&vtContentLen, NULL);
   UINT_PTR dwFile;
   FILECONTENT fc;
   DWORD dwCreationDisposition;
   DWORD dwAttr=INVALID_FILE_ATTRIBUTES;
+  DWORD dwOffSet=0;
 
-  if (pvtFile->vt == (VT_VARIANT|VT_BYREF))
-    pvtFile=pvtFile->pvarVal;
-  dwFile=GetVariantValue(pvtFile, FALSE);
+  dwFile=GetVariantValue(pvtFile, &pvtFile, FALSE);
 
   *nResult=ESD_OPEN;
 
@@ -1305,12 +1474,12 @@ HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BS
   if (fc.hFile != INVALID_HANDLE_VALUE)
   {
     if (dwFlags & WFF_APPENDFILE)
-      SetFilePointer(fc.hFile, 0, NULL, FILE_END);
+      dwOffSet=SetFilePointer(fc.hFile, 0, NULL, FILE_END);
 
     fc.wpContent=wpContent;
     fc.dwMax=nContentLen;
     fc.nCodePage=nCodePage;
-    fc.bBOM=bBOM;
+    fc.bBOM=(!dwOffSet ? bBOM : FALSE);
     *nResult=(int)SendMessage(hMainWnd, AKD_WRITEFILECONTENT, 0, (LPARAM)&fc);
 
     if (pvtFile->vt == VT_BSTR)
@@ -1327,8 +1496,10 @@ HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BS
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *this, HWND hWnd, BSTR wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *this, VARIANT vtWnd, BSTR wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags, VARIANT vtDoc, int *nResult)
 {
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
+  AEHDOC hDoc=(AEHDOC)GetVariantInt(&vtDoc, NULL);
   SAVEDOCUMENTW sd;
   EDITINFO ei;
 
@@ -1342,6 +1513,7 @@ HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *this, HWND hWnd, BSTR wpF
     sd.nCodePage=nCodePage;
     sd.bBOM=bBOM;
     sd.dwFlags=dwFlags;
+    sd.hDoc=hDoc;
     *nResult=(int)SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)hWnd, (LPARAM)&sd);
   }
   return NOERROR;
@@ -1389,60 +1561,63 @@ HRESULT STDMETHODCALLTYPE Document_SystemFunction(IDocument *this, IDispatch **o
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemAlloc(IDocument *this, DWORD dwSize, INT_PTR *nPointer)
+HRESULT STDMETHODCALLTYPE Document_MemAlloc(IDocument *this, VARIANT vtSize, VARIANT *vtPointer)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  UINT_PTR dwSize=GetVariantInt(&vtSize, NULL);
   POINTERITEM *lpElement=NULL;
+  INT_PTR nPointer;
+  HRESULT hr=NOERROR;
 
-  if (*nPointer=(INT_PTR)GlobalAlloc(GPTR, dwSize))
+  if (nPointer=(INT_PTR)GlobalAlloc(GPTR, dwSize))
   {
     if (lpElement=StackInsertPointer(&lpScriptThread->hPointersStack))
     {
-      lpElement->lpData=(void *)*nPointer;
+      lpElement->lpData=(void *)nPointer;
       lpElement->dwSize=dwSize;
     }
-    return NOERROR;
   }
-  return E_OUTOFMEMORY;
+  else hr=E_OUTOFMEMORY;
+
+  SetVariantInt(vtPointer, nPointer);
+  return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, INT_PTR nPointer, VARIANT vtData, DWORD dwType, int nDataLen, int *nBytes)
+HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, VARIANT vtPointer, VARIANT vtData, DWORD dwType, int nDataLen, int *nBytes)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
-  CALLBACKITEM *lpSysCallback;
+  INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
+  UINT_PTR dwNumber;
   POINTERITEM *lpElement=NULL;
   VARIANT *pvtData=&vtData;
   unsigned char *lpString=NULL;
-  UINT_PTR dwNumber=0;
   int nStringLen;
   HRESULT hr=NOERROR;
 
   *nBytes=0;
+  dwNumber=GetVariantValue(pvtData, &pvtData, FALSE);
 
-  if (pvtData->vt == (VT_VARIANT|VT_BYREF))
-    pvtData=pvtData->pvarVal;
-
-  if (pvtData->vt == VT_DISPATCH)
+  if (pvtData->vt == VT_BSTR)
   {
-    if (lpSysCallback=StackGetCallbackByObject(&g_hSysCallbackStack, pvtData->pdispVal))
-      dwNumber=(UINT_PTR)lpSysCallback->lpProc;
-    else
-      dwNumber=(UINT_PTR)pvtData->pdispVal;
+    #if defined(_WIN64) || (defined(SCRIPTS_MAXHANDLE) && SCRIPTS_MAXHANDLE < 0x7FFFFFFF)
+      if (pvtData->bstrVal && !pvtData->bstrVal[0] && SysStringLen(pvtData->bstrVal) > 0)
+      {
+        //JScript doesn't support VT_I8, so __int64 number converted to string.
+      }
+      else
+    #endif
+    {
+      lpString=(unsigned char *)pvtData->bstrVal;
+      if (nDataLen == -1)
+        nStringLen=SysStringLen(pvtData->bstrVal);
+      else
+        nStringLen=nDataLen;
+      if (!lpString)
+        lpString=(unsigned char *)L"";
+    }
   }
-  else if (pvtData->vt == VT_BSTR)
-  {
-    lpString=(unsigned char *)pvtData->bstrVal;
-    if (nDataLen == -1)
-      nStringLen=SysStringLen(pvtData->bstrVal);
-    else
-      nStringLen=nDataLen;
-  }
-  else if (pvtData->vt == VT_BOOL)
-    dwNumber=pvtData->boolVal?TRUE:FALSE;
-  else
-    dwNumber=GetVariantInt(pvtData);
 
-  if (nPointer && (lpScriptThread->dwDebug & DBG_MEMWRITE))
+  if (nPointer && (lpScriptThread && lpScriptThread->dwDebug & DBG_MEMWRITE))
   {
     if (!(lpElement=StackGetPointer(&lpScriptThread->hPointersStack, (void *)nPointer, 1)))
     {
@@ -1495,9 +1670,16 @@ HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, INT_PTR nPointer, VA
       }
     }
   }
-  else if (dwType == DT_QWORD)
+  else
   {
-    *nBytes=sizeof(UINT_PTR);
+    if (dwType == DT_QWORD)
+      *nBytes=sizeof(UINT_PTR);
+    else if (dwType == DT_DWORD)
+      *nBytes=sizeof(DWORD);
+    else if (dwType == DT_WORD)
+      *nBytes=sizeof(WORD);
+    else if (dwType == DT_BYTE)
+      *nBytes=sizeof(BYTE);
 
     if (nPointer)
     {
@@ -1506,65 +1688,22 @@ HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, INT_PTR nPointer, VA
         xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_MEMWRITE));
         return E_POINTER;
       }
-      xmemcpy((void *)nPointer, &dwNumber, *nBytes);
-    }
-  }
-  else if (dwType == DT_DWORD)
-  {
-    *nBytes=sizeof(DWORD);
-
-    if (nPointer)
-    {
-      if (lpElement && (LPBYTE)lpElement->lpData + lpElement->dwSize < (LPBYTE)nPointer + *nBytes)
-      {
-        xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_MEMWRITE));
-        return E_POINTER;
-      }
-      xmemcpy((void *)nPointer, &dwNumber, *nBytes);
-    }
-  }
-  else if (dwType == DT_WORD)
-  {
-    *nBytes=sizeof(WORD);
-
-    if (nPointer)
-    {
-      if (lpElement && (LPBYTE)lpElement->lpData + lpElement->dwSize < (LPBYTE)nPointer + *nBytes)
-      {
-        xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_MEMWRITE));
-        return E_POINTER;
-      }
-      dwNumber=LOWORD((DWORD)dwNumber);
-      xmemcpy((void *)nPointer, &dwNumber, *nBytes);
-    }
-  }
-  else if (dwType == DT_BYTE)
-  {
-    *nBytes=sizeof(BYTE);
-
-    if (nPointer)
-    {
-      if (lpElement && (LPBYTE)lpElement->lpData + lpElement->dwSize < (LPBYTE)nPointer + *nBytes)
-      {
-        xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_MEMWRITE));
-        return E_POINTER;
-      }
-      dwNumber=LOBYTE((DWORD)dwNumber);
       xmemcpy((void *)nPointer, &dwNumber, *nBytes);
     }
   }
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DWORD dwType, int nDataLen, VARIANT *vtData)
+HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, VARIANT vtPointer, DWORD dwType, int nDataLen, VARIANT *vtData)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
   POINTERITEM *lpElement=NULL;
   wchar_t *wszString;
   int nStringLen;
   HRESULT hr=NOERROR;
 
-  if (lpScriptThread->dwDebug & DBG_MEMREAD)
+  if (lpScriptThread && lpScriptThread->dwDebug & DBG_MEMREAD)
   {
     if (!(lpElement=StackGetPointer(&lpScriptThread->hPointersStack, (void *)nPointer, 1)))
     {
@@ -1577,7 +1716,7 @@ HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DW
   if (dwType == DT_ANSI)
   {
     if (nDataLen == -1)
-      nStringLen=lstrlenA((char *)nPointer);
+      nStringLen=(int)xstrlenA((char *)nPointer);
     else
       nStringLen=nDataLen;
 
@@ -1599,7 +1738,7 @@ HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DW
   else if (dwType == DT_UNICODE)
   {
     if (nDataLen == -1)
-      nStringLen=lstrlenW((wchar_t *)nPointer);
+      nStringLen=(int)xstrlenW((wchar_t *)nPointer);
     else
       nStringLen=nDataLen;
 
@@ -1619,13 +1758,7 @@ HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DW
       xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_MEMREAD));
       return E_POINTER;
     }
-    #ifdef _WIN64
-      vtData->vt=VT_I8;
-      vtData->llVal=*(INT_PTR *)nPointer;
-    #else
-      vtData->vt=VT_I4;
-      vtData->lVal=*(INT_PTR *)nPointer;
-    #endif
+    SetVariantInt(vtData, *(INT_PTR *)nPointer);
   }
   else if (dwType == DT_DWORD)
   {
@@ -1645,7 +1778,7 @@ HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DW
       return E_POINTER;
     }
     vtData->vt=VT_UI2;
-    vtData->uiVal=LOWORD(*(UINT_PTR *)nPointer);
+    vtData->uiVal=(WORD)(*(UINT_PTR *)nPointer);
   }
   else if (dwType == DT_BYTE)
   {
@@ -1655,25 +1788,43 @@ HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DW
       return E_POINTER;
     }
     vtData->vt=VT_UI1;
-    vtData->bVal=LOBYTE(*(UINT_PTR *)nPointer);
+    vtData->bVal=(BYTE)(*(UINT_PTR *)nPointer);
   }
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemStrPtr(IDocument *this, BSTR wpString, INT_PTR *nPointer)
+HRESULT STDMETHODCALLTYPE Document_MemStrPtr(IDocument *this, BSTR wpString, BOOL bConvert, VARIANT *vtPointer)
 {
-  *nPointer=(INT_PTR)wpString;
+  INT_PTR nPointer;
+
+  if (bConvert)
+    nPointer=xatoiW(wpString, NULL);
+  else
+    nPointer=(INT_PTR)wpString;
+  SetVariantInt(vtPointer, nPointer);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *this, INT_PTR nPointer)
+HRESULT STDMETHODCALLTYPE Document_MemPtrStr(IDocument *this, VARIANT vtPointer, BSTR *wpString)
+{
+  INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
+  HRESULT hr=NOERROR;
+
+  xitoaW(nPointer, wszBuffer);
+  if (!(*wpString=SysAllocString(wszBuffer)))
+    hr=E_OUTOFMEMORY;
+  return hr;
+}
+
+HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *this, VARIANT vtPointer)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
   POINTERITEM *lpElement=NULL;
 
   if (!(lpElement=StackGetPointer(&lpScriptThread->hPointersStack, (void *)nPointer, 1)))
   {
-    if (lpScriptThread->dwDebug & DBG_MEMFREE)
+    if (lpScriptThread && lpScriptThread->dwDebug & DBG_MEMFREE)
     {
       xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_MEMFREE), nPointer);
       return E_POINTER;
@@ -1707,11 +1858,15 @@ HRESULT STDMETHODCALLTYPE Document_VarType(IDocument *this, VARIANT vtData, int 
 {
   VARIANT *pvtData=&vtData;
 
-  if (pvtData->vt == (VT_VARIANT|VT_BYREF))
+  if (pvtData->vt == (VT_BYREF|VT_VARIANT))
     pvtData=pvtData->pvarVal;
-
   *nType=pvtData->vt;
+  return NOERROR;
+}
 
+HRESULT STDMETHODCALLTYPE Document_VarDispatch(IDocument *this, VARIANT vtPointer, IDispatch **objDispatch)
+{
+  *objDispatch=(IDispatch *)GetVariantInt(&vtPointer, NULL);
   return NOERROR;
 }
 
@@ -1747,6 +1902,7 @@ HRESULT STDMETHODCALLTYPE Document_GetArgValue(IDocument *this, BSTR wpArgName, 
   wchar_t *wszArgValue;
   HRESULT hr=NOERROR;
 
+  g_bScriptArg=TRUE;
   VariantInit(vtResult);
 
   if (lpScriptArg=StackGetArgumentByName(&lpScriptThread->hArgStack, wpArgName, SysStringLen(wpArgName)))
@@ -1772,14 +1928,490 @@ HRESULT STDMETHODCALLTYPE Document_GetArgValue(IDocument *this, BSTR wpArgName, 
     if (vtDefault.vt != VT_ERROR)
       hr=VariantCopy(vtResult, &vtDefault);
   }
+  g_bScriptArg=FALSE;
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *this, BSTR wpClassName, WORD *wAtom)
+HRESULT STDMETHODCALLTYPE Document_CreateDialog(IDocument *this, DWORD dwExStyle, VARIANT vtClassName, VARIANT vtTitle, DWORD dwStyle, int x, int y, int nWidth, int nHeight, VARIANT vtWndParent, VARIANT vtParam, SAFEARRAY **lpItems, VARIANT *vtWnd)
 {
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  CALLBACKITEM *lpCallback;
+  wchar_t *wpClassName=(wchar_t *)GetVariantInt(&vtClassName, NULL);
+  wchar_t *wpTitle=(wchar_t *)GetVariantInt(&vtTitle, NULL);
+  HWND hWndParent=(HWND)GetVariantInt(&vtWndParent, NULL);
+  LPARAM lParam=GetVariantInt(&vtParam, NULL);
+  DWORD dwFlags=0;
+  HINSTANCE hInstance=NULL;
+  HMENU hMenu=NULL;
+  BSTR wpFaceName=NULL;
+  DWORD dwFontStyle=0;
+  int nPointSize=0;
+  SAFEARRAY *psa=*lpItems;
+  VARIANT *pvtParameter;
+  unsigned char *lpData;
+  DWORD dwElement;
+  DWORD dwElementSum;
+  HGLOBAL hTemplate;
+  DLGTEMPLATEEX *lpTemplate;
+  DWORD dwSize;
+  INT_PTR nResult=0;
+  HRESULT hr=NOERROR;
+
+  lpData=(unsigned char *)(psa->pvData);
+  dwElementSum=psa->rgsabound[0].cElements;
+
+  for (dwElement=0; dwElement < dwElementSum; ++dwElement)
+  {
+    pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+    if (pvtParameter->vt == VT_BSTR && !xstrcmpW(pvtParameter->bstrVal, L"|"))
+    {
+      ++dwElement;
+      break;
+    }
+    if (dwElement == 0)
+      dwFlags=(DWORD)GetVariantInt(pvtParameter, NULL);
+    else if (dwElement == 1)
+      hMenu=(HMENU)GetVariantInt(pvtParameter, NULL);
+    else if (dwElement == 2)
+      hInstance=(HINSTANCE)GetVariantInt(pvtParameter, NULL);
+    else if (dwElement == 3)
+      wpFaceName=pvtParameter->bstrVal;
+    else if (dwElement == 4)
+      dwFontStyle=(DWORD)GetVariantInt(pvtParameter, NULL);
+    else if (dwElement == 5)
+      nPointSize=(int)GetVariantInt(pvtParameter, NULL);
+    else
+      return DISP_E_BADPARAMCOUNT;
+  }
+
+  //For dialog we need to change WNDCLASSW.lpfnWndProc to DefDlgProcWide
+  if (lpCallback=StackGetCallbackByClass(&lpScriptThread->hDialogCallbackStack, wpClassName))
+  {
+    if (!lpCallback->hHandle)
+    {
+      //First window associated with wAtom.
+      HWND hWndHidden;
+
+      if (hWndHidden=CreateWindowExWide(0, wpClassName, L"", WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstanceDLL, NULL))
+      {
+        SetClassLongPtrWide(hWndHidden, GCLP_WNDPROC, (UINT_PTR)DefDlgProcWide);
+        DestroyWindow(hWndHidden);
+      }
+    }
+  }
+  else return CO_E_CANTDETERMINECLASS;
+
+  if (!hInstance) hInstance=hInstanceDLL;
+
+  if ((hr=FillDialogTemplate(NULL, dwFlags, dwExStyle, wpClassName, wpTitle, dwStyle, x, y, nWidth, nHeight, hMenu, wpFaceName, dwFontStyle, nPointSize, lpItems, dwElement, &dwSize)) == NOERROR)
+  {
+    if (hTemplate=GlobalAlloc(GMEM_ZEROINIT, dwSize))
+    {
+      if (lpTemplate=(DLGTEMPLATEEX *)GlobalLock(hTemplate))
+      {
+        FillDialogTemplate(lpTemplate, dwFlags, dwExStyle, wpClassName, wpTitle, dwStyle, x, y, nWidth, nHeight, hMenu, wpFaceName, dwFontStyle, nPointSize, lpItems, dwElement, NULL);
+        GlobalUnlock(hTemplate);
+        if (dwFlags & CDF_MODAL)
+          nResult=DialogBoxIndirectParam(hInstance, (DLGTEMPLATE *)hTemplate, hWndParent, (DLGPROC)DialogCallbackProc, lParam);
+        else
+          nResult=(INT_PTR)CreateDialogIndirectParam(hInstance, (DLGTEMPLATE *)hTemplate, hWndParent, (DLGPROC)DialogCallbackProc, lParam);
+        GlobalFree(hTemplate);
+      }
+    }
+  }
+  SetVariantInt(vtWnd, nResult);
+
+  return hr;
+}
+
+HRESULT FillDialogTemplate(DLGTEMPLATEEX *lpdt, DWORD dwFlags, DWORD dwExStyle, wchar_t *wpClassName, wchar_t *wpTitle, DWORD dwStyle, int x, int y, int nWidth, int nHeight, HMENU hMenu, BSTR wpFaceName, DWORD dwFontStyle, int nPointSize, SAFEARRAY **lpItems, DWORD dwElement, DWORD *lpdwSize)
+{
+  DLGITEMTEMPLATEEX *lpdit;
+  WORD *lpw;
+  BYTE *lpb;
+  VARIANT *pvtParameter;
+  SAFEARRAY *psa=*lpItems;
+  unsigned char *lpData;
+  DWORD dwElementSum;
+  DWORD dwOptional;
+  POINT ptUnitCur={0};
+  POINT ptUnit96={0};
+  HRESULT hr=NOERROR;
+
+  lpData=(unsigned char *)(psa->pvData);
+  dwElementSum=psa->rgsabound[0].cElements;
+
+  //Don't use "lpw=(WORD *)(lpdt + 1)" because of wrong alignment
+  lpw=(WORD *)((BYTE *)lpdt + offsetof(DLGTEMPLATEEX, cy) + sizeof(short));
+
+  //Menu
+  if (!hMenu)
+  {
+    if (lpdt) *lpw=0;
+    ++lpw;
+  }
+  else if ((INT_PTR)hMenu < 0xFFFF)
+  {
+    if (lpdt) *lpw=0xFFFF;
+    ++lpw;
+    if (lpdt) *lpw=(WORD)(INT_PTR)hMenu;
+    ++lpw;
+  }
+  else lpw+=xstrcpynW(lpdt?(wchar_t *)lpw:NULL, (wchar_t *)hMenu, MAX_PATH) + (lpdt?1:0);
+
+  //Class
+  if (!wpClassName)
+  {
+    if (lpdt) *lpw=0;
+    ++lpw;
+  }
+  else if ((INT_PTR)wpClassName < 0xFFFF)
+  {
+    if (lpdt) *lpw=0xFFFF;
+    ++lpw;
+    if (lpdt) *lpw=(WORD)(INT_PTR)wpClassName;
+    ++lpw;
+  }
+  else lpw+=xstrcpynW(lpdt?(wchar_t *)lpw:NULL, wpClassName, MAX_PATH) + (lpdt?1:0);
+
+  //Title
+  if (!wpTitle)
+  {
+    if (lpdt) *lpw=0;
+    ++lpw;
+  }
+  else lpw+=xstrcpynW(lpdt?(wchar_t *)lpw:NULL, wpTitle, MAX_PATH) + (lpdt?1:0);
+
+  if ((dwStyle & DS_SETFONT) || (dwFlags & CDF_PIXELS))
+  {
+    LOGFONTW lfGui;
+    HDC hDC=NULL;
+    HFONT hGuiFont;
+
+    //Default GUI font
+    if (dwStyle & DS_SETFONT)
+      hGuiFont=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    else
+      hGuiFont=(HFONT)GetStockObject(SYSTEM_FONT);
+    if (bOldWindows)
+    {
+      LOGFONTA lfA;
+
+      GetObjectA(hGuiFont, sizeof(LOGFONTA), &lfA);
+      LogFontAtoW(&lfA, &lfGui);
+    }
+    else GetObjectW(hGuiFont, sizeof(LOGFONTW), &lfGui);
+
+    if (lpdt)
+    {
+      if (dwFlags & CDF_PIXELS)
+      {
+        if (!hDC)
+          hDC=GetDC(hMainWnd);
+        if (hDC)
+          GetDialogUnits(hDC, hGuiFont, &ptUnitCur, &ptUnit96);
+      }
+      if (dwStyle & DS_SETFONT)
+      {
+        if (!nPointSize)
+        {
+          if (!hDC)
+            hDC=GetDC(hMainWnd);
+          if (hDC)
+            nPointSize=MulDiv(mod(lfGui.lfHeight), 72, GetDeviceCaps(hDC, LOGPIXELSY));
+        }
+      }
+      if (hDC)
+      {
+        ReleaseDC(hMainWnd, hDC);
+        hDC=NULL;
+      }
+      if (dwFontStyle != FS_NONE)
+      {
+        lfGui.lfWeight=(dwFontStyle == FS_FONTBOLD || dwFontStyle == FS_FONTBOLDITALIC)?FW_BOLD:FW_NORMAL;
+        lfGui.lfItalic=(dwFontStyle == FS_FONTITALIC || dwFontStyle == FS_FONTBOLDITALIC)?TRUE:FALSE;
+      }
+    }
+    if (wpFaceName && *wpFaceName != '\0')
+    {
+      xstrcpynW(lfGui.lfFaceName, wpFaceName, LF_FACESIZE);
+    }
+
+    if (dwStyle & DS_SETFONT)
+    {
+      //Point size
+      if (lpdt) *lpw=(WORD)nPointSize;
+      ++lpw;
+
+      //Weight
+      if (lpdt) *lpw=(WORD)lfGui.lfWeight;
+      ++lpw;
+
+      if (lpdt)
+      {
+        lpb=(BYTE *)lpw;
+
+        //Italic
+        *lpb++=lfGui.lfItalic;
+
+        //Character set
+        *lpb++=lfGui.lfCharSet /*DEFAULT_CHARSET*/;
+      }
+      ++lpw;
+
+      //Face name
+      lpw+=xstrcpynW(lpdt?(wchar_t *)lpw:NULL, lfGui.lfFaceName, LF_FACESIZE) + (lpdt?1:0);
+    }
+  }
+
+  if (lpdt)
+  {
+    lpdt->dlgVer=1;
+    lpdt->signature=0xFFFF;
+    lpdt->helpID=0;
+    lpdt->exStyle=dwExStyle;
+    lpdt->style=dwStyle;
+    lpdt->cDlgItems=0;
+    lpdt->x=(short)x;
+    if (dwFlags & CDF_PIXELS)
+      lpdt->x=(short)PixelToUnitX(lpdt->x, &ptUnitCur, &ptUnit96);
+    lpdt->y=(short)y;
+    if (dwFlags & CDF_PIXELS)
+      lpdt->y=(short)PixelToUnitY(lpdt->y, &ptUnitCur, &ptUnit96);
+    lpdt->cx=(short)nWidth;
+    if (dwFlags & CDF_PIXELS)
+      lpdt->cx=(short)PixelToUnitX(lpdt->cx, &ptUnitCur, &ptUnit96);
+    lpdt->cy=(short)nHeight;
+    if (dwFlags & CDF_PIXELS)
+      lpdt->cy=(short)PixelToUnitY(lpdt->cy, &ptUnitCur, &ptUnit96);
+  }
+
+  while (dwElement < dwElementSum)
+  {
+    lpw=(WORD *)AlignValue(lpw, sizeof(DWORD));
+    lpdit=(DLGITEMTEMPLATEEX *)lpw;
+    lpw=(WORD *)(lpdit + 1);
+
+    //helpID
+    if (lpdt) lpdit->helpID=0;
+
+    //ExStyle
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->exStyle=(DWORD)GetVariantInt(pvtParameter, NULL);
+    }
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    //Class
+    pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+    wpClassName=(wchar_t *)GetVariantInt(pvtParameter, NULL);
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    if (!wpClassName)
+    {
+      if (lpdt) *lpw=0;
+      ++lpw;
+    }
+    else if ((INT_PTR)wpClassName < 0xFFFF)
+    {
+      if (lpdt) *lpw=0xFFFF;
+      ++lpw;
+      if (lpdt) *lpw=(WORD)(INT_PTR)wpClassName;
+      ++lpw;
+    }
+    else lpw+=xstrcpynW(lpdt?(wchar_t *)lpw:NULL, wpClassName, MAX_PATH) + (lpdt?1:0);
+
+    //Title
+    pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+    wpTitle=(wchar_t *)GetVariantInt(pvtParameter, NULL);
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    if (!wpTitle)
+    {
+      if (lpdt) *lpw=0;
+      ++lpw;
+    }
+    else if ((INT_PTR)wpTitle < 0xFFFF)
+    {
+      if (lpdt) *lpw=0xFFFF;
+      ++lpw;
+      if (lpdt) *lpw=(WORD)(INT_PTR)wpTitle;
+      ++lpw;
+    }
+    else lpw+=xstrcpynW(lpdt?(wchar_t *)lpw:NULL, wpTitle, MAX_PATH) + (lpdt?1:0);
+
+    //Style
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->style=(DWORD)GetVariantInt(pvtParameter, NULL);
+    }
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    //x
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->x=(short)GetVariantInt(pvtParameter, NULL);
+      if (dwFlags & CDF_PIXELS)
+        lpdit->x=(short)PixelToUnitX(lpdit->x, &ptUnitCur, &ptUnit96);
+    }
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    //y
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->y=(short)GetVariantInt(pvtParameter, NULL);
+      if (dwFlags & CDF_PIXELS)
+        lpdit->y=(short)PixelToUnitY(lpdit->y, &ptUnitCur, &ptUnit96);
+    }
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    //Width
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->cx=(short)GetVariantInt(pvtParameter, NULL);
+      if (dwFlags & CDF_PIXELS)
+        lpdit->cx=(short)PixelToUnitX(lpdit->cx, &ptUnitCur, &ptUnit96);
+    }
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    //Height
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->cy=(short)GetVariantInt(pvtParameter, NULL);
+      if (dwFlags & CDF_PIXELS)
+        lpdit->cy=(short)PixelToUnitY(lpdit->cy, &ptUnitCur, &ptUnit96);
+    }
+    if (++dwElement >= dwElementSum) return DISP_E_BADPARAMCOUNT;
+
+    //ID
+    if (lpdt)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      lpdit->id=(DWORD)GetVariantInt(pvtParameter, NULL);
+    }
+    ++dwElement;
+
+    //Creation data
+    if (lpdt) *lpw=0;
+    ++lpw;
+
+    //Optional item parameters
+    for (dwOptional=0; dwElement < dwElementSum; ++dwElement, ++dwOptional)
+    {
+      pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
+      if (pvtParameter->vt == VT_BSTR && !xstrcmpW(pvtParameter->bstrVal, L"|"))
+      {
+        ++dwElement;
+        break;
+      }
+      if (dwOptional == 0)
+      {
+        //Creation data
+        LPARAM lParamItem;
+        WORD wParamItemSize;
+
+        if ((lParamItem=GetVariantInt(pvtParameter, NULL)) && (wParamItemSize=*(WORD *)lParamItem) > 0)
+        {
+          --lpw;
+          if (lpdt) xmemcpy(lpw, (void *)lParamItem, wParamItemSize);
+          lpw=(WORD *)((BYTE *)lpw + wParamItemSize);
+        }
+      }
+      else return DISP_E_BADPARAMCOUNT;
+    }
+
+    if (lpdt) ++lpdt->cDlgItems;
+  }
+  if (lpdwSize) *lpdwSize=(DWORD)((BYTE *)lpw - (BYTE *)lpdt);
+  return hr;
+}
+
+BOOL GetDialogUnits(HDC hDC, HFONT hFont, POINT *ptUnitCur, POINT *ptUnit96)
+{
+  TEXTMETRICA tmGui;
+  HFONT hFontOld;
+  SIZE sizeWidth;
+  const char *pStr="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  int nStrLen=52;
+  BOOL bFreeDC=FALSE;
+  BOOL bResult=FALSE;
+
+  if (!hDC)
+  {
+    hDC=GetDC(hMainWnd);
+    bFreeDC=TRUE;
+  }
+  if (!hFont)
+    hFont=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+  if (hDC)
+  {
+    hFontOld=(HFONT)SelectObject(hDC, hFont);
+    if (GetTextMetricsA(hDC, &tmGui))
+    {
+      //Current dialog base unit
+      GetTextExtentPoint32A(hDC, pStr, nStrLen, &sizeWidth);
+      ptUnitCur->x=(sizeWidth.cx / 26 + 1) / 2;
+      ptUnitCur->y=tmGui.tmHeight;
+
+      //Normal unit (without screen scale)
+      ptUnit96->x=MulDiv(ptUnitCur->x, 96, GetDeviceCaps(hDC, LOGPIXELSX));
+      ptUnit96->y=MulDiv(ptUnitCur->y, 96, GetDeviceCaps(hDC, LOGPIXELSY));
+
+      bResult=TRUE;
+    }
+    if (hFontOld) SelectObject(hDC, hFontOld);
+    if (bFreeDC) ReleaseDC(hMainWnd, hDC);
+  }
+  return bResult;
+}
+
+int PixelToUnitX(int x, const POINT *ptUnitCur, const POINT *ptUnit96)
+{
+  if (ptUnitCur->x)
+  {
+    x=MulDiv(x, ptUnitCur->x, ptUnit96->x);
+    x=MulDiv(x, 4, ptUnitCur->x);
+  }
+  return x;
+}
+
+int PixelToUnitY(int y, const POINT *ptUnitCur, const POINT *ptUnit96)
+{
+  if (ptUnitCur->y)
+  {
+    y=MulDiv(y, ptUnitCur->y, ptUnit96->y);
+    y=MulDiv(y, 8, ptUnitCur->y);
+  }
+  return y;
+}
+
+LOGFONTW* LogFontAtoW(const LOGFONTA *lfA, LOGFONTW *lfW)
+{
+  xmemcpy(lfW, lfA, offsetof(LOGFONTW, lfFaceName));
+  MultiByteToWideChar(CP_ACP, 0, lfA->lfFaceName, -1, lfW->lfFaceName, LF_FACESIZE);
+  return lfW;
+}
+
+LOGFONTA* LogFontWtoA(const LOGFONTW *lfW, LOGFONTA *lfA)
+{
+  xmemcpy(lfA, lfW, offsetof(LOGFONTW, lfFaceName));
+  WideCharToMultiByte(CP_ACP, 0, lfW->lfFaceName, -1, lfA->lfFaceName, LF_FACESIZE, NULL, NULL);
+  return lfA;
+}
+
+HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *this, BSTR wpClassName, SAFEARRAY **psa, WORD *wAtom)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  CALLBACKITEM *lpCallback;
   WNDCLASSW wndclass;
 
-  wndclass.style        =CS_HREDRAW|CS_VREDRAW;
+  wndclass.style        =0;
   wndclass.lpfnWndProc  =DialogCallbackProc;
   wndclass.cbClsExtra   =0;
   wndclass.cbWndExtra   =DLGWINDOWEXTRA;
@@ -1789,21 +2421,53 @@ HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *this, BSTR wpC
   wndclass.hbrBackground=(HBRUSH)(UINT_PTR)(COLOR_BTNFACE + 1);
   wndclass.lpszMenuName =NULL;
   wndclass.lpszClassName=wpClassName;
-  *wAtom=RegisterClassWide(&wndclass);
+  if (*wAtom=RegisterClassWide(&wndclass))
+  {
+    if (lpCallback=StackInsertCallback(&lpScriptThread->hDialogCallbackStack, NULL))
+    {
+      lpCallback->hHandle=(HANDLE)NULL;
+      lpCallback->dwData=*wAtom;
+      lpCallback->lpScriptThread=(void *)lpScriptThread;
+      lpCallback->nCallbackType=CIT_DIALOG;
+      lpCallback->wpClassName=SysAllocString(wpClassName);
 
+      StackFillMessages(&lpCallback->hMsgIntStack, *psa);
+    }
+  }
   return NOERROR;
 }
 
 HRESULT STDMETHODCALLTYPE Document_WindowUnregisterClass(IDocument *this, BSTR wpClassName, BOOL *bResult)
 {
-  *bResult=UnregisterClassWide(wpClassName, hInstanceDLL);
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  CALLBACKITEM *lpCallback;
+  CALLBACKITEM *lpCount;
+  CALLBACKITEM *lpNextCount;
+  ATOM wAtom;
+
+  if (lpCallback=StackGetCallbackByClass(&lpScriptThread->hDialogCallbackStack, wpClassName))
+  {
+    wAtom=(ATOM)lpCallback->dwData;
+
+    if (*bResult=UnregisterClassWide((wchar_t *)(UINT_PTR)wAtom, hInstanceDLL))
+    {
+      for (lpCount=lpScriptThread->hDialogCallbackStack.first; lpCount; lpCount=lpNextCount)
+      {
+        lpNextCount=lpCount->next;
+        if (lpCount->wpClassName && lpCount->dwData == wAtom)
+          StackDeleteCallback(lpCount);
+      }
+    }
+  }
 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, HWND hDlg, BOOL *bResult)
+
+HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, VARIANT vtDlg, BOOL *bResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  HWND hDlg=(HWND)GetVariantInt(&vtDlg, NULL);
   CALLBACKITEM *lpCallback;
 
   *bResult=FALSE;
@@ -1821,9 +2485,10 @@ HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, HWND hD
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, HWND hDlg, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, VARIANT vtDlg, BOOL *bResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  HWND hDlg=(HWND)GetVariantInt(&vtDlg, NULL);
   CALLBACKITEM *lpCallback;
 
   *bResult=FALSE;
@@ -1846,15 +2511,23 @@ HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this, DWORD dwFla
 
   while (GetMessageWide(&msg, NULL, 0, 0) > 0)
   {
-    //Dialog message
-    if (TranslateAcceleratorWide(hMainWnd, hGlobalAccel, &msg))
+    //Global hotkeys
+    if (TranslateMessageProc)
+    {
+      if (TranslateMessageProc(TMSG_GLOBAL|TMSG_HOTKEYGLOBAL, &msg))
+        continue;
+    }
+    else if (TranslateAcceleratorWide(hMainWnd, hGlobalAccel, &msg))
       continue;
 
+    //Dialog message
     for (lpCallback=lpScriptThread->hDialogCallbackStack.first; lpCallback; lpCallback=lpCallback->next)
     {
       if (lpCallback->hHandle && IsDialogMessageWide((HWND)lpCallback->hHandle, &msg))
       {
-        if (!(lpScriptThread->dwMessageLoop & WGM_NOKEYSEND) && (HWND)lpCallback->hHandle != msg.hwnd && msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)
+        if (!(lpScriptThread->dwMessageLoop & WGM_NOKEYSEND) && (HWND)lpCallback->hHandle != msg.hwnd &&
+             (!(lpScriptThread->dwMessageLoop & WGM_KEYDOWNUP) ? (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST) :
+                                                                 (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP)))
         {
           SendMessage((HWND)lpCallback->hHandle, msg.message, msg.wParam, msg.lParam);
         }
@@ -1874,9 +2547,10 @@ HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this, DWORD dwFla
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, HWND hWnd, IDispatch *objFunction, SAFEARRAY **psa, INT_PTR *lpCallbackItem)
+HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, VARIANT vtWnd, IDispatch *objFunction, SAFEARRAY **psa, VARIANT *vtCallbackItem)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   CALLBACKITEM *lpCallback=NULL;
   WNDPROC lpOldWndProc;
   UINT_PTR dwData;
@@ -1944,18 +2618,24 @@ HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, HWND hWnd, ID
       }
     }
   }
-  *lpCallbackItem=(INT_PTR)lpCallback;
-
+  SetVariantInt(vtCallbackItem, (INT_PTR)lpCallback);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, INT_PTR *lpCallbackItem, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
+HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, VARIANT vtCallbackItem, VARIANT vtWnd, UINT uMsg, VARIANT vtWParam, VARIANT vtLParam, VARIANT *vtResult)
 {
-  CALLBACKITEM *lpCallback=(CALLBACKITEM *)lpCallbackItem;
+  CALLBACKITEM *lpCallback=(CALLBACKITEM *)GetVariantInt(&vtCallbackItem, NULL);
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
+  VARIANT *pvtWParam=&vtWParam;
+  VARIANT *pvtLParam=&vtLParam;
   CALLBACKITEM *lpNextCallback;
   BOOL bCalled=FALSE;
+  WPARAM wParam;
+  LPARAM lParam;
+  LRESULT lResult=0;
 
-  *lResult=0;
+  wParam=GetVariantValue(pvtWParam, &pvtWParam, bOldWindows);
+  lParam=GetVariantValue(pvtLParam, &pvtLParam, bOldWindows);
 
   if (lpCallback && lpCallback->hHandle)
   {
@@ -1964,40 +2644,47 @@ HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, INT_PTR *lpCa
     if (lpNextCallback && lpNextCallback->hHandle)
     {
       if ((INT_PTR)lpCallback->hHandle == WSC_MAINPROC)
-        bCalled=SubclassMainCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+        bCalled=SubclassMainCall(lpNextCallback, hWnd, uMsg, wParam, lParam, &lResult);
       else if ((INT_PTR)lpCallback->hHandle == WSC_EDITPROC)
-        bCalled=SubclassEditCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+        bCalled=SubclassEditCall(lpNextCallback, hWnd, uMsg, wParam, lParam, &lResult);
       else if ((INT_PTR)lpCallback->hHandle == WSC_FRAMEPROC)
-        bCalled=SubclassFrameCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+        bCalled=SubclassFrameCall(lpNextCallback, hWnd, uMsg, wParam, lParam, &lResult);
       else
-        bCalled=SubclassCallbackCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+        bCalled=SubclassCallbackCall(lpNextCallback, hWnd, uMsg, wParam, lParam, &lResult);
     }
     if (!bCalled)
     {
       if ((INT_PTR)lpCallback->hHandle == WSC_MAINPROC)
-        *lResult=g_lpSubclassMainProc->NextProc(hWnd, uMsg, wParam, lParam);
+        lResult=g_lpSubclassMainProc->NextProc(hWnd, uMsg, wParam, lParam);
       else if ((INT_PTR)lpCallback->hHandle == WSC_EDITPROC)
-        *lResult=g_lpSubclassEditProc->NextProc(hWnd, uMsg, wParam, lParam);
+        lResult=g_lpSubclassEditProc->NextProc(hWnd, uMsg, wParam, lParam);
       else if ((INT_PTR)lpCallback->hHandle == WSC_FRAMEPROC)
-        *lResult=g_lpSubclassFrameProc->NextProc(hWnd, uMsg, wParam, lParam);
+        lResult=g_lpSubclassFrameProc->NextProc(hWnd, uMsg, wParam, lParam);
       else
-        *lResult=CallWindowProcWide((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
+        lResult=CallWindowProcWide((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
     }
   }
+  if (bOldWindows)
+  {
+    if (pvtWParam->vt == VT_BSTR) GlobalFree((HGLOBAL)wParam);
+    if (pvtLParam->vt == VT_BSTR) GlobalFree((HGLOBAL)lParam);
+  }
+  SetVariantInt(vtResult, lResult);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, INT_PTR *lpCallbackItem)
+HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, VARIANT vtCallbackItem)
 {
-  CALLBACKITEM *lpCallback=(CALLBACKITEM *)lpCallbackItem;
+  CALLBACKITEM *lpCallback=(CALLBACKITEM *)GetVariantInt(&vtCallbackItem, NULL);
 
   lpCallback->bNoNextProc=TRUE;
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *this, HWND hWnd)
+HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *this, VARIANT vtWnd)
 {
   void *lpScriptThread=((IRealDocument *)this)->lpScriptThread;
+  HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
 
   return WindowUnsubClass(lpScriptThread, hWnd);
 }
@@ -2048,12 +2735,11 @@ HRESULT WindowUnsubClass(void *lpScriptThread, HWND hWnd)
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDispatch *objCallback, DWORD dwThreadId, HHOOK *hHook)
+HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDispatch *objCallback, DWORD dwThreadId, SAFEARRAY **psa, VARIANT *vtHook)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
   HRESULT hr=NOERROR;
-
-  *hHook=NULL;
+  HHOOK hHook=NULL;
 
   if (objCallback)
   {
@@ -2067,13 +2753,24 @@ HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDisp
       {
         lpHookProc=(HOOKPROC)g_cbHook[nBusyIndex].lpProc;
 
-        if (*hHook=SetWindowsHookEx(idHook, lpHookProc, NULL, dwThreadId))
+        if (hHook=SetWindowsHookEx(idHook, lpHookProc, NULL, dwThreadId))
         {
           g_cbHook[nBusyIndex].bBusy=TRUE;
           lpCallback->nBusyIndex=nBusyIndex;
           lpCallback->lpProc=(INT_PTR)lpHookProc;
-          lpCallback->hHandle=(HANDLE)*hHook;
-          lpCallback->dwData=0;
+          lpCallback->hHandle=(HANDLE)hHook;
+          //dwData is the offset to message identifier
+          lpCallback->dwData=(UINT_PTR)-1;
+          if (idHook == WH_CALLWNDPROC)
+             lpCallback->dwData=offsetof(CWPSTRUCT, message);
+          else if (idHook == WH_CALLWNDPROCRET)
+             lpCallback->dwData=offsetof(CWPRETSTRUCT, message);
+          else if (idHook == WH_GETMESSAGE ||
+                   idHook == WH_MSGFILTER ||
+                   idHook == WH_SYSMSGFILTER)
+          {
+             lpCallback->dwData=offsetof(MSG, message);
+          }
           lpCallback->nCallbackType=CIT_HOOKCALLBACK;
           lpCallback->lpScriptThread=(void *)lpScriptThread;
 
@@ -2081,6 +2778,7 @@ HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDisp
           {
             lpScriptThread->hWndScriptsThreadDummy=CreateScriptsThreadDummyWindow();
           }
+          StackFillMessages(&lpCallback->hMsgIntStack, *psa);
         }
       }
     }
@@ -2090,12 +2788,14 @@ HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDisp
       hr=DISP_E_BADINDEX;
     }
   }
+  SetVariantInt(vtHook, (INT_PTR)hHook);
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, HHOOK hHook, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, VARIANT vtHook, BOOL *bResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  HHOOK hHook=(HHOOK)GetVariantInt(&vtHook, NULL);
   CALLBACKITEM *lpCallback;
   int nBusyIndex;
 
@@ -2128,6 +2828,17 @@ HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *this, DWORD dwUnlock
     *dwResult|=ULT_UNLOCKMULTICOPY;
   }
 
+  if (dwUnlockType & ULT_LOCKSENDMESSAGE)
+  {
+    lpScriptThread->bLockSendMessage=TRUE;
+    *dwResult|=ULT_LOCKSENDMESSAGE;
+  }
+  if (dwUnlockType & ULT_UNLOCKSENDMESSAGE)
+  {
+    lpScriptThread->bLockSendMessage=FALSE;
+    *dwResult|=ULT_UNLOCKSENDMESSAGE;
+  }
+
   if (dwUnlockType & ULT_UNLOCKSCRIPTSQUEUE)
   {
     if (lpScriptThread->hExecMutex)
@@ -2150,14 +2861,27 @@ HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *this, DWORD dwUnlock
   return NOERROR;
 }
 
+HRESULT STDMETHODCALLTYPE Document_ScriptExitCode(IDocument *this, VARIANT vtExitCode, BOOL *bResult)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  INT_PTR nExitCode=GetVariantValue(&vtExitCode, NULL, FALSE);
+
+  if (lpScriptThread && lpScriptThread->pcs)
+  {
+    lpScriptThread->pcs->nResult=nExitCode;
+    *bResult=TRUE;
+  }
+  else *bResult=FALSE;
+
+  return NOERROR;
+}
+
 HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData, int nOperation, VARIANT *vtResult)
 {
+  UINT_PTR dwData=GetVariantValue(&vtData, NULL, FALSE);
   INT_PTR nResult=0;
   HRESULT hr=NOERROR;
-  VARIANT *pvtData=&vtData;
 
-  if (pvtData->vt == (VT_VARIANT|VT_BYREF))
-    pvtData=pvtData->pvarVal;
   VariantInit(vtResult);
 
   if (nOperation == SH_FIRSTSCRIPT)
@@ -2170,24 +2894,23 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
   }
   else if (nOperation == SH_FINDSCRIPT)
   {
-    if (pvtData->vt == VT_BSTR)
-    {
-      const wchar_t *wpScriptName=(const wchar_t *)pvtData->bstrVal;
+    const wchar_t *wpScriptName=(const wchar_t *)dwData;
 
-      if (wpScriptName && *wpScriptName)
-        nResult=(INT_PTR)StackGetScriptThreadByName(&hThreadStack, wpScriptName);
-    }
+    if (wpScriptName && *wpScriptName)
+      nResult=(INT_PTR)StackGetScriptThreadByName(&hThreadStack, wpScriptName);
   }
   else
   {
-    SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)GetVariantInt(pvtData);
+    SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)dwData;
 
     if (!lpScriptThread)
       lpScriptThread=((IRealDocument *)this)->lpScriptThread;
 
     if (lpScriptThread)
     {
-      if (nOperation == SH_GETTHREADHANDLE)
+      if (nOperation == SH_GETEXECTYPE)
+        nResult=(INT_PTR)lpScriptThread->nExecType;
+      else if (nOperation == SH_GETTHREADHANDLE)
         nResult=(INT_PTR)lpScriptThread->hThread;
       else if (nOperation == SH_GETTHREADID)
         nResult=lpScriptThread->dwThreadID;
@@ -2201,6 +2924,15 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
         nResult=lpScriptThread->hInitMutex?TRUE:FALSE;
       else if (nOperation == SH_GETSERVICEWINDOW)
         nResult=(INT_PTR)lpScriptThread->hWndScriptsThreadDummy;
+      else if (nOperation == SH_GETLOCKSENDMESSAGE)
+        nResult=lpScriptThread->bLockSendMessage;
+      else if (nOperation == SH_GETBASENAME)
+      {
+        vtResult->vt=VT_BSTR;
+        if (!(vtResult->bstrVal=SysAllocString(lpScriptThread->wszScriptBaseName)))
+          hr=E_OUTOFMEMORY;
+        return hr;
+      }
       else if (nOperation == SH_GETNAME)
       {
         vtResult->vt=VT_BSTR;
@@ -2253,14 +2985,65 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
       }
     }
   }
+  SetVariantInt(vtResult, nResult);
+  return hr;
+}
 
-  #ifdef _WIN64
-    vtResult->vt=VT_I8;
-    vtResult->llVal=nResult;
-  #else
-    vtResult->vt=VT_I4;
-    vtResult->lVal=nResult;
-  #endif
+HRESULT STDMETHODCALLTYPE Document_ConnectObject(IDocument *this, IDispatch *objConnectTo, BSTR wpPrefix, VARIANT vtIID, int *nCount)
+{
+  return WScript_ConnectObject((IWScript *)this, objConnectTo, wpPrefix, vtIID, nCount);
+}
+
+HRESULT STDMETHODCALLTYPE Document_DisconnectObject(IDocument *this, IDispatch *objConnectTo)
+{
+  return WScript_DisconnectObject((IWScript *)this, objConnectTo);
+}
+
+HRESULT STDMETHODCALLTYPE Document_ActiveXThis(IDocument *this, IDispatch *objThis)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  wchar_t *wpWScript=L"WScript";
+  wchar_t *wpScriptFullName=L"ScriptFullName";
+  VARIANT vtWScript;
+  VARIANT vtScriptFullName;
+  DISPID dispid;
+  DISPPARAMS dispp;
+  HRESULT hr=NOERROR;
+
+  if (!lpScriptThread->objActiveScript)
+  {
+    //Get script file from WScript.ScriptFullName
+    xmemset(&dispp, 0, sizeof(DISPPARAMS));
+    VariantInit(&vtWScript);
+    VariantInit(&vtScriptFullName);
+    if (!(hr=objThis->lpVtbl->GetIDsOfNames(objThis, &IID_NULL, &wpWScript, 1, LOCALE_USER_DEFAULT, &dispid)))
+    {
+      if (!(hr=objThis->lpVtbl->Invoke(objThis, dispid, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_PROPERTYGET, &dispp, &vtWScript, 0, 0)))
+      {
+        if (vtWScript.vt == VT_DISPATCH)
+        {
+          if (!(hr=vtWScript.pdispVal->lpVtbl->GetIDsOfNames(vtWScript.pdispVal, &IID_NULL, &wpScriptFullName, 1, LOCALE_USER_DEFAULT, &dispid)))
+          {
+            if (!(hr=vtWScript.pdispVal->lpVtbl->Invoke(vtWScript.pdispVal, dispid, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_PROPERTYGET, &dispp, &vtScriptFullName, 0, 0)))
+            {
+              if (vtScriptFullName.vt == VT_BSTR)
+              {
+                const wchar_t *wpFileName;
+
+                wpFileName=GetFileNameWide(vtScriptFullName.bstrVal, -1);
+                xstrcpynW(lpScriptThread->wszScriptName, wpFileName, MAX_PATH);
+                GetBaseName(lpScriptThread->wszScriptName, -1, lpScriptThread->wszScriptBaseName, MAX_PATH);
+                xstrcpynW(lpScriptThread->wszScriptFile, vtScriptFullName.bstrVal, MAX_PATH);
+              }
+            }
+          }
+        }
+      }
+    }
+    VariantClear(&vtWScript);
+    VariantClear(&vtScriptFullName);
+    lpScriptThread->objThis=objThis;
+  }
   return hr;
 }
 
@@ -2268,7 +3051,7 @@ HWND GetCurEdit(IDocument *this)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
 
-  if (lpScriptThread->hWndPluginEdit)
+  if (lpScriptThread && lpScriptThread->hWndPluginEdit)
     return lpScriptThread->hWndPluginEdit;
   return (HWND)SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_WNDEDIT, (LPARAM)NULL);
 }
@@ -2280,7 +3063,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
   wchar_t *wszSource;
   wchar_t *wpSource;
   wchar_t *wpTarget=wszBuffer;
-  wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
+  wchar_t *wpTargetMax=(wszBuffer ? (wszBuffer + nBufferSize) : (wchar_t *)MAXUINT_PTR);
   int nStringLen;
 
   //Expand environment strings
@@ -2440,7 +3223,6 @@ void StackFillMessages(MSGINTSTACK *hStack, SAFEARRAY *psa)
 {
   VARIANT *pvtParameter;
   unsigned char *lpData;
-  UINT_PTR dwParameter;
   DWORD dwElement;
   DWORD dwElementSum;
 
@@ -2452,17 +3234,7 @@ void StackFillMessages(MSGINTSTACK *hStack, SAFEARRAY *psa)
     for (dwElement=0; dwElement < dwElementSum; ++dwElement)
     {
       pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
-      dwParameter=0;
-
-      if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
-        pvtParameter=pvtParameter->pvarVal;
-
-      if (pvtParameter->vt == VT_BOOL)
-        dwParameter=pvtParameter->boolVal?TRUE:FALSE;
-      else
-        dwParameter=GetVariantInt(pvtParameter);
-
-      StackInsertMessage(hStack, (UINT)dwParameter);
+      StackInsertMessage(hStack, (UINT)GetVariantInt(pvtParameter, NULL));
     }
   }
 }
@@ -2509,6 +3281,18 @@ int StackGetCallbackCount(CALLBACKSTACK *hStack, int nCallbackType)
   return nCount;
 }
 
+BOOL StackIsCallback(CALLBACKSTACK *hStack, CALLBACKITEM *lpCallback)
+{
+  CALLBACKITEM *lpElement;
+
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
+  {
+    if (lpElement == lpCallback)
+      return TRUE;
+  }
+  return FALSE;
+}
+
 CALLBACKITEM* StackGetCallbackByHandle(CALLBACKSTACK *hStack, HANDLE hHandle, void *lpScriptThread)
 {
   CALLBACKITEM *lpElement;
@@ -2540,9 +3324,33 @@ CALLBACKITEM* StackGetCallbackByObject(CALLBACKSTACK *hStack, IDispatch *objFunc
   for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
     if (lpElement->objFunction == objFunction)
-      return lpElement;
+      break;
   }
-  return NULL;
+  return lpElement;
+}
+
+CALLBACKITEM* StackGetCallbackByData(CALLBACKSTACK *hStack, UINT_PTR dwData)
+{
+  CALLBACKITEM *lpElement;
+
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
+  {
+    if (lpElement->dwData == dwData)
+      break;
+  }
+  return lpElement;
+}
+
+CALLBACKITEM* StackGetCallbackByClass(CALLBACKSTACK *hStack, const wchar_t *wpClassName)
+{
+  CALLBACKITEM *lpElement;
+
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
+  {
+    if (!xstrcmpiW(lpElement->wpClassName, wpClassName))
+      break;
+  }
+  return lpElement;
 }
 
 BOOL StackDeleteCallback(CALLBACKITEM *lpElement)
@@ -2554,6 +3362,9 @@ BOOL StackDeleteCallback(CALLBACKITEM *lpElement)
     if (lpElement->objFunction)
       lpElement->objFunction->lpVtbl->Release(lpElement->objFunction);
     StackFreeMessages(&lpElement->hMsgIntStack);
+    if (lpElement->wpClassName)
+      SysFreeString(lpElement->wpClassName);
+
     if (!StackDelete((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpElement))
       --hStack->nElements;
     return TRUE;
@@ -2588,22 +3399,55 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
   CALLBACKITEM *lpCallback=NULL;
   LRESULT lResult=0;
 
-  if (uMsg == WM_NCCREATE)
+  if (uMsg == WM_NCCREATE ||
+      uMsg == WM_INITDIALOG)
   {
     if (lParam)
     {
       CREATESTRUCTA *cs=(CREATESTRUCTA *)lParam;
-      IDispatch *objCallback=(IDispatch *)cs->lpCreateParams;
+      IDispatch *objCallback=NULL;
+      CALLBACKITEM *lpNewCallback;
+      ATOM wAtom;
 
-      if (lpCallback=StackGetCallbackByObject(&lpScriptThread->hDialogCallbackStack, objCallback))
+      if (uMsg == WM_NCCREATE)
+        objCallback=(IDispatch *)cs->lpCreateParams;
+      else if (uMsg == WM_INITDIALOG)
+        objCallback=(IDispatch *)lParam;
+
+      if (objCallback)
       {
-        ++lpCallback->nRefCount;
-      }
-      else if (lpCallback=StackInsertCallback(&lpScriptThread->hDialogCallbackStack, objCallback))
-      {
-        lpCallback->hHandle=(HANDLE)hWnd;
-        lpCallback->lpScriptThread=(void *)lpScriptThread;
-        lpCallback->nCallbackType=CIT_DIALOG;
+        //Check that class registered by WindowRegisterClass.
+        wAtom=(ATOM)GetClassLongA(hWnd, GCW_ATOM);
+
+        if (lpCallback=StackGetCallbackByData(&lpScriptThread->hDialogCallbackStack, wAtom))
+        {
+          if (!lpCallback->hHandle)
+          {
+            //First window associated with wAtom.
+            //Fill empty callback allocated in WindowRegisterClass.
+            objCallback->lpVtbl->AddRef(objCallback);
+            lpCallback->objFunction=objCallback;
+            lpCallback->hHandle=(HANDLE)hWnd;
+            lpCallback->bDlgProc=(uMsg == WM_INITDIALOG);
+          }
+          else
+          {
+            //Second, third, etc. window associated with wAtom.
+            if (lpNewCallback=StackInsertCallback(&lpScriptThread->hDialogCallbackStack, objCallback))
+            {
+              lpNewCallback->hHandle=(HANDLE)hWnd;
+              lpNewCallback->dwData=wAtom;
+              lpNewCallback->lpScriptThread=(void *)lpScriptThread;
+              lpNewCallback->nCallbackType=CIT_DIALOG;
+              lpNewCallback->bDlgProc=(uMsg == WM_INITDIALOG);
+
+              //Copy message filter
+              StackCopy((stack *)lpCallback->hMsgIntStack.first, (stack *)lpCallback->hMsgIntStack.last, (stack **)&lpNewCallback->hMsgIntStack.first, (stack **)&lpNewCallback->hMsgIntStack.last, sizeof(MSGINT));
+              lpNewCallback->hMsgIntStack.nElements=lpCallback->hMsgIntStack.nElements;
+            }
+            lpCallback=lpNewCallback;
+          }
+        }
       }
     }
     SendMessage(hWnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)g_hPluginIcon);
@@ -2621,15 +3465,16 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
   {
     if (lpCallback->objFunction)
     {
-      //Message procedure in script
-      lpScriptThread->bBusy=TRUE;
-      CallScriptProc(lpCallback->objFunction, hWnd, uMsg, wParam, lParam, &lResult);
-      lpScriptThread->bBusy=FALSE;
+      if (!lpCallback->hMsgIntStack.nElements || StackGetMessage(&lpCallback->hMsgIntStack, uMsg))
+      {
+        //Message procedure in script
+        lpScriptThread->bBusy=TRUE;
+        CallScriptProc(lpCallback->objFunction, hWnd, uMsg, wParam, lParam, &lResult);
+        lpScriptThread->bBusy=FALSE;
+      }
     }
-    if (uMsg == WM_NCDESTROY)
-      StackDeleteCallback(lpCallback);
-    if (lResult)
-      return lResult;
+    if (lResult) return lResult;
+    if (lpCallback->bDlgProc) return FALSE;
   }
 
   return DefWindowProcWide(hWnd, uMsg, wParam, lParam);
@@ -2843,22 +3688,20 @@ BOOL CALLBACK SubclassFrameCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, 
 
 LRESULT CALLBACK SubclassSend(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
-  MSGSEND msgs;
   LRESULT lResult=0;
 
   //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
-  if (lpScriptThread->dwMessageLoop)
+  if (!lpCallback->hMsgIntStack.nElements || StackGetMessage(&lpCallback->hMsgIntStack, uMsg))
   {
-    if (!lpCallback->hMsgIntStack.nElements || StackGetMessage(&lpCallback->hMsgIntStack, uMsg))
-    {
-      msgs.lpCallback=lpCallback;
-      msgs.hWnd=hWnd;
-      msgs.uMsg=uMsg;
-      msgs.wParam=wParam;
-      msgs.lParam=lParam;
-      lResult=SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_SUBCLASSSEND, 0, (LPARAM)&msgs);
-    }
+    SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
+    MSGSEND msgs;
+
+    msgs.lpCallback=lpCallback;
+    msgs.hWnd=hWnd;
+    msgs.uMsg=uMsg;
+    msgs.wParam=wParam;
+    msgs.lParam=lParam;
+    lResult=SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_SUBCLASSSEND, 0, (LPARAM)&msgs);
   }
   return lResult;
 }
@@ -3021,18 +3864,21 @@ LRESULT CALLBACK HookCallbackCommonProc(int nCallbackIndex, int nCode, WPARAM wP
   {
     if (nCode >= 0)
     {
-      SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
-      MSGSEND msgs;
-
-      //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
-      if (lpScriptThread->dwMessageLoop)
+      if (!lpCallback->hMsgIntStack.nElements || lpCallback->dwData == (UINT_PTR)-1 || StackGetMessage(&lpCallback->hMsgIntStack, *(UINT *)((BYTE *)lParam + lpCallback->dwData)))
       {
-        msgs.lpCallback=lpCallback;
-        msgs.hWnd=NULL;
-        msgs.uMsg=nCode;
-        msgs.wParam=wParam;
-        msgs.lParam=lParam;
-        SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_HOOKSEND, 0, (LPARAM)&msgs);
+        SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
+        MSGSEND msgs;
+
+        if (lpScriptThread->hWndScriptsThreadDummy)
+        {
+          //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
+          msgs.lpCallback=lpCallback;
+          msgs.hWnd=NULL;
+          msgs.uMsg=nCode;
+          msgs.wParam=wParam;
+          msgs.lParam=lParam;
+          SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_HOOKSEND, 0, (LPARAM)&msgs);
+        }
       }
     }
     return CallNextHookEx((HHOOK)lpCallback->hHandle, nCode, wParam, lParam);
@@ -3042,19 +3888,19 @@ LRESULT CALLBACK HookCallbackCommonProc(int nCallbackIndex, int nCode, WPARAM wP
 
 HWND CreateScriptsThreadDummyWindow()
 {
-  WNDCLASSW wndclassW;
+  WNDCLASSW wndclass;
 
-  wndclassW.style        =0;
-  wndclassW.lpfnWndProc  =ScriptsThreadProc;
-  wndclassW.cbClsExtra   =0;
-  wndclassW.cbWndExtra   =DLGWINDOWEXTRA;
-  wndclassW.hInstance    =hInstanceDLL;
-  wndclassW.hIcon        =NULL;
-  wndclassW.hCursor      =NULL;
-  wndclassW.hbrBackground=NULL;
-  wndclassW.lpszMenuName =NULL;
-  wndclassW.lpszClassName=L"ScriptsThread";
-  RegisterClassWide(&wndclassW);
+  wndclass.style        =0;
+  wndclass.lpfnWndProc  =ScriptsThreadProc;
+  wndclass.cbClsExtra   =0;
+  wndclass.cbWndExtra   =DLGWINDOWEXTRA;
+  wndclass.hInstance    =hInstanceDLL;
+  wndclass.hIcon        =NULL;
+  wndclass.hCursor      =NULL;
+  wndclass.hbrBackground=NULL;
+  wndclass.lpszMenuName =NULL;
+  wndclass.lpszClassName=L"ScriptsThread";
+  RegisterClassWide(&wndclass);
 
   return CreateWindowExWide(0, L"ScriptsThread", L"", WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstanceDLL, NULL);
 }
@@ -3067,9 +3913,9 @@ LRESULT CALLBACK ScriptsThreadProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)msgs->lpCallback->lpScriptThread;
     LRESULT lResult=0;
 
-    //Now we in plugin thread - call procedure in script
-    if (lpScriptThread && lpScriptThread->dwMessageLoop)
+    if (lpScriptThread)
     {
+      //Now we in plugin thread - call procedure in script
       lpScriptThread->bBusy=TRUE;
       CallScriptProc(msgs->lpCallback->objFunction, (HWND)msgs->hWnd, msgs->uMsg, msgs->wParam, msgs->lParam, &lResult);
       lpScriptThread->bBusy=FALSE;
@@ -3079,12 +3925,14 @@ LRESULT CALLBACK ScriptsThreadProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
   else if (uMsg == AKDLL_HOOKSEND)
   {
     MSGSEND *msgs=(MSGSEND *)lParam;
-    SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)msgs->lpCallback->lpScriptThread;
+    SCRIPTTHREAD *lpScriptThread;
     LRESULT lResult=0;
 
-    //Now we in plugin thread - call procedure in script
-    if (lpScriptThread && lpScriptThread->dwMessageLoop)
+    //Execution can come here after Document_ThreadUnhook was called
+    if (StackIsCallback(&g_hHookCallbackStack, msgs->lpCallback))
     {
+      //Now we in plugin thread - call procedure in script
+      lpScriptThread=(SCRIPTTHREAD *)msgs->lpCallback->lpScriptThread;
       lpScriptThread->bBusy=TRUE;
       CallScriptProc(msgs->lpCallback->objFunction, NULL, msgs->uMsg, msgs->wParam, msgs->lParam, &lResult);
       lpScriptThread->bBusy=FALSE;
@@ -3104,10 +3952,7 @@ LRESULT CALLBACK ScriptsThreadProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     if (msgs->lpCallback->objFunction->lpVtbl->Invoke(msgs->lpCallback->objFunction, DISPID_VALUE, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, dispp, &vtInvoke, 0, 0) == S_OK)
     {
-      if (vtInvoke.vt == VT_BOOL)
-        lResult=vtInvoke.boolVal?TRUE:FALSE;
-      else
-        lResult=(int)GetVariantInt(&vtInvoke);
+      lResult=(int)GetVariantInt(&vtInvoke, NULL);
     }
 
     lpScriptThread->bBusy=FALSE;
@@ -3133,32 +3978,11 @@ HRESULT CallScriptProc(IDispatch *objFunction, HWND hWnd, UINT uMsg, WPARAM wPar
   if (!objFunction)
     return E_FAIL;
 
-  #ifdef _WIN64
-    vtArg[0].llVal=lParam;
-    vtArg[0].vt=VT_I8;
-    vtArg[1].llVal=(INT_PTR)wParam;
-    vtArg[1].vt=VT_I8;
-    vtArg[2].lVal=uMsg;
-    vtArg[2].vt=VT_I4;
-    if (hWnd)
-    {
-      vtArg[3].llVal=(INT_PTR)hWnd;
-      vtArg[3].vt=VT_I8;
-    }
-  #else
-    //Use VT_I4 because VBScript cause error
-    vtArg[0].lVal=lParam;
-    vtArg[0].vt=VT_I4;
-    vtArg[1].lVal=(int)wParam;
-    vtArg[1].vt=VT_I4;
-    vtArg[2].lVal=uMsg;
-    vtArg[2].vt=VT_I4;
-    if (hWnd)
-    {
-      vtArg[3].lVal=(int)hWnd;
-      vtArg[3].vt=VT_I4;
-    }
-  #endif
+  SetVariantInt(&vtArg[0], lParam);
+  SetVariantInt(&vtArg[1], wParam);
+  SetVariantInt(&vtArg[2], uMsg);
+  if (hWnd)
+    SetVariantInt(&vtArg[3], (INT_PTR)hWnd);
 
   xmemset(&dispp, 0, sizeof(DISPPARAMS));
   dispp.cArgs=hWnd?4:3;
@@ -3166,10 +3990,8 @@ HRESULT CallScriptProc(IDispatch *objFunction, HWND hWnd, UINT uMsg, WPARAM wPar
 
   if ((hr=objFunction->lpVtbl->Invoke(objFunction, DISPID_VALUE, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_METHOD, &dispp, &vtInvoke, 0, 0)) == S_OK)
   {
-    if (vtInvoke.vt == VT_BOOL)
-      *lResult=vtInvoke.boolVal?TRUE:FALSE;
-    else
-      *lResult=(LRESULT)GetVariantInt(&vtInvoke);
+    *lResult=(LRESULT)GetVariantInt(&vtInvoke, NULL);
   }
   return hr;
 }
+

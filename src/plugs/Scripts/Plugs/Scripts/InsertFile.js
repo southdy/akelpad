@@ -1,23 +1,28 @@
-//// Insert contents of a file.
-//// Вставить содержимое файла.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.1
+// Author: Shengalts Aleksander aka Instructor
+//
+// Description(1033): Insert contents of a file.
+// Description(1049): Вставить содержимое файла.
 
 //Options
-var pFilter="Text files (*.txt)\x00*.txt\x00All Files (*.*)\x00*.*\x00\x00";
+var pFilter=GetLangString(0);
 var nFilterIndex=2;
 
 //Variables
 var hMainWnd=AkelPad.GetMainWnd();
+var hWndEdit=AkelPad.GetEditWnd();
 var pInitialFile=AkelPad.GetEditFile(0);
 var pFile;
 var pText;
 
-if (hMainWnd)
+if (hWndEdit)
 {
   if (pFile=FileDialog(true, hMainWnd, pInitialFile, pFilter, nFilterIndex))
   {
     if (pText=AkelPad.ReadFile(pFile))
     {
-      AkelPad.ReplaceSel(pText, true);
+      AkelPad.ReplaceSel(pText, -2);
     }
   }
 }
@@ -48,17 +53,17 @@ function FileDialog(bOpenTrueSaveFalse, hWnd, pInitialFile, pFilter, nFilterInde
       {
         AkelPad.MemCopy(lpExtBuffer, pDefaultExt.substr(0, 255), _TSTR);
 
-        if (lpStructure=AkelPad.MemAlloc(_X64?136:76))  //sizeof(OPENFILENAMEA) or sizeof(OPENFILENAMEW)
+        if (lpStructure=AkelPad.MemAlloc(_X64?136:76 /*sizeof(OPENFILENAME)*/))
         {
           //Fill structure
-          AkelPad.MemCopy(lpStructure, _X64?136:76, 3 /*DT_DWORD*/);                     //lStructSize
-          AkelPad.MemCopy(lpStructure + (_X64?8:4), hWnd, 2 /*DT_QWORD*/);               //hwndOwner
-          AkelPad.MemCopy(lpStructure + (_X64?24:12), lpFilterBuffer, 2 /*DT_QWORD*/);   //lpstrFilter
-          AkelPad.MemCopy(lpStructure + (_X64?44:24), nFilterIndex, 3 /*DT_DWORD*/);     //nFilterIndex
-          AkelPad.MemCopy(lpStructure + (_X64?48:28), lpFileBuffer, 2 /*DT_QWORD*/);     //lpstrFile
-          AkelPad.MemCopy(lpStructure + (_X64?56:32), 256, 3 /*DT_DWORD*/);              //nMaxFile
-          AkelPad.MemCopy(lpStructure + (_X64?96:52), nFlags, 3 /*DT_DWORD*/);           //Flags
-          AkelPad.MemCopy(lpStructure + (_X64?104:60), lpExtBuffer, 2 /*DT_QWORD*/);     //lpstrDefExt
+          AkelPad.MemCopy(_PtrAdd(lpStructure, 0) /*offsetof(OPENFILENAME, lStructSize)*/, _X64?136:76, 3 /*DT_DWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?8:4) /*offsetof(OPENFILENAME, hwndOwner)*/, hWnd, 2 /*DT_QWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?24:12) /*offsetof(OPENFILENAME, lpstrFilter)*/, lpFilterBuffer, 2 /*DT_QWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?44:24) /*offsetof(OPENFILENAME, nFilterIndex)*/, nFilterIndex, 3 /*DT_DWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?48:28) /*offsetof(OPENFILENAME, lpstrFile)*/, lpFileBuffer, 2 /*DT_QWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?56:32) /*offsetof(OPENFILENAME, nMaxFile)*/, 256, 3 /*DT_DWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?96:52) /*offsetof(OPENFILENAME, Flags)*/, nFlags, 3 /*DT_DWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpStructure, _X64?104:60) /*offsetof(OPENFILENAME, lpstrDefExt)*/, lpExtBuffer, 2 /*DT_QWORD*/);
 
           if (oSys=AkelPad.SystemFunction())
           {
@@ -80,4 +85,21 @@ function FileDialog(bOpenTrueSaveFalse, hWnd, pInitialFile, pFilter, nFilterInde
     AkelPad.MemFree(lpFilterBuffer);
   }
   return pResultFile;
+}
+
+function GetLangString(nStringID)
+{
+  var nLangID=AkelPad.GetLangId(1 /*LANGID_PRIMARY*/);
+
+  if (nLangID == 0x19) //LANG_RUSSIAN
+  {
+    if (nStringID == 0)
+      return "\u0422\u0435\u043A\u0441\u0442\u043E\u0432\u044B\u0435\u0020\u0444\u0430\u0439\u043B\u044B\u0020(*.txt)\x00*.txt\x00\u0412\u0441\u0435\u0020\u0444\u0430\u0439\u043B\u044B (*.*)\x00*.*\x00\x00";
+  }
+  else
+  {
+    if (nStringID == 0)
+      return "Text files (*.txt)\x00*.txt\x00All Files (*.*)\x00*.*\x00\x00";
+  }
+  return "";
 }

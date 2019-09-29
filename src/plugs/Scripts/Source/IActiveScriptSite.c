@@ -1,12 +1,30 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <activscp.h>
 #include <stddef.h>
 #include "Scripts.h"
+#include <initguid.h>
 
+#ifdef _WIN64
+  //{d6b96b0a-7463-402c-92ac-89984226942f}
+  DEFINE_GUID(IID_IActiveScriptSiteDebug, 0xd6b96b0a, 0x7463, 0x402c, 0x92, 0xac, 0x89, 0x98, 0x42, 0x26, 0x94, 0x2f);
+#else
+  //{51973C11-CB0C-11d0-B5C9-00A0244A0E7A}
+  DEFINE_GUID(IID_IActiveScriptSiteDebug, 0x51973c11, 0xcb0c, 0x11d0, 0xb5, 0xc9, 0x00, 0xa0, 0x24, 0x4a, 0x0e, 0x7a);
+#endif
+
+#ifdef _WIN64
+  //{56B9FC1C-63A9-4CC1-AC21-087D69A17FAB}
+  DEFINE_GUID(IID_IProcessDebugManager, 0x56b9fc1c, 0x63a9, 0x4cc1, 0xac, 0x21, 0x08, 0x7d, 0x69, 0xa1, 0x7f, 0xab);
+#else
+  //{51973C2f-CB0C-11d0-B5C9-00A0244A0E7A}
+  DEFINE_GUID(IID_IProcessDebugManager, 0x51973C2f, 0xCB0C, 0x11d0, 0xb5, 0xc9, 0x00, 0xa0, 0x24, 0x4a, 0x0e, 0x7a);
+#endif
+
+//{78A51822-51F4-11D0-8F20-00805F2CD064}
+DEFINE_GUID(CLSID_ProcessDebugManager, 0x78a51822, 0x51f4, 0x11d0, 0x8f, 0x20, 0x0, 0x80, 0x5f, 0x2c, 0xd0, 0x64);
 
 //Global variables
-const IActiveScriptSiteVtbl MyIActiveScriptSiteVtbl={
+IActiveScriptSiteVtbl MyIActiveScriptSiteVtbl={
   QueryInterface,
   AddRef,
   Release,
@@ -20,7 +38,7 @@ const IActiveScriptSiteVtbl MyIActiveScriptSiteVtbl={
   OnLeaveScript
 };
 
-const IActiveScriptSiteWindowVtbl MyIActiveScriptSiteWindowVtbl={
+IActiveScriptSiteWindowVtbl MyIActiveScriptSiteWindowVtbl={
   SiteWindow_QueryInterface,
   SiteWindow_AddRef,
   SiteWindow_Release,
@@ -55,9 +73,10 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
   HRESULT nResult=E_FAIL;
   DWORD dwDebugApplicationCookie=0;
   MYDWORD_PTR dwDebugSourceContext=0;
-  BOOL bInitDebugJIT=FALSE;
 
-  nCoInit=CoInitialize(0);
+  if (st->hThread != hMainThread)
+    nCoInit=CoInitialize(0);
+  st->bInitDebugJIT=FALSE;
 
   if (st->dwDebugJIT & JIT_DEBUG)
   {
@@ -78,7 +97,7 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
                 {
                   if (st->objDebugDocumentHelper->lpVtbl->SetDocumentAttr(st->objDebugDocumentHelper, TEXT_DOC_ATTR_READONLY) == S_OK)
                   {
-                    bInitDebugJIT=TRUE;
+                    st->bInitDebugJIT=TRUE;
                   }
                 }
               }
@@ -87,7 +106,7 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
         }
       }
     }
-    if (!bInitDebugJIT)
+    if (!st->bInitDebugJIT)
       MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_DEBUG_ERROR), wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
   }
 
@@ -111,10 +130,13 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
         {
           if (st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"WScript", SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK &&
               st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"AkelPad", SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK &&
-              st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"Constants", SCRIPTITEM_GLOBALMEMBERS|SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK)
+              st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"Constants", SCRIPTITEM_GLOBALMEMBERS|SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK &&
+              st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"Global", SCRIPTITEM_GLOBALMEMBERS|SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK)
           {
-            if (bInitDebugJIT)
+            if (st->bInitDebugJIT)
             {
+              st->bInitDebugJIT=FALSE;
+
               if (st->objDebugDocumentHelper->lpVtbl->AddUnicodeText(st->objDebugDocumentHelper, st->wpScriptText) == S_OK)
               {
                 if (st->objDebugDocumentHelper->lpVtbl->DefineScriptBlock(st->objDebugDocumentHelper, 0, (ULONG)st->nScriptTextLen, st->objActiveScript, FALSE, &dwDebugSourceContext) == S_OK)
@@ -125,10 +147,14 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
                 }
               }
             }
-            if (st->objActiveScriptParse->lpVtbl->ParseScriptText(st->objActiveScriptParse, st->wpScriptText, NULL, NULL, NULL, dwDebugSourceContext, 0, st->bInitDebugJIT?SCRIPTTEXT_HOSTMANAGESSOURCE:0, NULL, NULL) == S_OK)
+            if (st->objActiveScript->lpVtbl->GetScriptDispatch(st->objActiveScript, NULL, &st->objThis) == S_OK)
             {
-              st->objActiveScript->lpVtbl->SetScriptState(st->objActiveScript, SCRIPTSTATE_CONNECTED);
-              nResult=S_OK;
+              if (st->objActiveScriptParse->lpVtbl->ParseScriptText(st->objActiveScriptParse, st->wpScriptText, NULL, NULL, NULL, dwDebugSourceContext, 0, st->bInitDebugJIT?SCRIPTTEXT_HOSTMANAGESSOURCE:0, NULL, NULL) == S_OK)
+              {
+                st->objActiveScript->lpVtbl->SetScriptState(st->objActiveScript, SCRIPTSTATE_CONNECTED);
+                nResult=S_OK;
+              }
+              st->objThis->lpVtbl->Release(st->objThis);
             }
           }
         }
@@ -151,9 +177,11 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
   if (st->objProcessDebugManager)
     st->objProcessDebugManager->lpVtbl->Release(st->objProcessDebugManager);
 
-  if (nCoInit == S_OK)
-    CoUninitialize();
-
+  if (st->hThread != hMainThread)
+  {
+    if (nCoInit == S_OK)
+      CoUninitialize();
+  }
   return nResult;
 }
 
@@ -261,7 +289,7 @@ HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *this, REFIID riid, v
   else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteDebug))
   {
     lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
-    if (lpScriptThread->dwDebugJIT & JIT_DEBUG)
+    if ((lpScriptThread->dwDebugJIT & JIT_DEBUG) && lpScriptThread->bInitDebugJIT)
     {
       *ppv=&lpScriptThread->MyActiveScriptSiteDebug;
       SiteDebug_AddRef(*ppv);
@@ -310,6 +338,14 @@ HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *this, LPCOLESTR objectN
     if (dwReturnMask & SCRIPTINFO_ITYPEINFO)
       hr=Constants_GetTypeInfo(NULL, 0, 0, typeInfo);
   }
+  else if (!xstrcmpiW(objectName, L"Global"))
+  {
+    if (dwReturnMask & SCRIPTINFO_IUNKNOWN)
+      hr=Class_CreateInstance(NULL, NULL, &IID_IGlobal, (void **)objPtr);
+    if (dwReturnMask & SCRIPTINFO_ITYPEINFO)
+      hr=Global_GetTypeInfo(NULL, 0, 0, typeInfo);
+  }
+
   return hr;
 }
 
@@ -327,6 +363,7 @@ HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *this, IActiveScriptEr
   xmemset(&ei, 0, sizeof(EXCEPINFO));
   scriptError->lpVtbl->GetSourcePosition(scriptError, &dwIncludeIndex, &nLine, &nChar);
   scriptError->lpVtbl->GetExceptionInfo(scriptError, &ei);
+  if (g_bScriptArg) return ei.scode;
 
   if (lpScriptThread->bQuiting)
   {
@@ -385,9 +422,9 @@ HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *this, IActiveScriptEr
 
       if (nChoice == IDNO) //"Edit"
       {
-        Document_OpenFile(NULL, wszScriptFile, OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM, 0, 0, &nOpenResult);
+        Document_OpenFile(NULL, wszScriptFile, OD_ADT_BINARYERROR|OD_ADT_DETECTCODEPAGE|OD_ADT_DETECTBOM, 0, 0, &nOpenResult);
 
-        if (nOpenResult == EOD_SUCCESS || (nMDI != WMD_SDI && nOpenResult == EOD_WINDOW_EXIST))
+        if (nOpenResult == EOD_SUCCESS || (nMDI != WMD_SDI && nOpenResult == EOD_WINDOWEXIST))
         {
           if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
           {

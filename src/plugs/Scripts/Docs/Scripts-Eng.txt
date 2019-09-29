@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v15.7              ***
+***                 Scripts AkelPad plugin v18.7              ***
 *****************************************************************
 
-2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2007-2018 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -25,7 +25,6 @@ SpellCheck.js         -spell check using Microsoft Word.
 LinesFilter.js        -filter lines using regular expressions.
 Calculator.js         -text calculator.
 EvalCmd.js            -evaluates an expression passed through command line.
-EvalCmdEsc.js         -evaluates an escaped expression passed through command line.
 InsertDate.js         -insert time and date in specified format.
 InsertFile.js         -insert contents of a file.
 RenameFile.js         -rename current editing file.
@@ -46,17 +45,17 @@ Main dialog.
 Call("Scripts::Main", 1, "SCRIPT", "ARGUMENTS")
   Parameters:
     1
-      Execute script. If "", then last processed script used.
+      Execute script.
     "SCRIPT"
-      Script file.
+      Script file. If "", then last processed script used.
     "ARGUMENTS"
-      Argumets (default is "").
+      Arguments (default is "").
   Examples:
     Call("Scripts::Main", 1, "InsertDate.js")
     Call("Scripts::Main", 1, "InsertDate.js", `"dd MMMM yyyy"`)
 
 Call("Scripts::Main", 2, "SCRIPT", "ARGUMENTS")
-  Same as previous, but wait for script completion.
+  Same as 1, but wait for script completion.
 
 Call("Scripts::Main", 3, "SCRIPT")
   Parameters:
@@ -65,6 +64,101 @@ Call("Scripts::Main", 3, "SCRIPT")
     "SCRIPT"
       Script file. If "", then last processed script used.
 
+Call("Scripts::Main", 4, "SCRIPT", "ARGUMENTS")
+  Same as 2, but execute script in main thread without creating the new one.
+  Not recommended for scripts contained AkelPad.WindowGetMessage().
+
+Call("Scripts::Main", 5, "SCRIPT", OPERATION, *RESULT)
+  Parameters:
+    5
+      Interact with running scripts.
+    "SCRIPT"
+      Script file. If "", then last processed script used.
+    OPERATION
+      See description of nOperation parameter in method AkelPad.ScriptHandle. Except SH_FINDSCRIPT flag.
+    *RESULT
+      Depend on operation.
+
+  Example (get script handle):
+    WScript.Echo(ScriptGetHandle("SearchReplace.js"));
+
+    function ScriptGetHandle(pScript)
+    {
+      var oSys=AkelPad.SystemFunction();
+      var nHandle=0;
+
+      if (lpResult=AkelPad.MemAlloc(_X64?8:4 /*sizeof(INT_PTR)*/))
+      {
+        AkelPad.Call("Scripts::Main", 5, pScript, 2 /*SH_THISSCRIPT*/, lpResult);
+        nHandle=AkelPad.MemRead(lpResult, 2 /*DT_QWORD*/);
+        AkelPad.MemFree(lpResult);
+      }
+      return nHandle;
+    }
+
+  Example (get script file):
+    WScript.Echo(ScriptGetFile("SearchReplace.js"));
+
+    function ScriptGetFile(pScript)
+    {
+      var oSys=AkelPad.SystemFunction();
+      var lpFile;
+      var pFile="";
+
+      if (lpResult=AkelPad.MemAlloc(_X64?8:4 /*sizeof(INT_PTR)*/))
+      {
+        AkelPad.Call("Scripts::Main", 5, pScript, 22 /*SH_GETFILE*/, lpResult);
+        lpFile=AkelPad.MemRead(lpResult, 2 /*DT_QWORD*/);
+        pFile=AkelPad.MemRead(lpFile, 1 /*DT_UNICODE*/);
+        oSys.Call("oleaut32::SysFreeString", lpFile);
+        AkelPad.MemFree(lpResult);
+      }
+      return pFile;
+    }
+
+Call("Scripts::Main", 6, SCRIPTHANDLE, OPERATION, *RESULT)
+  Same as 5, but use script handle, instead of script file.
+
+Call("Scripts::Main", 7, "METHOD", *RESULT)
+  Parameters:
+    7
+      Call Scripts plugin method directly. Intended for ContextMenu, Hotkeys, Toolbar plugins.
+    "METHOD"
+      Script plugin method with arguments.
+    *RESULT
+      Call result.
+  Example:
+    "Find next paragraph" Call("Scripts::Main", 7, `AkelPad.TextFind(0, "(?<=\n\n)(?!\n)", 0x80001 /*FRF_DOWN|FRF_REGEXP*/)`)
+
+
+*** Service information in script ***
+
+At the script beginning in the comments possible to set service information, which
+appear in the scripts list (appropriate columns must be enabled by mouse right click
+on the list header) and also used when updating with AkelUpdater.
+
+Site:
+// http://akelpad.sourceforge.net/...
+
+Version:
+// Version: ...
+
+Author:
+// Author: ...
+
+Description (variant 1):
+//// Search and replace using regular expressions.
+
+Description (variant 2):
+// *** Search and replace using regular expressions. ***
+
+Description on specified language (variant 3):
+// Description(1033): Search and replace using regular expressions.
+// Description(1049): ѕоиск/замена с использованием регул€рных выражений.
+
+Language identifiers list (Locale IDs Assigned by Microsoft):
+http://msdn.microsoft.com/en-us/goglobal/bb964664.aspx
+
 
 *** Methods list (methods that not attached to the AkelPad window, marked as +ActiveX) ***
 
@@ -72,16 +166,15 @@ AkelPad.GetMainWnd
 AkelPad.GetAkelDir
 AkelPad.GetInstanceExe
 AkelPad.GetInstanceDll                       +ActiveX
-AkelPad.GetLangId                            +ActiveX
+AkelPad.GetLangId
 AkelPad.IsOldWindows                         +ActiveX
-AkelPad.IsOldRichEdit
-AkelPad.IsOldComctl32
 AkelPad.IsAkelEdit
 AkelPad.IsMDI
 AkelPad.GetEditWnd
 AkelPad.SetEditWnd
 AkelPad.GetEditDoc
 AkelPad.GetEditFile
+AkelPad.GetFilePath                          +ActiveX
 AkelPad.GetEditCodePage
 AkelPad.GetEditBOM
 AkelPad.GetEditNewLine
@@ -128,10 +221,12 @@ AkelPad.MemAlloc                             +ActiveX
 AkelPad.MemCopy                              +ActiveX
 AkelPad.MemRead                              +ActiveX
 AkelPad.MemStrPtr                            +ActiveX
+AkelPad.MemPtrStr                            +ActiveX
 AkelPad.MemFree                              +ActiveX
 AkelPad.DebugJIT                             +ActiveX
 AkelPad.Debug                                +ActiveX
 AkelPad.VarType                              +ActiveX
+AkelPad.VarDispatch                          +ActiveX
 AkelPad.GetArgLine
 AkelPad.GetArgValue
 AkelPad.ScriptSettings
@@ -144,6 +239,7 @@ AkelPad.WindowRegisterClass                  +ActiveX
 AkelPad.WindowUnregisterClass                +ActiveX
 AkelPad.WindowRegisterDialog                 +ActiveX
 AkelPad.WindowUnregisterDialog               +ActiveX
+AkelPad.CreateDialog                         +ActiveX
 AkelPad.WindowGetMessage                     +ActiveX
 AkelPad.WindowSubClass                       +ActiveX
 AkelPad.WindowNextProc                       +ActiveX
@@ -152,7 +248,12 @@ AkelPad.WindowUnsubClass                     +ActiveX
 AkelPad.ThreadHook                           +ActiveX
 AkelPad.ThreadUnhook                         +ActiveX
 AkelPad.ScriptNoMutex
+AkelPad.ScriptExitCode
 AkelPad.ScriptHandle                         +ActiveX
+AkelPad.ConnectObject                        +ActiveX
+AkelPad.DisconnectObject                     +ActiveX
+AkelPad.ActiveXThis                          +ActiveX
+WScript.ScriptBaseName
 _TCHAR                                       +ActiveX uses as AkelPad.Constants._TCHAR
 vbTCHAR                                      +ActiveX uses as AkelPad.Constants.vbTCHAR
 _TSTR                                        +ActiveX uses as AkelPad.Constants._TSTR
@@ -161,6 +262,10 @@ _TSIZE                                       +ActiveX uses as AkelPad.Constants.
 vbTSIZE                                      +ActiveX uses as AkelPad.Constants.vbTSIZE
 _X64                                         +ActiveX uses as AkelPad.Constants._X64
 vbX64                                        +ActiveX uses as AkelPad.Constants.vbX64
+_PtrAdd                                      +ActiveX uses as AkelPad.Global._PtrAdd
+vbPtrAdd                                     +ActiveX uses as AkelPad.Global.vbPtrAdd
+_PtrMath                                     +ActiveX uses as AkelPad.Global._PtrMath
+vbPtrMath                                    +ActiveX uses as AkelPad.Global.vbPtrMath
 
 
 *** Methods description ***
@@ -217,8 +322,8 @@ Example:
   var hInstance=AkelPad.GetInstanceExe();
 
 
-AkelPad.GetInstanceDll
-______________________
+AkelPad.GetInstanceDll (+ActiveX)
+_________________________________
 
 Get DLL instance handle.
 
@@ -256,8 +361,8 @@ Example:
     WScript.Echo("Other");
 
 
-AkelPad.IsOldWindows
-____________________
+AkelPad.IsOldWindows (+ActiveX)
+_______________________________
 
 Is non-Unicode Windows.
 
@@ -271,36 +376,6 @@ Example:
   var bOldWindows=AkelPad.IsOldWindows();
 
 
-AkelPad.IsOldRichEdit
-_____________________
-
-Is riched20.dll lower then 5.30 (v3.0).
-
-  IsOldRichEdit();
-
-Return Value
-  true   riched20.dll lower then 5.30 (v2.0).
-  false  riched20.dll not lower then 5.30 (v3.0, v4.0).
-
-Example:
-  var bOldRichEdit=AkelPad.IsOldRichEdit();
-
-
-AkelPad.IsOldComctl32
-_____________________
-
-Is comctl32.dll lower then 4.71.
-
-  IsOldComctl32();
-
-Return Value
-  true   comctl32.dll lower then 4.71.
-  false  comctl32.dll not lower then 4.71.
-
-Example:
-  var bOldComctl32=AkelPad.IsOldComctl32();
-
-
 AkelPad.IsAkelEdit
 __________________
 
@@ -308,7 +383,7 @@ Check AkelEdit control usage in program or in specified window.
 
   IsAkelEdit([hWnd]);
 
-Argumets
+Arguments
   hWnd
     Edit window handle. If zero or not specified, then returned AkelEdit usage in program.
 
@@ -360,11 +435,12 @@ GetSelStart, GetSelEnd, SetSel, GetSelText, GetTextRange, ReplaceSel will use th
 
   SetEditWnd(hHandle);
 
-Argumets
+Arguments
   hHandle
-    Edit window handle. If zero or hHandle is not AkelEdit/RichEdit20 window or
-    hHandle is standard edit window, then handles management is taken by program and
-    zero is returned.
+    Edit window handle or the following value:
+      1   //SEW_FOCUS  Use window handle that has focus.
+    If zero or hHandle is not AkelEdit/RichEdit20 window,
+    then handles management is taken by program and zero is returned.
 
 Return Value
   Number. Active edit window handle.
@@ -423,6 +499,29 @@ Return Value
 
 Example:
   var pEditFile=AkelPad.GetEditFile(0);
+
+
+AkelPad.GetFilePath (+ActiveX)
+______________________________
+
+Get file path part.
+
+  GetFilePath(pFile, nPart);
+
+Arguments
+  pFile
+    File path.
+  nPart
+    1  //CPF_DIR           Directory.
+    2  //CPF_FILENAME      File name.
+    3  //CPF_FILEBASENAME  File base name.
+    4  //CPF_FILEEXT       File extension.
+
+Return Value
+  String. File path part.
+
+Example:
+  var pFileName=AkelPad.GetFilePath("c:\\WINDOWS\\notepad.exe", 2 /*CPF_FILENAME*/);
 
 
 AkelPad.GetEditCodePage
@@ -546,8 +645,8 @@ Example:
   AkelPad.SetFrameInfo(0, 1 /*FIS_TABSTOPSIZE*/, 4);
 
 
-AkelPad.SendMessage
-___________________
+AkelPad.SendMessage (+ActiveX)
+______________________________
 
 Send message.
 
@@ -571,8 +670,8 @@ Example:
   AkelPad.SendMessage(hMainWnd, 273 /*WM_COMMAND*/, 4101 /*IDM_FILE_NEW*/, 0);
 
 
-AkelPad.MessageBox
-__________________
+AkelPad.MessageBox (+ActiveX)
+_____________________________
 
 Show message.
 
@@ -619,8 +718,8 @@ Example (extended dialog):
   WScript.Echo("Button ID=" + nChoice);
 
 
-AkelPad.InputBox
-________________
+AkelPad.InputBox (+ActiveX)
+___________________________
 
 Input dialog box.
 
@@ -752,14 +851,15 @@ __________________
 
 Replace selection.
 
-  ReplaceSel(pText[, bSelect]);
+  ReplaceSel(pText[, nSelect]);
 
 Arguments
   pText
     Text to replace with.
-  bSelect
-    true   select inserted text.
-    false  don't select inserted text (default).
+  nSelect
+     0  //RST_NONE                 don't select inserted text (default).
+    -1  //RST_SELECT               select inserted text.
+    -2  //RST_SELECTRESTORESCROLL  select inserted text and restore scroll position.
 
 Return Value
   Zero.
@@ -790,19 +890,19 @@ Arguments
     0x00200000  //FRF_BEGINNING           Search from beginning (usage: FRF_DOWN|FRF_BEGINNING).
     0x00400000  //FRF_SELECTION           Search in selection (usage: FRF_DOWN|FRF_SELECTION).
     0x00800000  //FRF_ESCAPESEQ           Search with escape sequences.
-    0x01000000  //FRF_ALLFILES            Search in all opened MDI documents (not implemented).
+    0x01000000  //FRF_ALLFILES            Search in all opened MDI documents (usage: FRF_DOWN|FRF_ALLFILES or FRF_DOWN|FRF_BEGINNING|FRF_ALLFILES).
     0x08000000  //FRF_CYCLESEARCH         Cycle search.
     0x10000000  //FRF_CYCLESEARCHPROMPT   Prompt during cycle search.
+    0x80000000  //FRF_TEST                Test only. Without text selection.
 
 Return Value
   Number. Character position of the next match.
-  If there are no more matches, the return value is Ц1.
-  If there is syntax error in regular expression (with FRF_REGEXP flag), the return value is (Ц100 - PatternOffset).
-  For example, pFindIt equal to "ab[c", syntax error in third symbol, return value is Ц102.
+  If there are no more matches, the return value is -1.
+  If there is syntax error in regular expression (with FRF_REGEXP flag), the return value is (-100 - PatternOffset).
+  For example, pFindIt equal to "ab[c", syntax error in third symbol, return value is -102.
 
 Example:
-  var hWndEdit=AkelPad.GetEditWnd();
-  AkelPad.TextFind(hWndEdit, "MySearchString", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/);
+  AkelPad.TextFind(0, "MySearchString", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/);
 
 
 AkelPad.TextReplace
@@ -810,7 +910,7 @@ ___________________
 
 Find and replace text.
 
-  TextReplace(hHandle, pFindIt, pReplaceWith, nFlags, bAll);
+  TextReplace(hHandle, pFindIt, pReplaceWith, nFindFlags, nReplaceFlags);
 
 Arguments
   hHandle
@@ -819,7 +919,7 @@ Arguments
     Text to find.
   pReplaceWith
     Text to replace with.
-  nFlags
+  nFindFlags
     0x00000001  //FRF_DOWN                Find down.
     0x00000002  //FRF_WHOLEWORD           Find whole word.
     0x00000004  //FRF_MATCHCASE           Search is case-sensitive.
@@ -829,26 +929,26 @@ Arguments
     0x00200000  //FRF_BEGINNING           Search from beginning (usage: FRF_DOWN|FRF_BEGINNING).
     0x00400000  //FRF_SELECTION           Search in selection (usage: FRF_DOWN|FRF_SELECTION).
     0x00800000  //FRF_ESCAPESEQ           Search with escape sequences.
-    0x01000000  //FRF_ALLFILES            Search in all opened MDI documents (not implemented).
-    0x08000000  //FRF_CYCLESEARCH         Cycle search (works, if bAll == false).
+    0x01000000  //FRF_ALLFILES            Search in all opened MDI documents (usage: FRF_DOWN|FRF_ALLFILES or FRF_DOWN|FRF_BEGINNING|FRF_ALLFILES).
+    0x08000000  //FRF_CYCLESEARCH         Cycle search (don't use with RRF_ALL).
     0x10000000  //FRF_CYCLESEARCHPROMPT   Prompt during cycle search.
-  bAll
-    true   replace all.
-    false  replace single.
+    0x80000000  //FRF_TEST                Test only. Without text replacement and selection.
+  nReplaceFlags
+    0x1         //RRF_ALL                 Replace all. Default is replace single.
 
 Return Value
   Number. Character position of the next match.
-  If there are no more matches, the return value is Ц1.
-  If there is syntax error in regular expression (with FRF_REGEXP flag), the return value is (Ц100 - PatternOffset).
-  For example, pFindIt equal to "ab[c", syntax error in third symbol, return value is Ц102.
+  If there are no more matches, the return value is -1.
+  If RRF_ALL flag specified, the return value is count of changes.
+  If there is syntax error in regular expression (with FRF_REGEXP flag), the return value is (-100 - PatternOffset).
+  For example, pFindIt equal to "ab[c", syntax error in third symbol, return value is -102.
 
 Example:
-  var hWndEdit=AkelPad.GetEditWnd();
-  AkelPad.TextReplace(hWndEdit, "MySearchString", "MyReplaceText", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/, true);
+  AkelPad.TextReplace(0, "MySearchString", "MyReplaceText", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/, 0x1 /*RRF_ALL*/);
 
 
-AkelPad.GetClipboardText
-________________________
+AkelPad.GetClipboardText (+ActiveX)
+___________________________________
 
 Get clipboard text.
 
@@ -866,8 +966,8 @@ Example:
   var pClipboardText=AkelPad.GetClipboardText();
 
 
-AkelPad.SetClipboardText
-________________________
+AkelPad.SetClipboardText (+ActiveX)
+___________________________________
 
 Set clipboard text.
 
@@ -900,7 +1000,7 @@ Return Value
   false  plugin isn't running.
 
 Example:
-  var bRunning=AkelPad.IsPluginRunning("HighLight::Main");
+  var bRunning=AkelPad.IsPluginRunning("Coder::HighLight");
 
 
 AkelPad.Call
@@ -920,6 +1020,7 @@ Remarks
   During plugin call string type determines automatically.
 
 Return Value
+  If script was called, then result of AkelPad.ScriptExitCode returns.
    -1  //UD_FAILED               Operation failed.
     0  //UD_UNLOAD               Plugin unloaded.
   0x1  //UD_NONUNLOAD_ACTIVE     Plugin in memory and active.
@@ -964,6 +1065,7 @@ Remarks
   During plugin call string type determines automatically.
 
 Return Value
+  If script was called, then result of AkelPad.ScriptExitCode returns.
    -1  //UD_FAILED               Operation failed.
     0  //UD_UNLOAD               Plugin unloaded.
   0x1  //UD_NONUNLOAD_ACTIVE     Plugin in memory and active.
@@ -987,12 +1089,12 @@ _______________
 Same as AkelPad.CallEx, but force to use Unicode stings during plugin call.
 
 
-AkelPad.Exec
-____________
+AkelPad.Exec (+ActiveX)
+_______________________
 
 Execute program.
 
-  Exec(pCommandLine[, pWorkDirectory][, nWait]);
+  Exec(pCommandLine[, pWorkDirectory][, nWait][, nWindowStyle]);
 
 Arguments
   pCommandLine
@@ -1003,6 +1105,15 @@ Arguments
     0  returns immediately after starting the program, automatically returning 0 (default).
     1  waits until the program finishes and returns any error code returned by the program.
     2  waits until the specified process is waiting for user input, automatically returning 0.
+  nWindowStyle
+   -1 don't change (by default).
+    0 hidden window.
+    1 window as is.
+    2 minimized window.
+    3 maximized window.
+    6 minimized, inactive window.
+    9 non-maximized window.
+    Note: programs could ignore this parameter.
 
 Return Value
   Number. Exit code.
@@ -1082,11 +1193,17 @@ _______________
 
 Add code from file.
 
-  Include(pFileName);
+  Include(pFileName[, nFlags][, nCodePage][, bBOM]);
 
 Arguments
   pFileName
     File name, that located in "[AkelPad]\AkelFiles\Plugs\Scripts\Include" directory.
+  nFlags
+    See nFlags description of AkelPad.ReadFile method.
+  nCodePage
+    See nCodePage description of AkelPad.ReadFile method.
+  bBOM
+    See bBOM description of AkelPad.ReadFile method.
 
 Remarks
   Method Include is the same as code eval(AkelPad.ReadFile("...")), but allow to detect error placement in include file, if error appear.
@@ -1096,11 +1213,19 @@ Return Value
   false  failed.
 
 Example:
-  var pParent;
+   var lpItems;
+   var nItem;
 
-  AkelPad.Include("CommonFunctions.js");
-  pParent=GetParent("C:\\Program Files\\1.txt");
-  WScript.Echo(pParent);
+   if (!AkelPad.Include("ShowMenu.js")) WScript.Quit();
+
+   lpItems=[["ItemA", MF_NORMAL, 101],
+            ["ItemB", MF_SUBMENU],
+              ["ItemB-1", MF_NORMAL, 102],
+              ["ItemB-2", MF_NORMAL, 103],
+              ["ItemB-3", MF_NORMAL|MF_LAST, 104],
+            ["ItemC", MF_NORMAL, 105]];
+   nItem=ShowMenu(lpItems, POS_CARET, POS_CARET);
+   WScript.Echo("" + nItem);
 
 
 AkelPad.IsInclude
@@ -1128,20 +1253,23 @@ Arguments
   pFile
     File to open.
   nFlags
-    0x001  //OD_ADT_BINARY_ERROR     Check if file is binary.
-    0x002  //OD_ADT_REG_CODEPAGE     If last open code page found in registry, then it will be
-           //                        used with OD_ADT_DETECT_BOM flag, if not found, then next flags
-           //                        will be used OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
-    0x004  //OD_ADT_DETECT_CODEPAGE  Detect code page.
-    0x008  //OD_ADT_DETECT_BOM       Detect BOM mark.
-    0x010  //OD_ADT_NOMESSAGES       No messages, if errors in autodetect.
-    0x100  //OD_REOPEN               Don't create new MDI window, use the exited one.
-    0x200  //OD_NOSCROLL             Don't restore scroll position.
-           //Default is 0xD          (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+    0x001  //OD_ADT_BINARYERROR     Check if file is binary.
+    0x002  //OD_ADT_REGCODEPAGE     If last open code page found in registry, then it will be
+           //                        used with OD_ADT_DETECTBOM flag, if not found, then next flags
+           //                        will be used OD_ADT_DETECTCODEPAGE|OD_ADT_DETECTBOM.
+    0x004  //OD_ADT_DETECTCODEPAGE  Detect code page.
+    0x008  //OD_ADT_DETECTBOM       Detect BOM mark.
+    0x010  //OD_ADT_NOMESSAGES      No messages, if errors in autodetect.
+    0x020  //OD_ADT_ONLYBOM         Detect code page only if BOM mark is present, otherwise default codepage is used.
+    0x100  //OD_REOPEN              Don't create new MDI window, use the exited one.
+    0x200  //OD_NOSCROLL            Don't restore scroll position.
+    0x400  //OD_MULTIFILE           More documents is on queue. Use MB_YESNOCANCEL instead of MB_OKCANCEL.
+    0x800  //OD_NOUPDATE            Don't update file info.
+           //Default is 0xD         (OD_ADT_BINARYERROR|OD_ADT_DETECTCODEPAGE|OD_ADT_DETECTBOM).
   nCodePage
-    File code page, ignored if (nFlags & OD_ADT_DETECT_CODEPAGE)
+    File code page, ignored if (nFlags & OD_ADT_DETECTCODEPAGE)
   bBOM
-    File BOM, ignored if (nFlags & OD_ADT_DETECT_BOM)
+    File BOM, ignored if (nFlags & OD_ADT_DETECTBOM)
 
 Return Value
    0  //EOD_SUCCESS          Success.
@@ -1149,14 +1277,15 @@ Return Value
   -2  //EOD_ADT_ALLOC        Autodetect codepage, can't allocate buffer.
   -3  //EOD_ADT_READ         Autodetect codepage, read file error.
  -11  //EOD_OPEN             Can't open file.
- -13  //EOD_WINDOW_EXIST     File already opened.
- -14  //EOD_CODEPAGE_ERROR   Code page isn't implemented.
+ -13  //EOD_WINDOWEXIST      File already opened.
+ -14  //EOD_CODEPAGEERROR    Code page isn't implemented.
  -15  //EOD_STOP             Stopped from AKDN_OPENDOCUMENT_START.
  -16  //EOD_STREAMIN         Error in EM_STREAMIN.
- -17  //EOD_DOCUMENTS_LIMIT  Documents limit reached in MDI mode.
- -20  //EOD_MSGNO            File is skipped.
- -21  //EOD_MSGCANCELCREATE  User press cancel in message "Create new file?".
- -22  //EOD_MSGCANCELBINARY  User press cancel in message "Binary file. Continue?".
+ -17  //EOD_DOCUMENTSLIMIT   Documents limit reached in MDI mode.
+ -21  //EOD_MSGCANCELCREATE  User press Cancel in message "Create new file?".
+ -22  //EOD_MSGCANCELBINARY  User press Cancel in message "Binary file. Continue?".
+ -23  //EOD_MSGNOCREATE      User press No in message "Create new file?".
+ -24  //EOD_MSGNOBINARY      User press No in message "Binary file. Continue?".
 
 Example:
   var bResult=AkelPad.OpenFile("C:\\MyFile.txt");
@@ -1173,18 +1302,19 @@ Arguments
   pFile
     File to read.
   nFlags
-    0x01  //OD_ADT_BINARY_ERROR     Check if file is binary.
-    0x02  //OD_ADT_REG_CODEPAGE     If last open code page found in registry, then it will be
-          //                        used with OD_ADT_DETECT_BOM flag, if not found, then next flags
-          //                        will be used OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
-    0x04  //OD_ADT_DETECT_CODEPAGE  Detect code page.
-    0x08  //OD_ADT_DETECT_BOM       Detect BOM mark.
-    0x10  //OD_ADT_NOMESSAGES       No messages, if errors in autodetect.
-          //Default is 0xD          (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+    0x01  //ADT_BINARYERROR     Check if file is binary.
+    0x02  //ADT_REGCODEPAGE     If last open code page found in registry, then it will be
+          //                     used with ADT_DETECTBOM flag, if not found, then next flags
+          //                     will be used ADT_DETECTCODEPAGE|ADT_DETECTBOM.
+    0x04  //ADT_DETECTCODEPAGE  Detect code page.
+    0x08  //ADT_DETECTBOM       Detect BOM mark.
+    0x10  //ADT_NOMESSAGES      No messages, if errors in autodetect.
+    0x20  //ADT_ONLYBOM         Detect code page only if BOM mark is present, otherwise default codepage is used.
+          //Default is 0xD      (ADT_BINARYERROR|ADT_DETECTCODEPAGE|ADT_DETECTBOM).
   nCodePage
-    File code page, ignored if (nFlags & OD_ADT_DETECT_CODEPAGE).
+    File code page, ignored if (nFlags & ADT_DETECTCODEPAGE).
   bBOM
-    File BOM, ignored if (nFlags & OD_ADT_DETECT_BOM).
+    File BOM, ignored if (nFlags & ADT_DETECTBOM).
   nBytesMax
     Read specified number of first bytes in file. If -1, entire file will be read (default).
 
@@ -1233,7 +1363,7 @@ ________________
 
 Save document.
 
-  SaveFile(hHandle, pFile[, nCodePage][, bBOM][, nFlags]);
+  SaveFile(hHandle, pFile[, nCodePage][, bBOM][, nFlags][, hDoc]);
 
 Arguments
   hHandle
@@ -1248,23 +1378,25 @@ Arguments
     0x1  //SD_UPDATE       Update file info in program.
     0x2  //SD_SELECTION    Save only selection.
          //Default is 0x1  (SD_UPDATE).
+  hDoc
+    Document handle. If zero (default), detected automatically.
 
 Return Value
-   0  //ESD_SUCCESS         Success.
-  -1  //ESD_OPEN            Can't open file.
-  -2  //ESD_WRITE           Can't write to file.
-  -3  //ESD_READONLY        File has read-only attribute.
-  -4  //ESD_CODEPAGE_ERROR  Code page isn't implemented.
-  -5  //ESD_STOP            Stopped from AKDN_SAVEDOCUMENT_START.
-  -6  //ESD_STREAMOUT       Error in EM_STREAMOUT.
+   0  //ESD_SUCCESS        Success.
+  -1  //ESD_OPEN           Can't open file.
+  -2  //ESD_WRITE          Can't write to file.
+  -3  //ESD_READONLY       File has read-only attribute.
+  -4  //ESD_CODEPAGEERROR  Code page isn't implemented.
+  -5  //ESD_STOP           Stopped from AKDN_SAVEDOCUMENT_START.
+  -6  //ESD_STREAMOUT      Error in EM_STREAMOUT.
 
 Example:
   var hWndEdit=AkelPad.GetEditWnd();
   var nResult=AkelPad.SaveFile(hWndEdit, "C:\\MyFile.txt");
 
 
-AkelPad.SystemFunction
-______________________
+AkelPad.SystemFunction (+ActiveX)
+_________________________________
 
 Create system function object.
 
@@ -1277,8 +1409,8 @@ Example:
   var oSys=AkelPad.SystemFunction();
 
 
-AkelPad.SystemFunction().AddParameter
-_____________________________________
+AkelPad.SystemFunction().AddParameter (+ActiveX)
+________________________________________________
 
 Add function parameter.
 
@@ -1295,16 +1427,16 @@ Example:
   See AkelPad.SystemFunction().Call old syntax example.
 
 
-AkelPad.SystemFunction().Call
-_____________________________
+AkelPad.SystemFunction().Call (+ActiveX)
+________________________________________
 
 Call system function.
 
-  Call(pDllFunction[, ...]);
+  Call(vDllFunction[, ...]);
 
 Arguments
-  pDllFunction
-    Function name in format "Dll::Function".
+  vDllFunction
+    Function name in string format "Dll::Function" or function address in number format.
   ...
     Function parameters, must be integer, pointer or string.
     String parameter: in Windows 95/98/Me - Ansi string,
@@ -1326,8 +1458,8 @@ Example (old syntax):
   oSys.Call("user32::ShowWindow");
 
 
-AkelPad.SystemFunction().GetLastError
-_____________________________________
+AkelPad.SystemFunction().GetLastError (+ActiveX)
+________________________________________________
 
 Get call function last error.
 
@@ -1344,8 +1476,8 @@ Example:
   nError=oSys.GetLastError();
 
 
-AkelPad.SystemFunction().RegisterCallback
-_________________________________________
+AkelPad.SystemFunction().RegisterCallback (+ActiveX)
+____________________________________________________
 
 Register callback function.
 
@@ -1413,8 +1545,8 @@ Example (callback under VBScript):
   End Function
 
 
-AkelPad.SystemFunction().UnregisterCallback
-___________________________________________
+AkelPad.SystemFunction().UnregisterCallback (+ActiveX)
+______________________________________________________
 
 Remove callback function registration.
 
@@ -1431,8 +1563,8 @@ Example:
   See RegisterCallback example.
 
 
-AkelPad.MemAlloc
-________________
+AkelPad.MemAlloc (+ActiveX)
+___________________________
 
 Allocate memory.
 
@@ -1469,8 +1601,8 @@ Example:
   }
 
 
-AkelPad.MemCopy
-_______________
+AkelPad.MemCopy (+ActiveX)
+__________________________
 
 Copy memory.
 
@@ -1499,8 +1631,8 @@ Example:
   See MemAlloc example.
 
 
-AkelPad.MemRead
-_______________
+AkelPad.MemRead (+ActiveX)
+__________________________
 
 Read memory.
 
@@ -1536,27 +1668,49 @@ Example:
   }
 
 
-AkelPad.MemStrPtr
-_________________
+AkelPad.MemStrPtr (+ActiveX)
+____________________________
 
-Get pointer to a script unicode string.
+Get pointer from a string or to a string.
 
-  MemStrPtr(pString);
+  MemStrPtr(pString[, bConvert]);
 
 Arguments
   pString
     Constant string or string object.
+  bConvert
+    true  get pointer from the pString, ie convert pString contents in number.
+    false get pointer to the pString (by default).
 
 Return Value
-  Number. Pointer to a unicode string.
+  Number. Pointer.
 
 Example:
   var hMainWnd=AkelPad.GetMainWnd();
   AkelPad.SendMessage(hMainWnd, 1206 /*AKD_GOTOW*/, 0x1 /*GT_LINE*/, AkelPad.MemStrPtr("10:3"));
 
 
-AkelPad.MemFree
-_______________
+AkelPad.MemPtrStr (+ActiveX)
+____________________________
+
+Get string representation of a pointer.
+
+  MemPtrStr(lpPointer);
+
+Arguments
+  lpPointer
+    Any pointer.
+
+Return Value
+  String. String representation of a pointer.
+
+Example:
+  var hMainWnd=AkelPad.GetMainWnd();
+  WScript.Echo(AkelPad.MemPtrStr(hMainWnd));
+
+
+AkelPad.MemFree (+ActiveX)
+__________________________
 
 Free memory.
 
@@ -1573,8 +1727,8 @@ Example:
   See MemAlloc example.
 
 
-AkelPad.DebugJIT
-________________
+AkelPad.DebugJIT (+ActiveX)
+___________________________
 
 Breakpoint. Causes break into the debugger.
 
@@ -1584,8 +1738,8 @@ Return Value
   Zero.
 
 
-AkelPad.Debug
-_____________
+AkelPad.Debug (+ActiveX)
+________________________
 
 Debug memory usage.
 
@@ -1616,8 +1770,8 @@ Example:
   }
 
 
-AkelPad.VarType
-_______________
+AkelPad.VarType (+ActiveX)
+__________________________
 
 Retrieve variable type.
 
@@ -1685,6 +1839,28 @@ Return Value
 Example:
   var pString="123";
   WScript.Echo("" + AkelPad.VarType(pString));
+
+
+AkelPad.VarDispatch (+ActiveX)
+______________________________
+
+Get IDispatch object of a pointer.
+
+  VarDispatch(lpPointer);
+
+Arguments
+  lpPointer
+    Pointer to IDispatch object.
+
+Return Value
+  Object. IDispatch object.
+
+Example:
+  var oIE=new ActiveXObject("InternetExplorer.Application");
+  //IDispatch -> pointer
+  var nIE=_PtrAdd(oIE, 0);
+  //Pointer -> IDispatch
+  var oReturnIE=AkelPad.VarDispatch(nIE);
 
 
 AkelPad.GetArgLine
@@ -1762,12 +1938,13 @@ Begin settings operations.
 
 Arguments
   pScriptBaseName
-    Script name without extension.
+    Script name without extension. If "", use current script name.
   nFlags
-    0x1  //POB_READ      Begins read options.
-    0x2  //POB_SAVE      Begins save options.
-    0x4  //POB_CLEAR     Begins new save options (POB_SAVE|POB_CLEAR).
-    0x20 //POB_NOSCRIPTS Plugin settings, pScriptBaseName - plugin name without extension.
+    0x01 //POB_READ     Begins read options.
+    0x02 //POB_SAVE     Begins save options.
+    0x04 //POB_CLEAR    Begins new save options (POB_SAVE|POB_CLEAR).
+    0x20 //POB_PLUGS    Plugin settings, pScriptBaseName - plugin name without extension.
+    0x40 //POB_PROGRAM  Program settings, pScriptBaseName - ignored.
 
 Return Value
   Number. Settings handle.
@@ -1781,29 +1958,60 @@ _____________________________
 
 Read option.
 
-  Read(pOptionName, nType[, vDefault]);
+  Read(vOptionName, nType[, vDefault]);
 
 Arguments
-  pOptionName
-    Option name.
+  vOptionName
+    Option name as string or index as number.
   nType
-    1   //PO_DWORD   Read 32-bit number (DWORD).
-    2   //PO_BINARY  Read binary data in any form.
-    3   //PO_STRING  Read string.
+    1   //PO_DWORD         Read 32-bit number (DWORD).
+    2   //PO_BINARY        Read binary data. Returned pointer to the binary data, which must be released with AkelPad.MemFree.
+    3   //PO_STRING        Read string.
+    11  //PO_ENUM          Retrieve option name by index. Index passed in vOptionName.
+    20  //PO_BINARYSTRING  Read string (usually multiline), which was saved as binary data.
+    21  //PO_BINARYSIZE    Retrieve binary data size in bytes.
   vDefault
     Default data.
 
 Return Value
   String or number.
 
-Example:
+Example (read script options):
   var oSet=AkelPad.ScriptSettings();
 
-  if (oSet.Begin(WScript.ScriptBaseName, 0x1 /*POB_READ*/))
+  if (oSet.Begin("", 0x1 /*POB_READ*/))
   {
     pString=oSet.Read("String", 3 /*PO_STRING*/);
     bMultiline=oSet.Read("Multiline", 1 /*PO_DWORD*/);
+    oSet.End();
+  }
 
+Example (read plugin options):
+  var oSet=AkelPad.ScriptSettings();
+  var pText="";
+
+  if (oSet.Begin("Toolbar", 0x21 /*POB_READ|POB_PLUGS*/))
+  {
+    pText=oSet.Read("ToolBarText", 10 /*PO_BINARYSTRING*/);
+    oSet.End();
+  }
+  WScript.Echo(pText.substr(0,500));
+
+Example (enumerate plugin option names):
+  var hMainWnd=AkelPad.GetMainWnd();
+  var oSet=AkelPad.ScriptSettings();
+  var pOption;
+  var nIndex;
+
+  if (oSet.Begin("Scripts", 0x21 /*POB_READ|POB_PLUGS*/))
+  {
+    for (nIndex=0; ; ++nIndex)
+    {
+      if ((pOption=oSet.Read(nIndex, 11 /*PO_ENUM*/)) == undefined)
+        break;
+      if (AkelPad.MessageBox(hMainWnd, pOption + "\n\nFind next?", WScript.ScriptName, 4 /*MB_YESNO*/) == 7 /*IDNO*/)
+        break;
+    }
     oSet.End();
   }
 
@@ -1825,7 +2033,7 @@ Arguments
   vData
     Data to write.
   nDataSize
-    Data size in bytes. Can be omitted if PO_DWORD or PO_STRING used (default is -1).
+    Data size in bytes (default is -1).
 
 Return Value
   Number. Written data size in bytes.
@@ -1833,11 +2041,10 @@ Return Value
 Example:
   var oSet=AkelPad.ScriptSettings();
 
-  if (oSet.Begin(WScript.ScriptBaseName, 0x2 /*POB_SAVE*/))
+  if (oSet.Begin("", 0x2 /*POB_SAVE*/))
   {
     oSet.Write("String", 3 /*PO_STRING*/, "Str1");
     oSet.Write("Sensitive", 1 /*PO_DWORD*/, true);
-
     oSet.End();
   }
 
@@ -1860,11 +2067,10 @@ Return Value
 Example:
   var oSet=AkelPad.ScriptSettings();
 
-  if (oSet.Begin(WScript.ScriptBaseName, 0x2 /*POB_SAVE*/))
+  if (oSet.Begin("", 0x2 /*POB_SAVE*/))
   {
     oSet.Delete("String");
     oSet.Delete("Sensitive");
-
     oSet.End();
   }
 
@@ -1884,16 +2090,18 @@ Example:
   See Read, Write and Delete examples.
 
 
-AkelPad.WindowRegisterClass
-___________________________
+AkelPad.WindowRegisterClass (+ActiveX)
+______________________________________
 
 Register window class.
 
-  WindowRegisterClass(pClassName);
+  WindowRegisterClass(pClassName[, ...]);
 
 Arguments
   pClassName
     Class name to register.
+  ...
+    Message filter. Will come only specified messages. If not specified, all messages will come.
 
 Return Value
   Number. Class atom that uniquely identifies the class being registered.
@@ -1989,13 +2197,13 @@ Example (VBScript):
   Const VK_ESCAPE=27
   Const IDCANCEL=2
 
-  if hMainWnd then
+  if vbPtrMath(hMainWnd, "!=", 0) then
     if AkelPad.WindowRegisterClass("NewClass") then
 
       'Create dialog WS_VISIBLE|WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX
       hWndDialog=oSys.Call("user32::CreateWindowEx" & vbTCHAR, 0, "NewClass", 0, &H90CA0000, 0, 0, 351, 179, hMainWnd, 0, hInstanceDLL, lpCallbackPtr)
 
-      if hWndDialog then
+      if vbPtrMath(hWndDialog, "!=", 0) then
         'Disable main window, to make dialog modal
         oSys.Call "user32::EnableWindow", hMainWnd, false
 
@@ -2032,8 +2240,8 @@ Example (VBScript):
   End Function
 
 
-AkelPad.WindowUnregisterClass
-_____________________________
+AkelPad.WindowUnregisterClass (+ActiveX)
+________________________________________
 
 Unregister window class.
 
@@ -2051,8 +2259,8 @@ Example:
   See WindowRegisterClass example.
 
 
-AkelPad.WindowRegisterDialog
-____________________________
+AkelPad.WindowRegisterDialog (+ActiveX)
+_______________________________________
 
 Register dialog for message loop. Used if dialog created without WindowRegisterClass.
 
@@ -2140,14 +2348,9 @@ Example:
     return (dwNumber & 0xffff);
   }
 
-  function HIWORD(dwNumber)
-  {
-    return (dwNumber >> 16);
-  }
 
-
-AkelPad.WindowUnregisterDialog
-______________________________
+AkelPad.WindowUnregisterDialog (+ActiveX)
+_________________________________________
 
 Unregister dialog.
 
@@ -2165,8 +2368,157 @@ Example:
   See WindowRegisterDialog example.
 
 
-AkelPad.WindowGetMessage
-________________________
+AkelPad.CreateDialog (+ActiveX)
+_______________________________
+
+Create dialog.
+
+  CreateDialog(nExStyle, pClassName, pTitle, nStyle, x, y, nWidth, nHeight, hWndParent, lParam[, nFlags][, hMenu][, hInstance][, pFaceName][, nFontStyle][, nPointSize], "|",
+               nExStyle1, pClassName1, pTitle1, nStyle1, x1, y1, nWidth1, nHeight1, nId1[, lParam1], "|",
+               nExStyle2, pClassName2, pTitle2, nStyle2, x2, y2, nWidth2, nHeight2, nId2[, lParam2], "|",
+               [...]);
+
+Arguments
+  nExStyle
+    Extended window style. See description of CreateWindowEx in MSDN.
+  pClassName
+    Class name registered with AkelPad.WindowRegisterClass.
+  pTitle
+    Dialog title.
+  nStyle
+    Window style. See description of CreateWindowEx in MSDN.
+  x
+    Horizontal dialog position in screen coordinates.
+  y
+    Vertical dialog position in screen coordinates.
+  nWidth
+    Dialog width.
+  nHeight
+    Dialog height.
+  hWndParent
+    Parent window of the dialog being created.
+  lParam
+    Pointer to the dialog procedure.
+  nFlags
+    0x1  //CDF_MODAL   Create modal dialog. If not specified, created modeless dialog, which require AkelPad.WindowGetMessage.
+    0x2  //CDF_PIXELS  Coordinates specified in pixels for 96 DPI. If not specified, coordinates specified in dialog units,
+         //            which depend on dialog font sizes.
+         //Default is 0x0.
+  hMenu
+    Specifies the ordinal value of a menu resource in an executable file or string that specifies the name of a menu resource in an executable file. If zero, not used (default).
+  hInstance
+    Instance handle of the module to be associated with the window. If zero, AkelPad.GetInstanceDll handle will be used (default).
+  pFaceName
+    Font face, for example, "Courier". If "", system font for dialogs is used (default).
+    Processed only, when nStyle has 0x40 /*DS_SETFONT*/ flag.
+  nFontStyle
+    0 ignored (default).
+    1 normal.
+    2 bold.
+    3 italic.
+    4 bold italic.
+    Processed only, when nStyle has 0x40 /*DS_SETFONT*/ flag.
+  nPointSize
+    Font size. Unchanged, if 0 (default).
+    Processed only, when nStyle has 0x40 /*DS_SETFONT*/ flag.
+  "|"
+    Indicates the end of the dialog parameters and the start of controls parameters.
+  nExStyle1
+    Extended window style. See description of CreateWindowEx in MSDN.
+  pClassName1
+    Class name, example, "BUTTON". See description of CreateWindowEx in MSDN.
+  pTitle1
+    Control text.
+  nStyle1
+    Control style. See description of CreateWindowEx in MSDN.
+  x1
+    Horizontal control position in client coordinates.
+  y1
+    Vertical control position in client coordinates.
+  nWidth1
+    Control width.
+  nHeight1
+    Control height
+  nId1
+    Control identifier.
+  lParam1
+    The creation data. First word indicates the size, in bytes, of the creation data (including the size word).
+    Control receives a pointer to this data in the lParam parameter of the WM_CREATE message. If zero, not used (default).
+  "|"
+    Indicates the end of the control parameters.
+  ...
+    Arguments for the next control.
+
+Return Value
+  If nFlags not contain CDF_MODAL, then return value is dialog handle.
+  If nFlags contain CDF_MODAL, then return value is value passed to "user32::EndDialog".
+
+Example:
+  var hMainWnd=AkelPad.GetMainWnd();
+  var oSys=AkelPad.SystemFunction();
+  var hWndDialog=0;
+  var wCommand;
+  var dwFlags=0x2 /*CDF_PIXELS*/;
+
+  //Control IDs
+  var IDC_BUTTON1=1001;
+  var IDC_BUTTON2=1002;
+  var IDC_EDIT=1003;
+
+  if (AkelPad.WindowRegisterClass("My Class"))
+  {
+    AkelPad.CreateDialog(0, "My Class", "My Title",  0x90ca0040 /*DS_SETFONT|WS_VISIBLE|WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX*/, 10, 10, 300, 200, hMainWnd, DialogCallback, dwFlags, "|",
+                         0, "BUTTON", "Button text 1", 0x50010001 /*WS_VISIBLE|WS_CHILD|WS_TABSTOP|BS_DEFPUSHBUTTON*/, 10, 10, 200, 20, IDC_BUTTON1, "|",
+                         0, "BUTTON", "Button text 2", 0x50010000 /*WS_VISIBLE|WS_CHILD|WS_TABSTOP*/, 10, 50, 200, 20, IDC_BUTTON2, "|",
+                         0, "EDIT", "Edit text 3", 0x50010000 /*WS_VISIBLE|WS_CHILD|WS_TABSTOP*/, 10, 90, 200, 20, IDC_EDIT);
+
+    if (hWndDialog && !(dwFlags & 0x1 /*CDF_MODAL*/))
+    {
+      AkelPad.ScriptNoMutex();
+      AkelPad.WindowGetMessage(0x4 /*WGM_KEYDOWNUP*/);
+    }
+    AkelPad.WindowUnregisterClass("My Class");
+  }
+
+  function DialogCallback(hWnd, uMsg, wParam, lParam)
+  {
+    if (uMsg == 0x110 /*WM_INITDIALOG*/)
+    {
+      hWndDialog=hWnd;
+    }
+    else if (uMsg == 273 /*WM_COMMAND*/)
+    {
+      wCommand=LOWORD(wParam);
+
+      if (wCommand == IDC_BUTTON1 ||
+          wCommand == IDC_BUTTON2)
+      {
+        AkelPad.MessageBox(hWnd, "Button=" + wCommand, WScript.ScriptName, 0 /*MB_OK*/);
+      }
+      else if (wCommand == 2 /*IDCANCEL*/)
+      {
+        //Destroy dialog
+        if (!(dwFlags & 0x1 /*CDF_MODAL*/))
+        {
+          //Exit message loop
+          oSys.Call("user32::PostQuitMessage", 0);
+
+          oSys.Call("user32::DestroyWindow", hWnd);
+        }
+        else oSys.Call("user32::EndDialog", hWnd, 0);
+      }
+    }
+    return 0;
+  }
+
+  function LOWORD(dwNumber)
+  {
+    return (dwNumber & 0xffff);
+  }
+
+
+AkelPad.WindowGetMessage (+ActiveX)
+___________________________________
 
 Process thread messages (message loop).
 
@@ -2176,7 +2528,8 @@ Arguments
   nFlags
     0x1  //WGM_ENABLE    Set in any case.
     0x2  //WGM_NOKEYSEND Don't send key messages to dialog from children windows
-         //              (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+         //              (WM_KEYDOWN, WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+    0x4  //WGM_KEYDOWNUP Send only WM_KEYDOWN, WM_KEYUP messages to dialog from children windows.
          //Default is 0x0.
 
 Return Value
@@ -2186,8 +2539,8 @@ Example:
   See WindowRegisterClass example.
 
 
-AkelPad.WindowSubClass
-______________________
+AkelPad.WindowSubClass (+ActiveX)
+_________________________________
 
 Install capture for window messages.
 
@@ -2248,8 +2601,8 @@ Example:
   }
 
 
-AkelPad.WindowNextProc
-______________________
+AkelPad.WindowNextProc (+ActiveX)
+_________________________________
 
 Send message to the next procedure in chain.
 
@@ -2274,8 +2627,8 @@ Example:
   See WindowSubClass example.
 
 
-AkelPad.WindowNoNextProc
-________________________
+AkelPad.WindowNoNextProc (+ActiveX)
+___________________________________
 
 Prevent sending current message to the next procedure in chain.
 
@@ -2292,8 +2645,8 @@ Example:
   See WindowSubClass example.
 
 
-AkelPad.WindowUnsubClass
-________________________
+AkelPad.WindowUnsubClass (+ActiveX)
+___________________________________
 
 Remove capture for window messages.
 
@@ -2313,12 +2666,12 @@ Example:
   See WindowSubClass example.
 
 
-AkelPad.ThreadHook
-__________________
+AkelPad.ThreadHook (+ActiveX)
+_____________________________
 
 Install hook for thread.
 
-  ThreadHook(nId, lpFunction, nThreadId);
+  ThreadHook(nId, lpFunction, nThreadId[, ...]);
 
 Arguments
   nId
@@ -2327,6 +2680,9 @@ Arguments
     Function with 3 arguments, which will be called.
   nThreadId
     Thread identifier. Global hook installing is not supported.
+  ...
+    Message filter. Will come only specified messages. If not specified, all messages will come.
+    nId must be one of the following values: WH_CALLWNDPROC, WH_CALLWNDPROCRET, WH_GETMESSAGE, WH_MSGFILTER, WH_SYSMSGFILTER.
 
 Return Value
   Number. Hook handle.
@@ -2340,7 +2696,7 @@ Example:
   var dwMainThreadID=oSys.Call("user32::GetWindowThreadProcessId", hMainWnd, 0);
   var hHook;
 
-  if (hHook=AkelPad.ThreadHook(3 /*WH_GETMESSAGE*/, HookCallback, dwMainThreadID))
+  if (hHook=AkelPad.ThreadHook(3 /*WH_GETMESSAGE*/, HookCallback, dwMainThreadID, 0x100 /*WM_KEYDOWN*/))
   {
     //Message loop
     AkelPad.WindowGetMessage();
@@ -2350,11 +2706,11 @@ Example:
 
   function HookCallback(nCode, wParam, lParam)
   {
-    var uMsg=AkelPad.MemRead(lParam + (_X64?8:4) /*offsetof(MSG, message)*/, 3 /*DT_DWORD*/);
+    var uMsg=AkelPad.MemRead(_PtrAdd(lParam, _X64?8:4) /*offsetof(MSG, message)*/, 3 /*DT_DWORD*/);
 
     if (uMsg == 0x100 /*WM_KEYDOWN*/)
     {
-      wParam=AkelPad.MemRead(lParam + (_X64?16:8) /*offsetof(MSG, wParam)*/, 2 /*DT_QWORD*/);
+      wParam=AkelPad.MemRead(_PtrAdd(lParam, _X64?16:8) /*offsetof(MSG, wParam)*/, 2 /*DT_QWORD*/);
 
       AkelPad.MessageBox(0, "Key \"" + String.fromCharCode(wParam) + "\" with code \"" + wParam + "\" is pressed.", "", 0);
 
@@ -2364,8 +2720,8 @@ Example:
   }
 
 
-AkelPad.ThreadUnhook
-____________________
+AkelPad.ThreadUnhook (+ActiveX)
+_______________________________
 
 Remove hook from thread.
 
@@ -2391,10 +2747,12 @@ Change synchronization object.
 
 Arguments
   nUnlockType
-    0x1  //ULT_UNLOCKSCRIPTSQUEUE   Allow other scripts running with this script at the same time (by default).
-    0x2  //ULT_UNLOCKPROGRAMTHREAD  Unlock main thread from waiting this script. Only if script is called with external call with code 2.
-    0x4  //ULT_LOCKMULTICOPY        Deny execution of the multiple script copies. By default execution is not denied.
-    0x8  //ULT_UNLOCKMULTICOPY      Allow execution of the multiple script copies.
+    0x01  //ULT_UNLOCKSCRIPTSQUEUE   Allow other scripts running with this script at the same time (by default).
+    0x02  //ULT_UNLOCKPROGRAMTHREAD  Unlock main thread from waiting this script. Only if script is called with external call with code 2.
+    0x04  //ULT_LOCKMULTICOPY        Deny execution of the multiple script copies. By default execution is not denied.
+    0x08  //ULT_UNLOCKMULTICOPY      Allow execution of the multiple script copies.
+    0x10  //ULT_LOCKSENDMESSAGE      AkelPad.SendMessage, AkelPad.Command called with script thread lock (by default).
+    0x20  //ULT_UNLOCKSENDMESSAGE    AkelPad.SendMessage, AkelPad.Command called without script thread lock (slower).
 
 Return Value
   Number. Changed synchronization objects, see nUnlockType.
@@ -2403,8 +2761,27 @@ Example:
   AkelPad.ScriptNoMutex();
 
 
-AkelPad.ScriptHandle
-____________________
+AkelPad.ScriptExitCode
+______________________
+
+Set script exit code. Only if script is called with external call with code 2 or 4.
+
+  ScriptExitCode([nExitCode]);
+
+Arguments
+  nExitCode
+    Script exit code.
+
+Return Value
+  true   success.
+  false  calling thread came out of the external procedure call.
+
+Example:
+  AkelPad.ScriptExitCode(1);
+
+
+AkelPad.ScriptHandle (+ActiveX)
+_______________________________
 
 Allows to interact with the other running scripts.
 
@@ -2423,6 +2800,9 @@ Arguments
     3   //SH_FINDSCRIPT  Find script handle by its name.
         //  vData: script name.
         //  Return value: first found working script handle in stack.
+    10  //SH_GETEXECTYPE  Retrieve code of the external script call.
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: code of the external script call.
     11  //SH_GETTHREADHANDLE  Retrieve script thread handle.
         //  vData: script handle. If zero then current script handle is used.
         //  Return value: script thread handle.
@@ -2444,6 +2824,12 @@ Arguments
     17  //SH_GETSERVICEWINDOW  Retrieve script service window handle. Automatically created when using WindowSubClass, ThreadHook and RegisterCallback methods.
         //  vData: script handle. If zero then current script handle is used.
         //  Return value: script service window handle.
+    18  //SH_GETLOCKSENDMESSAGE  AkelPad.SendMessage, AkelPad.Command locks script thread.
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: true - on, false - off.
+    20  //SH_GETBASENAME  Retrieve script name without extension.
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: script name without extension
     21  //SH_GETNAME  Retrieve script name.
         //  vData: script handle. If zero then current script handle is used.
         //  Return value: script name.
@@ -2504,8 +2890,101 @@ Example (deny changing font size by scrolling mouse wheel with Ctrl key):
   }
 
 
-_TCHAR
-______
+AkelPad.ConnectObject (+ActiveX)
+________________________________
+
+Connects to the object's events.
+
+  ConnectObject(oEventSource, pPrefix[, vIID]);
+
+Arguments
+  oEventSource
+    Object to connect.
+  pPrefix
+    Prefix of the functions to handle receiving events.
+  vIID
+    Event interface IID.
+    - vIID can be string in format "{00000000-0000-0000-0000-000000000000}".
+    - vIID can be pointer. Example:
+        var lpDIID_DWebBrowserEvents2=AkelPad.MemAlloc(16 /*sizeof(IID)*/);
+        oSys.Call("ole32::IIDFromString", "{34A715A0-6587-11D0-924A-0020AFC7AC4D}", lpDIID_DWebBrowserEvents2);
+    - If vIID not specified, connect to all possible interfaces of the object.
+
+Return Value
+  Number. Count of successfully connected interfaces.
+
+Example:
+  var oIE=new ActiveXObject("InternetExplorer.Application");
+  var oSys=AkelPad.SystemFunction();
+
+  if (AkelPad.ConnectObject(oIE, "IE_", "{34A715A0-6587-11D0-924A-0020AFC7AC4D}" /*DIID_DWebBrowserEvents2*/))
+  {
+    oIE.Visible=true;
+    oIE.Navigate("http://akelpad.sourceforge.net/");
+    AkelPad.WindowGetMessage();
+    AkelPad.DisconnectObject(oIE);
+  }
+  oIE.Quit();
+
+  function IE_DocumentComplete(pDisp, URL)
+  {
+    AkelPad.MessageBox(oIE.HWND, URL, WScript.ScriptName, 0 /*MB_OK*/);
+    oSys.Call("user32::PostQuitMessage", 0);
+  }
+
+
+AkelPad.DisconnectObject (+ActiveX)
+___________________________________
+
+Disconnects from the object's events.
+
+  DisconnectObject(oEventSource);
+
+Arguments
+  oEventSource
+    Connected object.
+
+Return Value
+  Zero.
+
+Example:
+  See ConnectObject example.
+
+
+AkelPad.ActiveXThis (+ActiveX)
+______________________________
+
+Send root IDispatch to plugin. Required for some methods to work in ActiveX mode (ConnectObject, ScriptHandle).
+
+  ActiveXThis(this);
+
+Arguments
+  this
+    Root script IDispatch.
+
+Return Value
+  Zero.
+
+Example:
+  See ActiveX section.
+
+
+WScript.ScriptBaseName
+______________________
+
+Get script base name.
+
+  WScript.ScriptBaseName
+
+Return Value
+  String. Script base name.
+
+Example:
+  WScript.Echo(WScript.ScriptBaseName);
+
+
+_TCHAR (+ActiveX)
+_________________
 
 Constant that determines the end of system functions. Uses for AkelPad.SystemFunction().Call method.
 
@@ -2530,14 +3009,14 @@ Example:
   }
 
 
-vbTCHAR
-_______
+vbTCHAR (+ActiveX)
+__________________
 
 Same as _TCHAR. Uses for VBScript.
 
 
-_TSTR
-_____
+_TSTR (+ActiveX)
+________________
 
 Constant that determines the string type. Uses for MemCopy and MemRead methods.
 
@@ -2551,14 +3030,14 @@ Example:
   See _TCHAR example.
 
 
-vbTSTR
-______
+vbTSTR (+ActiveX)
+_________________
 
 Same as _TSTR. Uses for VBScript.
 
 
-_TSIZE
-______
+_TSIZE (+ActiveX)
+_________________
 
 Constant that determines the size of symbol in bytes. Uses for MemAlloc method.
 
@@ -2572,14 +3051,14 @@ Example:
   See _TCHAR example.
 
 
-vbTSIZE
-_______
+vbTSIZE (+ActiveX)
+__________________
 
 Same as _TSIZE. Uses for VBScript.
 
 
-_X64
-____
+_X64 (+ActiveX)
+_______________
 
 Constant that determines the program bits type - x86 or x64.
 
@@ -2596,10 +3075,65 @@ Example:
     WScript.Echo("x86 version");
 
 
-vbX64
-_____
+vbX64 (+ActiveX)
+________________
 
 Same as _X64. Uses for VBScript.
+
+
+_PtrAdd (+ActiveX)
+__________________
+
+Add value to a pointer.
+
+  _PtrAdd(lpPointer, nValue)
+
+Arguments
+  lpPointer
+    Any pointer.
+  nValue
+    Value to add. Can be negative.
+
+Return Value
+  Number. Pointer.
+
+Example:
+  See ThreadHook example.
+
+
+vbPtrAdd (+ActiveX)
+___________________
+
+Same as _PtrAdd. Uses for VBScript.
+
+
+_PtrMath (+ActiveX)
+___________________
+
+Do mathematical operation with pointers.
+
+  _PtrMath(lpPointer1, pSign, lpPointer2)
+
+Arguments
+  lpPointer1
+    First pointer.
+  pSign
+    One of the following:
+      "+", "-", "*", "/", "%", "&", "|", "^", ">", "<", "^", "==", "!=", ">=", "<=", "<<", ">>"
+  lpPointer2
+    Second pointer.
+
+Return Value
+  Number. Pointer.
+
+Example:
+  See WindowRegisterClass example (VBScript).
+
+
+vbPtrMath (+ActiveX)
+____________________
+
+Same as _PtrMath. Uses for VBScript.
 
 
 *** ActiveX ***
@@ -2609,12 +3143,16 @@ Scripts.dll can be used in third party applications after library registration.
 - x64 version registration: "%SystemRoot%\System32\regsvr32.exe" Scripts.dll
 
 Usage example:
-  var AkelPad=new ActiveXObject("AkelPad.Document");
-  var _TCHAR=AkelPad.Constants._TCHAR;
-  var _TSTR=AkelPad.Constants._TSTR;
-  var _TSIZE=AkelPad.Constants._TSIZE;
-  var _X64=AkelPad.Constants._X64;
-
+  if (typeof AkelPad == "undefined")
+  {
+    AkelPad=new ActiveXObject("AkelPad.Document");
+    AkelPad.ActiveXThis(this);
+    _TCHAR=AkelPad.Constants._TCHAR;
+    _TSTR=AkelPad.Constants._TSTR;
+    _TSIZE=AkelPad.Constants._TSIZE;
+    _X64=AkelPad.Constants._X64;
+    _PtrAdd=function(n1, n2) {return AkelPad.Global._PtrAdd(n1, n2);};
+  }
   var oSys=AkelPad.SystemFunction();
   var lpBuffer;
   var pWinDir="";

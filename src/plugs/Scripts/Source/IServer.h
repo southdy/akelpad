@@ -1,6 +1,16 @@
 #ifndef _ISERVER_H_
 #define _ISERVER_H_
 
+//GUID
+extern const struct _GUID CLSID_IDocument;
+extern const struct _GUID CLSID_TypeLib;
+extern const struct _GUID IID_IWScript;
+extern const struct _GUID IID_IWArguments;
+extern const struct _GUID IID_IDocument;
+extern const struct _GUID IID_ISystemFunction;
+extern const struct _GUID IID_IConstants;
+extern const struct _GUID IID_IGlobal;
+
 typedef struct {
   const GUID *guid;
   ITypeInfo **ppTypeInfo;

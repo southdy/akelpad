@@ -1,6 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <activscp.h>
 #include "Scripts.h"
 
 
@@ -159,9 +158,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VAR
 
   if (lpSysParam=StackInsertSysParam(hStack))
   {
-    if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
-      pvtParameter=pvtParameter->pvarVal;
-    lpSysParam->dwValue=GetVariantValue(pvtParameter, bOldWindows);
+    lpSysParam->dwValue=GetVariantValue(pvtParameter, &pvtParameter, bOldWindows);
     lpSysParam->dwType=pvtParameter->vt;
   }
   else return E_OUTOFMEMORY;
@@ -169,17 +166,28 @@ HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VAR
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllFunction, SAFEARRAY **psa, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtDllFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealSystemFunction *)this)->lpScriptThread;
+  VARIANT *pvtDllFunction=&vtDllFunction;
   SYSTEMFUNCTION *sf;
   HMODULE hModule=NULL;
   FARPROC lpProcedure=NULL;
   char szFunction[MAX_PATH];
   wchar_t wszFunction[MAX_PATH];
   wchar_t wszDll[MAX_PATH];
+  wchar_t *wpDllFunction=NULL;
+  UINT_PTR dwDllFunction;
+  INT_PTR nResult=0;
   BOOL bLoadLibrary=FALSE;
   int i;
+
+  sf=&((IRealSystemFunction *)this)->sf;
+  dwDllFunction=GetVariantValue(pvtDllFunction, &pvtDllFunction, FALSE);
+  if (pvtDllFunction->vt == VT_BSTR && pvtDllFunction->bstrVal && pvtDllFunction->bstrVal[0])
+    wpDllFunction=(wchar_t *)dwDllFunction;
+  else
+    lpProcedure=(FARPROC)dwDllFunction;
 
   //Fill call stack
   {
@@ -201,10 +209,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllF
     }
   }
 
-  *nResult=0;
-  sf=&((IRealSystemFunction *)this)->sf;
-
-  if (*wpDllFunction)
+  if (wpDllFunction)
   {
     wszFunction[0]=L'\0';
     wszDll[0]=L'\0';
@@ -222,35 +227,33 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllF
     if (!(hModule=GetModuleHandleWide(wszDll)))
     {
       if (hModule=LoadLibraryWide(wszDll))
-      {
         bLoadLibrary=TRUE;
-      }
     }
     WideCharToMultiByte(CP_ACP, 0, wszFunction, -1, szFunction, MAX_PATH, NULL, NULL);
 
     if (hModule)
-    {
-      if (lpProcedure=GetProcAddress(hModule, szFunction))
-      {
-        //Call function
-        *nResult=AsmCallSysFunc(&sf->hSysParamStack, &sf->hSaveStack, lpProcedure);
-
-        //Get last error
-        sf->dwLastError=GetLastError();
-
-        //Free call parameters
-        StackFreeSysParams(&sf->hSaveStack);
-      }
-      if (bLoadLibrary)
-      {
-        FreeLibrary(hModule);
-      }
-    }
+      lpProcedure=GetProcAddress(hModule, szFunction);
+  }
+  if (lpProcedure)
+  {
+    //Call function
+    nResult=AsmCallSysFunc(&sf->hSysParamStack, &sf->hSaveStack, lpProcedure);
+    
+    //Get last error
+    sf->dwLastError=GetLastError();
   }
 
-  if (lpScriptThread->dwDebug & DBG_SYSCALL)
+  //Free call parameters
+  StackFreeSysParams(&sf->hSaveStack);
+
+  if (bLoadLibrary)
   {
-    if (!hModule)
+    FreeLibrary(hModule);
+  }
+
+  if (lpScriptThread && (lpScriptThread->dwDebug & DBG_SYSCALL))
+  {
+    if (wpDllFunction && !hModule)
     {
       xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_SYSCALL), wszDll);
       return E_POINTER;
@@ -261,6 +264,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllF
       return E_POINTER;
     }
   }
+  SetVariantInt(vtResult, nResult);
   return NOERROR;
 }
 
@@ -295,7 +299,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this,
       dispp.cNamedArgs=0;
 
       if ((hr=objCallback->lpVtbl->Invoke(objCallback, dispidCallbackName, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_PROPERTYGET, &dispp, &vtResult, 0, 0)) == S_OK)
-        nArgCount=(int)GetVariantValue(&vtResult, bOldWindows);
+        nArgCount=(int)GetVariantValue(&vtResult, NULL, bOldWindows);
     }
   }
 
@@ -709,14 +713,7 @@ LRESULT AsmCallbackHelper(INT_PTR *lpnFirstArg, int nCallbackIndex, int *lpnArgS
 
         for (i=0; i < nArgCount; ++i)
         {
-          VariantInit(vtCount);
-          #ifdef _WIN64
-            vtCount->llVal=*(lpnFirstArg + i);
-            vtCount->vt=VT_I8;
-          #else
-            vtCount->lVal=*(lpnFirstArg + i);
-            vtCount->vt=VT_I4;
-          #endif
+          SetVariantInt(vtCount, *(lpnFirstArg + i));
           --vtCount;
         }
       }

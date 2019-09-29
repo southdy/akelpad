@@ -90,7 +90,7 @@
       <WarningLevel>Level3</WarningLevel>
       <MinimalRebuild>true</MinimalRebuild>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;CINTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;CINTERFACE;SCRIPTS_MAXHANDLE=0x7FFFFFFF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <AdditionalIncludeDirectories>..\..\..\akelpad-src\AkelFiles\Plugs\AkelDLL;..\..\..\akelpad-src;..\..\..\akelpad-src\AkelEdit;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -128,7 +128,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;CINTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;CINTERFACE;SCRIPTS_MAXHANDLE=0x7FFFFFFF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <AdditionalIncludeDirectories>..\..\..\akelpad-src\AkelFiles\Plugs\AkelDLL;..\..\..\akelpad-src;..\..\..\akelpad-src\AkelEdit;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -166,7 +166,7 @@
       <Optimization>MinSpace</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CINTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CINTERFACE;SCRIPTS_MAXHANDLE=0x7FFFFFFF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\akelpad-src\AkelFiles\Plugs\AkelDLL;..\..\..\akelpad-src;..\..\..\akelpad-src\AkelEdit;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Midl>
@@ -203,7 +203,7 @@
       <Optimization>MinSpace</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CINTERFACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;CINTERFACE;SCRIPTS_MAXHANDLE=0x7FFFFFFF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\akelpad-src\AkelFiles\Plugs\AkelDLL;..\..\..\akelpad-src;..\..\..\akelpad-src\AkelEdit;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Midl>
@@ -235,6 +235,7 @@
     <ClCompile Include="IActiveScriptSite.c" />
     <ClCompile Include="IConstants.c" />
     <ClCompile Include="IDocument.c" />
+    <ClCompile Include="IGlobal.c" />
     <ClCompile Include="IScriptSettings.c" />
     <ClCompile Include="IServer.c" />
     <ClCompile Include="ISystemFunction.c" />
@@ -246,14 +247,7 @@
     <CustomBuild Include="Scripts.def" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="Scripts.idl">
-      <TypeLibraryName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Scripts.tlb</TypeLibraryName>
-      <TypeLibraryName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Scripts.tlb</TypeLibraryName>
-      <TargetEnvironment Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Win32</TargetEnvironment>
-      <TypeLibraryName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Scripts.tlb</TypeLibraryName>
-      <TypeLibraryName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Scripts.tlb</TypeLibraryName>
-      <TargetEnvironment Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Win32</TargetEnvironment>
-    </Midl>
+    <Midl Include="Scripts.idl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\Scripts.ico" />
@@ -276,6 +270,18 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <FileType>Document</FileType>
     </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="IActiveScriptSite.h" />
+    <ClInclude Include="IConstants.h" />
+    <ClInclude Include="IDocument.h" />
+    <ClInclude Include="IGlobal.h" />
+    <ClInclude Include="IScriptSettings.h" />
+    <ClInclude Include="IServer.h" />
+    <ClInclude Include="ISystemFunction.h" />
+    <ClInclude Include="IWArguments.h" />
+    <ClInclude Include="IWScript.h" />
+    <ClInclude Include="Scripts.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

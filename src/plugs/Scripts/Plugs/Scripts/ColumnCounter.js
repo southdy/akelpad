@@ -1,9 +1,12 @@
-//// Column selection counter.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.1
+// Author: Shengalts Aleksander aka Instructor
+//
+//
+// Description(1033): Column selection counter.
 //
 // How to use:
 // Select column with numbers for processing.
-//
-// Description:
 // First selected line number is a initial number.
 // Each next line will be increased at defined step.
 //  3    3     -9    -9     08    08     0x08     0x08
@@ -16,12 +19,10 @@
 // If step equal to zero, then it will be automatically calculated as the difference between second and first number.
 //
 //
-//// Увеличение чисел (счетчик) вертикального выделения.
+// Description(1049): Увеличение чисел (счетчик) вертикального выделения.
 //
 // Как использовать:
 // Выделите вертикальный блок с числами, которые необходимо преобразовать.
-//
-// Описание:
 // Число в первой выделенной строке является начальным числом.
 // Каждая последующая строка будет увеличена на величину назначенного шага.
 //  3    3     -9    -9     08    08     0x08     0x08
@@ -89,7 +90,7 @@ if (hWndEdit)
             else if (pFirstNumber.substr(0, 1) == "0" && pFirstNumber.length > 1)
             {
               if (!nMinDigits) nMinDigits=pFirstNumber.length;
-              nCurNumber=parseInt(pFirstNumber.replace(/^0+/, ""));
+              nCurNumber=parseInt(pFirstNumber.replace(/^0+/, "") || 0);
             }
             else nCurNumber=parseInt(pFirstNumber);
 
@@ -133,7 +134,7 @@ if (hWndEdit)
       while (++nIndex < pLinesArray.length)
 
       pSelText=pLinesArray.join("\r");
-      AkelPad.ReplaceSel(pSelText, true);
+      AkelPad.ReplaceSel(pSelText, -2);
     }
   }
   else AkelPad.MessageBox(hMainWnd, GetLangString(0), WScript.ScriptName, 48 /*MB_ICONEXCLAMATION*/);

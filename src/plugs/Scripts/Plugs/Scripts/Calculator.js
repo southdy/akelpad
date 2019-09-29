@@ -1,4 +1,9 @@
-//// Text calculator (based on wisgest code).
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.1
+// Author: Shengalts Aleksander aka Instructor
+//
+//
+// Description(1033): Text calculator (based on wisgest code).
 //
 // How to use:
 // Select expression and call script.
@@ -50,7 +55,7 @@
 // Result: 116
 //
 //
-//// Текстовый калькулятор (основан на коде wisgest'a).
+// Description(1049): Текстовый калькулятор (основан на коде wisgest'a).
 //
 // Как использовать:
 // Выделите выражение и вызовите скрипт.
@@ -121,6 +126,8 @@ if (pSelText)
     {
       nResult=eval(pSelText);
     }
+    if (IsFloat(nResult))
+      nResult=Number(nResult.toPrecision(7));
   }
   catch (nError)
   {
@@ -136,6 +143,11 @@ else
 
 
 //Functions
+function IsFloat(n)
+{
+  return Number(n) == n && n % 1 != 0;
+}
+
 function Trace(nResult, pLabel)
 {
   var nValue;

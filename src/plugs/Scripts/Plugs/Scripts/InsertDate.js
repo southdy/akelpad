@@ -1,4 +1,9 @@
-//// Insert time and date in specified format.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.0
+// Author: Shengalts Aleksander aka Instructor
+//
+//
+// Description(1033): Insert time and date in specified format.
 //
 // Time:
 // h   Hours with no leading zero for single-digit hours; 12-hour clock.
@@ -29,7 +34,7 @@
 // "H:mm:ss dd MMMM yyyy" -> "12:50:24 07 January 2008"
 //
 //
-//// ¬ставить дату и врем€ в заданном формате.
+// Description(1049): ¬ставить дату и врем€ в заданном формате.
 
 //Options
 var pFormat="H:mm dd.MM.yyyy";
@@ -37,11 +42,11 @@ if (WScript.Arguments.length)
   pFormat=WScript.Arguments(0);
 
 //Variables
-var hMainWnd=AkelPad.GetMainWnd();
+var hWndEdit=AkelPad.GetEditWnd();
 var oSys=AkelPad.SystemFunction();
 var pTime;
 
-if (hMainWnd)
+if (hWndEdit)
 {
   pTime=TimeFormat(pFormat);
   AkelPad.ReplaceSel(pTime);

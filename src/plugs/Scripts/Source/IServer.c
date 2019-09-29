@@ -1,11 +1,47 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <activscp.h>
 #include "Scripts.h"
-
-
 #include <initguid.h>
-#include "Scripts_i.c"
+
+
+//GUID
+
+// IDocument object's GUID
+// {DB045777-BAFF-416b-AA8E-A154E6A64A88}
+DEFINE_GUID(CLSID_IDocument, 0xdb045777, 0xbaff, 0x416b, 0xaa, 0x8e, 0xa1, 0x54, 0xe6, 0xa6, 0x4a, 0x88);
+
+// IDocument type library's GUID
+// {DB4185E2-3423-409f-B875-4ED126BF32C2}
+DEFINE_GUID(CLSID_TypeLib, 0xdb4185e2, 0x3423, 0x409f, 0xb8, 0x75, 0x4e, 0xd1, 0x26, 0xbf, 0x32, 0xc2);
+
+// IID_IWScript VTable's GUID
+// {DBE648AA-4858-4A34-B384-D1D5B78EE59A}
+DEFINE_GUID(IID_IWScript, 0xdbe648aa, 0x4858, 0x4a34, 0xb3, 0x84, 0xd1, 0xd5, 0xb7, 0x8e, 0xe5, 0x9a);
+
+// IID_IWArguments VTable's GUID
+// {DBE547D2-2917-4945-A73E-5E583C3F2EB8}
+DEFINE_GUID(IID_IWArguments, 0xdbe547d2, 0x2917, 0x4945, 0xa7, 0x3e, 0x5e, 0x58, 0x3c, 0x3f, 0x2e, 0xb8);
+
+// IDocument VTable's GUID
+// {DBE0F625-75CE-44f7-B1EC-BCC83D5177BE}
+DEFINE_GUID(IID_IDocument, 0xdbe0f625, 0x75ce, 0x44f7, 0xb1, 0xec, 0xbc, 0xc8, 0x3d, 0x51, 0x77, 0xbe);
+
+// IScriptSettings VTable's GUID
+// {DBB05F25-85CB-49F6-AB04-FF91253D644F}
+DEFINE_GUID(IID_IScriptSettings, 0xdbb05f25, 0x85cb, 0x49f6, 0xab, 0x04, 0xff, 0x91, 0x25, 0x3d, 0x64, 0x4f);
+
+// ISystemFunction VTable's GUID
+// {DBB12030-4BEF-4bbe-AAD1-0A01B27084F9}
+DEFINE_GUID(IID_ISystemFunction, 0xdbb12030, 0x4bef, 0x4bbe, 0xaa, 0xd1, 0x0a, 0x01, 0xb2, 0x70, 0x84, 0xf9);
+
+// IID_IConstants VTable's GUID
+// {DBE70A70-CA74-498B-90B7-BA51018162BC}
+DEFINE_GUID(IID_IConstants, 0xdbe70a70, 0xca74, 0x498b, 0x90, 0xb7, 0xba, 0x51, 0x01, 0x81, 0x62, 0xbc);
+
+// IID_IGlobal VTable's GUID
+// {DBE5362E-84AA-46C4-820D-7462E7F6E365}
+DEFINE_GUID(IID_IGlobal, 0xdbe5362e, 0x84aa, 0x46c4, 0x82, 0x0d, 0x74, 0x62, 0xe7, 0xf6, 0xe3, 0x65);
+
 
 //Global variables
 LONG g_nObjs=0;
@@ -50,6 +86,7 @@ HRESULT LoadTypeInfoFromFile(const GUID *guid, ITypeInfo **ppTypeInfo)
                           {&IID_IScriptSettings, &g_ScriptSettingsTypeInfo},
                           {&IID_ISystemFunction, &g_SystemFunctionTypeInfo},
                           {&IID_IConstants,      &g_ConstantsTypeInfo},
+                          {&IID_IGlobal,         &g_GlobalTypeInfo},
                           {0, 0}};
       int i;
 
@@ -99,6 +136,7 @@ HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *this, IUnknown *pu
   IRealDocument *objIDocument;
   IRealWScript *objIWScript;
   IRealConstants *objIConstants;
+  IRealGlobal *objIGlobal;
 
   if (!objHandle) return E_POINTER;
   *objHandle=NULL;
@@ -146,6 +184,20 @@ HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *this, IUnknown *pu
     }
     else return E_OUTOFMEMORY;
   }
+  else if (AKD_IsEqualIID(vTableGuid, &IID_IGlobal))
+  {
+    //IGlobal
+    if ((objIGlobal=(IRealGlobal *)GlobalAlloc(GPTR, sizeof(IRealGlobal))))
+    {
+      objIGlobal->lpVtbl=(IGlobalVtbl *)&MyIGlobalVtbl;
+      objIGlobal->dwCount=1;
+      objIGlobal->lpScriptThread=StackGetScriptThreadCurrent();
+
+      InterlockedIncrement(&g_nObjs);
+      *objHandle=objIGlobal;
+    }
+    else return E_OUTOFMEMORY;
+  }
   return NOERROR;
 }
 
@@ -171,7 +223,7 @@ BOOL AKD_IsEqualIID(const GUID *rguid1, const GUID *rguid2)
 
 HRESULT WINAPI DllGetClassObject(REFCLSID objGuid, REFIID factoryGuid, void **factoryHandle)
 {
-  if (AKD_IsEqualIID(objGuid, &CLSID_Document))
+  if (AKD_IsEqualIID(objGuid, &CLSID_IDocument))
   {
     //ActiveXObject
     if (!bInitCommon && !lpScriptThreadActiveX)
@@ -209,14 +261,14 @@ HRESULT WINAPI DllRegisterServer()
   const char szNameProgID[]="AkelPad.document";
   const char szObjectDescription[]="AkelPad COM component";
 
-  return RegisterServerA(hInstanceDLL, (REFCLSID)&CLSID_Document, szNameTypeLib, szNameProgID, szObjectDescription);
+  return RegisterServerA(hInstanceDLL, (REFCLSID)&CLSID_IDocument, szNameTypeLib, szNameProgID, szObjectDescription);
 }
 
 HRESULT WINAPI DllUnregisterServer()
 {
   const char szNameProgID[]="AkelPad.document";
 
-  return UnregisterServerA((REFCLSID)&CLSID_Document, (REFGUID)&LIBID_Scripts, szNameProgID);
+  return UnregisterServerA((REFCLSID)&CLSID_IDocument, (REFGUID)&CLSID_TypeLib, szNameProgID);
 }
 
 HRESULT IsServerRegisteredA(HINSTANCE hInstance, REFCLSID clsid, const char *pNameTypeLib, const char *pNameProgID, const char *pObjectDescription, char *szDllFile, int nDllFileLen)
@@ -305,7 +357,7 @@ HRESULT IsServerRegisteredA(HINSTANCE hInstance, REFCLSID clsid, const char *pNa
 
   if (bstrDll=SysAllocStringLen(NULL, MAX_PATH))
   {
-    hr=QueryPathOfRegTypeLib((REFGUID)&LIBID_Scripts, 1, 0, LOCALE_NEUTRAL, &bstrDll);
+    hr=QueryPathOfRegTypeLib((REFGUID)&CLSID_TypeLib, 1, 0, LOCALE_NEUTRAL, &bstrDll);
 
     if (hr == S_OK)
     {

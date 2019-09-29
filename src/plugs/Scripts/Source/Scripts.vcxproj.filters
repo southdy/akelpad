@@ -42,6 +42,9 @@
     <ClCompile Include="Scripts.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IGlobal.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Scripts.idl">
@@ -63,5 +66,37 @@
       <Filter>Source Files</Filter>
     </CustomBuild>
     <CustomBuild Include="ISystemFunction64.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="IActiveScriptSite.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IDocument.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IScriptSettings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ISystemFunction.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IWArguments.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IWScript.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scripts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IGlobal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

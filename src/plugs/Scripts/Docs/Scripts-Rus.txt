@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v15.7              ***
+***                 Scripts AkelPad plugin v18.7              ***
 *****************************************************************
 
-2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2007-2017 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***
@@ -26,7 +26,6 @@ SpellCheck.js         -проверка орфографии, используя Microsoft Word.
 LinesFilter.js        -фильтр строк.
 Calculator.js         -текстовый калькулятор.
 EvalCmd.js            -обработать выражение, переданное через командную строку.
-EvalCmdEsc.js         -обработать экранированное выражение, переданное через командную строку.
 InsertDate.js         -вставка даты и времени в указанном формате.
 InsertFile.js         -вставка содержимого указанного файла.
 RenameFile.js         -переименование редактируемого файла.
@@ -57,7 +56,7 @@ Call("Scripts::Main", 1, "SCRIPT", "ARGUMENTS")
     Call("Scripts::Main", 1, "InsertDate.js", `"dd MMMM yyyy"`)
 
 Call("Scripts::Main", 2, "SCRIPT", "ARGUMENTS")
-  То же, что и предыдущий, но ожидать завершения скрипта.
+  То же, что и 1, но ожидать завершения скрипта.
 
 Call("Scripts::Main", 3, "SCRIPT")
   Параметры:
@@ -66,6 +65,101 @@ Call("Scripts::Main", 3, "SCRIPT")
     "SCRIPT"
       Имя файла скрипта. Если "", то используется последний обработанный скрипт.
 
+Call("Scripts::Main", 4, "SCRIPT", "ARGUMENTS")
+  То же, что и 2, но выполнить скрипт в главном потоке, а не создавать новый.
+  Не рекомендуется использовать для скриптов содержащих AkelPad.WindowGetMessage().
+
+Call("Scripts::Main", 5, "SCRIPT", OPERATION, *RESULT)
+  Параметры:
+    5
+      Взаимодействие с работающими скриптами.
+    "SCRIPT"
+      Имя файла скрипта. Если "", то используется последний обработанный скрипт.
+    OPERATION
+      См. описание аргумента nOperation в методе AkelPad.ScriptHandle. Кроме флага SH_FINDSCRIPT.
+    *RESULT
+      Зависит от операции.
+
+  Пример (получить дескриптор скрипта):
+    WScript.Echo(ScriptGetHandle("SearchReplace.js"));
+
+    function ScriptGetHandle(pScript)
+    {
+      var oSys=AkelPad.SystemFunction();
+      var nHandle=0;
+
+      if (lpResult=AkelPad.MemAlloc(_X64?8:4 /*sizeof(INT_PTR)*/))
+      {
+        AkelPad.Call("Scripts::Main", 5, pScript, 2 /*SH_THISSCRIPT*/, lpResult);
+        nHandle=AkelPad.MemRead(lpResult, 2 /*DT_QWORD*/);
+        AkelPad.MemFree(lpResult);
+      }
+      return nHandle;
+    }
+
+  Пример (получить файл скрипта):
+    WScript.Echo(ScriptGetFile("SearchReplace.js"));
+
+    function ScriptGetFile(pScript)
+    {
+      var oSys=AkelPad.SystemFunction();
+      var lpFile;
+      var pFile="";
+
+      if (lpResult=AkelPad.MemAlloc(_X64?8:4 /*sizeof(INT_PTR)*/))
+      {
+        AkelPad.Call("Scripts::Main", 5, pScript, 22 /*SH_GETFILE*/, lpResult);
+        lpFile=AkelPad.MemRead(lpResult, 2 /*DT_QWORD*/);
+        pFile=AkelPad.MemRead(lpFile, 1 /*DT_UNICODE*/);
+        oSys.Call("oleaut32::SysFreeString", lpFile);
+        AkelPad.MemFree(lpResult);
+      }
+      return pFile;
+    }
+
+Call("Scripts::Main", 6, SCRIPTHANDLE, OPERATION, *RESULT)
+  То же, что и 5, но используется дескриптор скрипта вместо файла скрипта.
+
+Call("Scripts::Main", 7, "METHOD", *RESULT)
+  Параметры:
+    7
+      Вызвать метод Scripts плагина напрямую. Предназначено для ContextMenu, Hotkeys, Toolbar плагинов.
+    "METHOD"
+      Метод Scripts плагина с аргументами.
+    *RESULT
+      Результат вызова.
+  Пример:
+    "Найти следующий параграф" Call("Scripts::Main", 7, `AkelPad.TextFind(0, "(?<=\n\n)(?!\n)", 0x80001 /*FRF_DOWN|FRF_REGEXP*/)`)
+
+
+*** Служебная информация в скрипте ***
+
+В начале скрипта в комментариях возможно указывать служебную информацию, которая
+выводится в списке скриптов (необходимо включить соответствующие колонки правым
+кликом мыши по шапке списка), а также используется AkelUpdater'ом при обновлении.
+
+Сайт:
+// http://akelpad.sourceforge.net/...
+
+Версия:
+// Version: ...
+
+Автор:
+// Author: ...
+
+Описание (вариант 1):
+//// Search and replace using regular expressions.
+
+Описание (вариант 2):
+// *** Search and replace using regular expressions. ***
+
+Описание на указанном языке (вариант 3):
+// Description(1033): Search and replace using regular expressions.
+// Description(1049): Поиск/замена с использованием регулярных выражений.
+
+Список идентификаторов языка (Locale IDs Assigned by Microsoft):
+http://msdn.microsoft.com/en-us/goglobal/bb964664.aspx
+
 
 *** Список методов (методы, не привязанные к окну AkelPad'а, отмечены как +ActiveX) ***
 
@@ -73,16 +167,15 @@ AkelPad.GetMainWnd
 AkelPad.GetAkelDir
 AkelPad.GetInstanceExe
 AkelPad.GetInstanceDll                       +ActiveX
-AkelPad.GetLangId                            +ActiveX
+AkelPad.GetLangId
 AkelPad.IsOldWindows                         +ActiveX
-AkelPad.IsOldRichEdit
-AkelPad.IsOldComctl32
 AkelPad.IsAkelEdit
 AkelPad.IsMDI
 AkelPad.GetEditWnd
 AkelPad.SetEditWnd
 AkelPad.GetEditDoc
 AkelPad.GetEditFile
+AkelPad.GetFilePath                          +ActiveX
 AkelPad.GetEditCodePage
 AkelPad.GetEditBOM
 AkelPad.GetEditNewLine
@@ -129,10 +222,12 @@ AkelPad.MemAlloc                             +ActiveX
 AkelPad.MemCopy                              +ActiveX
 AkelPad.MemRead                              +ActiveX
 AkelPad.MemStrPtr                            +ActiveX
+AkelPad.MemPtrStr                            +ActiveX
 AkelPad.MemFree                              +ActiveX
 AkelPad.DebugJIT                             +ActiveX
 AkelPad.Debug                                +ActiveX
 AkelPad.VarType                              +ActiveX
+AkelPad.VarDispatch                          +ActiveX
 AkelPad.GetArgLine
 AkelPad.GetArgValue
 AkelPad.ScriptSettings
@@ -145,6 +240,7 @@ AkelPad.WindowRegisterClass                  +ActiveX
 AkelPad.WindowUnregisterClass                +ActiveX
 AkelPad.WindowRegisterDialog                 +ActiveX
 AkelPad.WindowUnregisterDialog               +ActiveX
+AkelPad.CreateDialog                         +ActiveX
 AkelPad.WindowGetMessage                     +ActiveX
 AkelPad.WindowSubClass                       +ActiveX
 AkelPad.WindowNextProc                       +ActiveX
@@ -153,7 +249,12 @@ AkelPad.WindowUnsubClass                     +ActiveX
 AkelPad.ThreadHook                           +ActiveX
 AkelPad.ThreadUnhook                         +ActiveX
 AkelPad.ScriptNoMutex
+AkelPad.ScriptExitCode
 AkelPad.ScriptHandle                         +ActiveX
+AkelPad.ConnectObject                        +ActiveX
+AkelPad.DisconnectObject                     +ActiveX
+AkelPad.ActiveXThis                          +ActiveX
+WScript.ScriptBaseName
 _TCHAR                                       +ActiveX используется как AkelPad.Constants._TCHAR
 vbTCHAR                                      +ActiveX используется как AkelPad.Constants.vbTCHAR
 _TSTR                                        +ActiveX используется как AkelPad.Constants._TSTR
@@ -162,6 +263,10 @@ _TSIZE                                       +ActiveX используется как AkelPad.C
 vbTSIZE                                      +ActiveX используется как AkelPad.Constants.vbTSIZE
 _X64                                         +ActiveX используется как AkelPad.Constants._X64
 vbX64                                        +ActiveX используется как AkelPad.Constants.vbX64
+_PtrAdd                                      +ActiveX используется как AkelPad.Global._PtrAdd
+vbPtrAdd                                     +ActiveX используется как AkelPad.Global.vbPtrAdd
+_PtrMath                                     +ActiveX используется как AkelPad.Global._PtrMath
+vbPtrMath                                    +ActiveX используется как AkelPad.Global.vbPtrMath
 
 
 *** Описание методов ***
@@ -218,8 +323,8 @@ ______________________
   var hInstance=AkelPad.GetInstanceExe();
 
 
-AkelPad.GetInstanceDll
-______________________
+AkelPad.GetInstanceDll (+ActiveX)
+_________________________________
 
 Определить дескриптор библиотеки (DLL).
 
@@ -257,8 +362,8 @@ _________________
     WScript.Echo("Другой");
 
 
-AkelPad.IsOldWindows
-____________________
+AkelPad.IsOldWindows (+ActiveX)
+_______________________________
 
 Проверить поддержку юникода в Windows.
 
@@ -270,36 +375,6 @@ ____________________
 
 Пример:
   var bOldWindows=AkelPad.IsOldWindows();
-
-
-AkelPad.IsOldRichEdit
-_____________________
-
-Проверить riched20.dll версией ниже, чем 5.30 (v3.0) или нет.
-
-  IsOldRichEdit();
-
-Возвращаемое значение
-  true   riched20.dll версией ниже, чем 5.30 (v2.0).
-  false  riched20.dll версией не ниже, чем 5.30 (v3.0, v4.0).
-
-Пример:
-  var bOldRichEdit=AkelPad.IsOldRichEdit();
-
-
-AkelPad.IsOldComctl32
-_____________________
-
-Проверить comctl32.dll версией ниже, чем 4.71 или нет.
-
-  IsOldComctl32();
-
-Возвращаемое значение
-  true   comctl32.dll версией ниже, чем 4.71.
-  false  comctl32.dll версией не ниже, чем 4.71.
-
-Пример:
-  var bOldComctl32=AkelPad.IsOldComctl32();
 
 
 AkelPad.IsAkelEdit
@@ -363,9 +438,10 @@ GetSelStart, GetSelEnd, SetSel, GetSelText, GetTextRange, ReplaceSel будут испол
 
 Аргументы
   hHandle
-    Дескриптор окна редактирования. Если ноль, либо hHandle не является окном редактирования AkelEdit/RichEdit20,
-    либо hHandle является стандартным окном редактирования, то управление дескрипторами передается программе и
-    возвращается ноль.
+    Дескриптор окна редактирования или следующее значение:
+      1   //SEW_FOCUS  Использовать дескриптор окна, которое имеет фокус.
+    Если ноль, либо hHandle не является окном редактирования AkelEdit/RichEdit20,
+    то управление дескрипторами передается программе и возвращается ноль.
 
 Возвращаемое значение
   Число. Дескриптор активного окна редактирования.
@@ -424,6 +500,29 @@ ___________________
 
 Пример:
   var pEditFile=AkelPad.GetEditFile(0);
+
+
+AkelPad.GetFilePath (+ActiveX)
+______________________________
+
+Получить часть пути файла.
+
+  GetFilePath(pFile, nPart);
+
+Аргументы
+  pFile
+    Путь файла.
+  nPart
+    1  //CPF_DIR           Директория.
+    2  //CPF_FILENAME      Имя файла.
+    3  //CPF_FILEBASENAME  Имя файла без расширения.
+    4  //CPF_FILEEXT       Расширение файла.
+
+Возвращаемое значение
+  Строка. Часть пути файла.
+
+Пример:
+  var pFileName=AkelPad.GetFilePath("c:\\WINDOWS\\notepad.exe", 2 /*CPF_FILENAME*/);
 
 
 AkelPad.GetEditCodePage
@@ -547,8 +646,8 @@ ____________________
   AkelPad.SetFrameInfo(0, 1 /*FIS_TABSTOPSIZE*/, 4);
 
 
-AkelPad.SendMessage
-___________________
+AkelPad.SendMessage (+ActiveX)
+______________________________
 
 Послать сообщение.
 
@@ -572,8 +671,8 @@ ___________________
   AkelPad.SendMessage(hMainWnd, 273 /*WM_COMMAND*/, 4101 /*IDM_FILE_NEW*/, 0);
 
 
-AkelPad.MessageBox
-__________________
+AkelPad.MessageBox (+ActiveX)
+_____________________________
 
 Показать сообщение.
 
@@ -620,8 +719,8 @@ __________________
   WScript.Echo("Button ID=" + nChoice);
 
 
-AkelPad.InputBox
-________________
+AkelPad.InputBox (+ActiveX)
+___________________________
 
 Диалог ввода строки.
 
@@ -753,14 +852,15 @@ __________________
 
 Заменить выделение.
 
-  ReplaceSel(pText[, bSelect]);
+  ReplaceSel(pText[, nSelect]);
 
 Аргументы
   pText
     Текст, которым заменяется выделение.
-  bSelect
-    true   выделить вставленный текст.
-    false  не выделять вставленный текст (по умолчанию).
+  nSelect
+     0  //RST_NONE                 не выделять вставленный текст (по умолчанию).
+    -1  //RST_SELECT               выделить вставленный текст.
+    -2  //RST_SELECTRESTORESCROLL  выделить вставленный текст и восстановить позицию прокрутки.
 
 Возвращаемое значение
   Ноль.
@@ -791,19 +891,19 @@ ________________
     0x00200000  //FRF_BEGINNING           Поиск с начала (использование: FRF_DOWN|FRF_BEGINNING).
     0x00400000  //FRF_SELECTION           Поиск в выделении (использование: FRF_DOWN|FRF_SELECTION).
     0x00800000  //FRF_ESCAPESEQ           Поиск с esc-последовательностями.
-    0x01000000  //FRF_ALLFILES            Поиск во всех открытых вкладках (не реализовано).
+    0x01000000  //FRF_ALLFILES            Поиск во всех открытых вкладках (использование: FRF_DOWN|FRF_ALLFILES или FRF_DOWN|FRF_BEGINNING|FRF_ALLFILES).
     0x08000000  //FRF_CYCLESEARCH         Поиск по кругу.
     0x10000000  //FRF_CYCLESEARCHPROMPT   Запрос при поиске по кругу.
+    0x80000000  //FRF_TEST                Только протестировать. Без выделения текста.
 
 Возвращаемое значение
   Число. Позиция найденного текста.
-  Если ничего не найдено, возвращаемое значение –1.
-  Если синтаксическая ошибка в регулярном выражении (с флагом FRF_REGEXP), возвращаемое значение (–100 - СмещениеШаблона).
-  Например, pFindIt равен "ab[c", синтаксическая ошибка в третьем символе, возвращаемое значение –102.
+  Если ничего не найдено, возвращаемое значение -1.
+  Если синтаксическая ошибка в регулярном выражении (с флагом FRF_REGEXP), возвращаемое значение (-100 - СмещениеШаблона).
+  Например, pFindIt равен "ab[c", синтаксическая ошибка в третьем символе, возвращаемое значение -102.
 
 Пример:
-  var hWndEdit=AkelPad.GetEditWnd();
-  AkelPad.TextFind(hWndEdit, "МойТекстДляПоиска", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/);
+  AkelPad.TextFind(0, "МойТекстДляПоиска", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/);
 
 
 AkelPad.TextReplace
@@ -811,7 +911,7 @@ ___________________
 
 Найти и заменить текст.
 
-  TextReplace(hHandle, pFindIt, pReplaceWith, nFlags, bAll);
+  TextReplace(hHandle, pFindIt, pReplaceWith, nFindFlags, nReplaceFlags);
 
 Аргументы
   hHandle
@@ -820,7 +920,7 @@ ___________________
     Текст для поиска.
   pReplaceWith
     Текст для замены.
-  nFlags
+  nFindFlags
     0x00000001  //FRF_DOWN                Найти вниз.
     0x00000002  //FRF_WHOLEWORD           Найти слово целиком.
     0x00000004  //FRF_MATCHCASE           Поиск чувствителен к регистру.
@@ -830,26 +930,26 @@ ___________________
     0x00200000  //FRF_BEGINNING           Поиск с начала (использование: FRF_DOWN|FRF_BEGINNING).
     0x00400000  //FRF_SELECTION           Поиск в выделении (использование: FRF_DOWN|FRF_SELECTION).
     0x00800000  //FRF_ESCAPESEQ           Поиск с esc-последовательностями.
-    0x01000000  //FRF_ALLFILES            Поиск во всех открытых вкладках (не реализовано).
-    0x08000000  //FRF_CYCLESEARCH         Поиск по кругу (работает, если bAll == false).
+    0x01000000  //FRF_ALLFILES            Поиск во всех открытых вкладках (использование: FRF_DOWN|FRF_ALLFILES или FRF_DOWN|FRF_BEGINNING|FRF_ALLFILES).
+    0x08000000  //FRF_CYCLESEARCH         Поиск по кругу (не использовать с RRF_ALL).
     0x10000000  //FRF_CYCLESEARCHPROMPT   Запрос при поиске по кругу.
-  bAll
-    true   заменить всё.
-    false  одна замена.
+    0x80000000  //FRF_TEST                Только протестировать. Без замены и выделения текста.
+  nReplaceFlags
+    0x1         //RRF_ALL                 Заменить всё. По умолчанию одна замена.
 
 Возвращаемое значение
   Число. Позиция найденного текста.
-  Если ничего не найдено, возвращаемое значение –1.
-  Если синтаксическая ошибка в регулярном выражении (с флагом FRF_REGEXP), возвращаемое значение (–100 - СмещениеШаблона).
-  Например, pFindIt равен "ab[c", синтаксическая ошибка в третьем символе, возвращаемое значение –102.
+  Если ничего не найдено, возвращаемое значение -1.
+  Если указан флаг RRF_ALL, возвращается количество замен.
+  Если синтаксическая ошибка в регулярном выражении (с флагом FRF_REGEXP), возвращаемое значение (-100 - СмещениеШаблона).
+  Например, pFindIt равен "ab[c", синтаксическая ошибка в третьем символе, возвращаемое значение -102.
 
 Пример:
-  var hWndEdit=AkelPad.GetEditWnd();
-  AkelPad.TextReplace(hWndEdit, "МойТекстДляПоиска", "МойТекстДляЗамены", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/, true);
+  AkelPad.TextReplace(0, "МойТекстДляПоиска", "МойТекстДляЗамены", 0x00200001 /*FRF_DOWN|FRF_BEGINNING*/, 0x1 /*RRF_ALL*/);
 
 
-AkelPad.GetClipboardText
-________________________
+AkelPad.GetClipboardText (+ActiveX)
+___________________________________
 
 Получить текст из буфера обмена.
 
@@ -867,8 +967,8 @@ ________________________
   var pClipboardText=AkelPad.GetClipboardText();
 
 
-AkelPad.SetClipboardText
-________________________
+AkelPad.SetClipboardText (+ActiveX)
+___________________________________
 
 Установить текст в буфер обмена.
 
@@ -901,7 +1001,7 @@ _______________________
   false  плагин не работает.
 
 Пример:
-  var bRunning=AkelPad.IsPluginRunning("HighLight::Main");
+  var bRunning=AkelPad.IsPluginRunning("Coder::HighLight");
 
 
 AkelPad.Call
@@ -921,6 +1021,7 @@ ____________
   При вызове плагина тип строки определяется автоматически.
 
 Возвращаемое значение
+  Если был вызван скрипт, возвращается результат AkelPad.ScriptExitCode.
    -1  //UD_FAILED               Ошибка.
     0  //UD_UNLOAD               Плагин выгружен.
   0x1  //UD_NONUNLOAD_ACTIVE     Плагин в памяти и активен.
@@ -965,6 +1066,7 @@ ______________
   При вызове плагина тип строки определяется автоматически.
 
 Возвращаемое значение
+  Если был вызван скрипт, возвращается результат AkelPad.ScriptExitCode.
    -1  //UD_FAILED               Ошибка.
     0  //UD_UNLOAD               Плагин выгружен.
   0x1  //UD_NONUNLOAD_ACTIVE     Плагин в памяти и активен.
@@ -988,12 +1090,12 @@ _______________
 Тоже, что и AkelPad.CallEx, но форсируется использование Unicode строк при вызове плагина.
 
 
-AkelPad.Exec
-____________
+AkelPad.Exec (+ActiveX)
+_______________________
 
 Запустить программу.
 
-  Exec(pCommandLine[, pWorkDirectory][, nWait]);
+  Exec(pCommandLine[, pWorkDirectory][, nWait][, nWindowStyle]);
 
 Аргументы
   pCommandLine
@@ -1004,6 +1106,15 @@ ____________
     0  не ожидать завершения программы, автоматически присвоив возвращаемое значение нулю (по умолчанию).
     1  ожидать завершения программы и вернуть код выхода, указанный программой.
     2  ожидать до тех пор, пока процесс не начнет ожидать ввода от пользователя, и автоматически присвоить возвращаемое значение нулю.
+  nWindowStyle
+   -1 не менять (по умолчанию).
+    0 скрытое окно.
+    1 окно как есть.
+    2 свернутое окно.
+    3 развернутое окно.
+    6 свернутое, не активное окно.
+    9 не развернутое окно.
+    Замечание: программы могут игнорировать данный параметр.
 
 Возвращаемое значение
   Число. Код выхода.
@@ -1084,11 +1195,17 @@ _______________
 
 Добавить код из файла.
 
-  Include(pFileName);
+  Include(pFileName[, nFlags][, nCodePage][, bBOM]);
 
 Аргументы
   pFileName
     Имя файла, который находится в директории "[AkelPad]\AkelFiles\Plugs\Scripts\Include".
+  nFlags
+    См. описание nFlags метода AkelPad.ReadFile.
+  nCodePage
+    См. описание nCodePage метода AkelPad.ReadFile.
+  bBOM
+    См. описание bBOM метода AkelPad.ReadFile.
 
 Замечания
   Метод Include аналогичен коду eval(AkelPad.ReadFile("...")), но позволяет выявлять место ошибки в добавляемом файле, если она присутствует.
@@ -1098,11 +1215,19 @@ _______________
   false  не успешно.
 
 Пример:
-  var pParent;
+   var lpItems;
+   var nItem;
 
-  AkelPad.Include("CommonFunctions.js");
-  pParent=GetParent("C:\\Program Files\\1.txt");
-  WScript.Echo(pParent);
+   if (!AkelPad.Include("ShowMenu.js")) WScript.Quit();
+
+   lpItems=[["ItemA", MF_NORMAL, 101],
+            ["ItemB", MF_SUBMENU],
+              ["ItemB-1", MF_NORMAL, 102],
+              ["ItemB-2", MF_NORMAL, 103],
+              ["ItemB-3", MF_NORMAL|MF_LAST, 104],
+            ["ItemC", MF_NORMAL, 105]];
+   nItem=ShowMenu(lpItems, POS_CARET, POS_CARET);
+   WScript.Echo("" + nItem);
 
 
 AkelPad.IsInclude
@@ -1130,20 +1255,23 @@ ________________
   pFile
     Файл для открытия.
   nFlags
-    0x001  //OD_ADT_BINARY_ERROR     Проверить является ли файл бинарным.
-    0x002  //OD_ADT_REG_CODEPAGE     Если кодировка файла была сохранена в реестре, то она будет использована
-           //                        с флагом OD_ADT_DETECT_BOM, если нет, то следующие флаги будут использованы
-           //                        OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
-    0x004  //OD_ADT_DETECT_CODEPAGE  Определить кодировку.
-    0x008  //OD_ADT_DETECT_BOM       Определить наличие сигнатуры BOM.
-    0x010  //OD_ADT_NOMESSAGES       Не выводить сообщения при ошибке автоопределения.
-    0x100  //OD_REOPEN               Не создавать новое окно, использовать имеющееся.
-    0x200  //OD_NOSCROLL             Не восстанавливать прокрутку текста.
-           //По умолчанию 0xD        (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+    0x001  //OD_ADT_BINARYERROR     Проверить является ли файл бинарным.
+    0x002  //OD_ADT_REGCODEPAGE     Если кодировка файла была сохранена в реестре, то она будет использована
+           //                        с флагом OD_ADT_DETECTBOM, если нет, то следующие флаги будут использованы
+           //                        OD_ADT_DETECTCODEPAGE|OD_ADT_DETECTBOM.
+    0x004  //OD_ADT_DETECTCODEPAGE  Определить кодировку.
+    0x008  //OD_ADT_DETECTBOM       Определить наличие сигнатуры BOM.
+    0x010  //OD_ADT_NOMESSAGES      Не выводить сообщения при ошибке автоопределения.
+    0x020  //OD_ADT_ONLYBOM         Определить кодировку, только если присутствует сигнатура BOM, иначе будет использована кодировка по умолчанию.
+    0x100  //OD_REOPEN              Не создавать новое окно, использовать имеющееся.
+    0x200  //OD_NOSCROLL            Не восстанавливать прокрутку текста.
+    0x400  //OD_MULTIFILE           Ещё документы в очереди. Использовать MB_YESNOCANCEL вместо MB_OKCANCEL.
+    0x800  //OD_NOUPDATE            Не обновлять информацию о файле в программе.
+           //По умолчанию 0xD       (OD_ADT_BINARYERROR|OD_ADT_DETECTCODEPAGE|OD_ADT_DETECTBOM).
   nCodePage
-    Кодировка файла, игнорируется если (nFlags & OD_ADT_DETECT_CODEPAGE)
+    Кодировка файла, игнорируется если (nFlags & OD_ADT_DETECTCODEPAGE)
   bBOM
-    Сигнатура BOM, игнорируется если (nFlags & OD_ADT_DETECT_BOM)
+    Сигнатура BOM, игнорируется если (nFlags & OD_ADT_DETECTBOM)
 
 Возвращаемое значение
    0  //EOD_SUCCESS          Успешно.
@@ -1151,14 +1279,15 @@ ________________
   -2  //EOD_ADT_ALLOC        Определение кодировки, невозможно выделить память.
   -3  //EOD_ADT_READ         Определение кодировки, ошибка чтения файла.
  -11  //EOD_OPEN             Невозможно открыть файл.
- -13  //EOD_WINDOW_EXIST     Файл уже открыт.
- -14  //EOD_CODEPAGE_ERROR   Кодировка не реализована.
+ -13  //EOD_WINDOWEXIST      Файл уже открыт.
+ -14  //EOD_CODEPAGEERROR    Кодировка не реализована.
  -15  //EOD_STOP             Остановлено из AKDN_OPENDOCUMENT_START.
  -16  //EOD_STREAMIN         Ошибка в EM_STREAMIN.
- -17  //EOD_DOCUMENTS_LIMIT  Достигнут лимит документов в режиме MDI.
- -20  //EOD_MSGNO            Файл пропущен.
- -21  //EOD_MSGCANCELCREATE  Пользователь нажал отмену в сообщении "Создать новый файл?".
- -22  //EOD_MSGCANCELBINARY  Пользователь нажал отмену в сообщении "Бинарный файл. Продолжить?"
+ -17  //EOD_DOCUMENTSLIMIT   Достигнут лимит документов в режиме MDI.
+ -21  //EOD_MSGCANCELCREATE  Пользователь нажал Отмена в сообщении "Создать новый файл?".
+ -22  //EOD_MSGCANCELBINARY  Пользователь нажал Отмена в сообщении "Бинарный файл. Продолжить?"
+ -23  //EOD_MSGNOCREATE      Пользователь нажал Нет в сообщении "Создать новый файл?".
+ -24  //EOD_MSGNOBINARY      Пользователь нажал Нет в сообщении "Бинарный файл. Продолжить?"
 
 Пример:
   var bResult=AkelPad.OpenFile("C:\\MyFile.txt");
@@ -1175,18 +1304,19 @@ ________________
   pFile
     Файл для чтения.
   nFlags
-    0x01  //OD_ADT_BINARY_ERROR     Проверить является ли файл бинарным.
-    0x02  //OD_ADT_REG_CODEPAGE     Если кодировка файла была сохранена в реестре, то она будет использована
-          //                        с флагом OD_ADT_DETECT_BOM, если нет, то следующие флаги будут использованы
-          //                        OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
-    0x04  //OD_ADT_DETECT_CODEPAGE  Определить кодировку.
-    0x08  //OD_ADT_DETECT_BOM       Определить наличие сигнатуры BOM.
-    0x10  //OD_ADT_NOMESSAGES       Не выводить сообщения при ошибке автоопределения.
-          //По умолчанию 0xD        (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+    0x01  //ADT_BINARYERROR     Проверить является ли файл бинарным.
+    0x02  //ADT_REGCODEPAGE     Если кодировка файла была сохранена в реестре, то она будет использована
+          //                     с флагом ADT_DETECTBOM, если нет, то следующие флаги будут использованы
+          //                     ADT_DETECTCODEPAGE|ADT_DETECTBOM.
+    0x04  //ADT_DETECTCODEPAGE  Определить кодировку.
+    0x08  //ADT_DETECTBOM       Определить наличие сигнатуры BOM.
+    0x10  //ADT_NOMESSAGES      Не выводить сообщения при ошибке автоопределения.
+    0x20  //ADT_ONLYBOM         Определить кодировку, только если присутствует сигнатура BOM, иначе будет использована кодировка по умолчанию.
+          //По умолчанию 0xD    (ADT_BINARYERROR|ADT_DETECTCODEPAGE|ADT_DETECTBOM).
   nCodePage
-    Кодировка файла, игнорируется если (nFlags & OD_ADT_DETECT_CODEPAGE).
+    Кодировка файла, игнорируется если (nFlags & ADT_DETECTCODEPAGE).
   bBOM
-    Сигнатура BOM, игнорируется если (nFlags & OD_ADT_DETECT_BOM).
+    Сигнатура BOM, игнорируется если (nFlags & ADT_DETECTBOM).
   nBytesMax
     Прочитать указанное количество первых байт файла. Если -1, будет прочитан весь файл (по умолчанию).
 
@@ -1235,7 +1365,7 @@ ________________
 
 Сохранить документ.
 
-  SaveFile(hHandle, pFile[, nCodePage][, bBOM][, nFlags]);
+  SaveFile(hHandle, pFile[, nCodePage][, bBOM][, nFlags][, hDoc]);
 
 Аргументы
   hHandle
@@ -1250,23 +1380,25 @@ ________________
     0x1  //SD_UPDATE         Обновить информацию о файле в программе.
     0x2  //SD_SELECTION      Сохранить только выделение.
          //По умолчанию 0x1  (SD_UPDATE).
+  hDoc
+    Дескриптор документа. Если ноль (по умолчанию), то определяется автоматически.
 
 Возвращаемое значение
-   0  //ESD_SUCCESS         Успешно.
-  -1  //ESD_OPEN            Невозможно открыть файл.
-  -2  //ESD_WRITE           Невозможно записать файл.
-  -3  //ESD_READONLY        Файл имеет атрибут только-чтение.
-  -4  //ESD_CODEPAGE_ERROR  Кодировки не реализована.
-  -5  //ESD_STOP            Остановлено из AKDN_SAVEDOCUMENT_START.
-  -6  //ESD_STREAMOUT       Ошибка в EM_STREAMOUT.
+   0  //ESD_SUCCESS        Успешно.
+  -1  //ESD_OPEN           Невозможно открыть файл.
+  -2  //ESD_WRITE          Невозможно записать файл.
+  -3  //ESD_READONLY       Файл имеет атрибут только-чтение.
+  -4  //ESD_CODEPAGEERROR  Кодировки не реализована.
+  -5  //ESD_STOP           Остановлено из AKDN_SAVEDOCUMENT_START.
+  -6  //ESD_STREAMOUT      Ошибка в EM_STREAMOUT.
 
 Пример:
   var hWndEdit=AkelPad.GetEditWnd();
   var nResult=AkelPad.SaveFile(hWndEdit, "C:\\MyFile.txt");
 
 
-AkelPad.SystemFunction
-______________________
+AkelPad.SystemFunction (+ActiveX)
+_________________________________
 
 Создать объект системной функции.
 
@@ -1279,8 +1411,8 @@ ______________________
   var oSys=AkelPad.SystemFunction();
 
 
-AkelPad.SystemFunction().AddParameter
-_____________________________________
+AkelPad.SystemFunction().AddParameter (+ActiveX)
+________________________________________________
 
 Добавить параметр в функцию.
 
@@ -1297,16 +1429,16 @@ _____________________________________
   См. AkelPad.SystemFunction().Call пример со старым синтаксисом.
 
 
-AkelPad.SystemFunction().Call
-_____________________________
+AkelPad.SystemFunction().Call (+ActiveX)
+________________________________________
 
 Вызвать системную функцию.
 
-  Call(pDllFunction[, ...]);
+  Call(vDllFunction[, ...]);
 
 Аргументы
-  pDllFunction
-    Имя функции в формате "Библиотека::Функция".
+  vDllFunction
+    Имя функции в формате строки "Библиотека::Функция" или адрес функции в формате числа.
   ...
     Параметры функции, должны быть числом, указателем либо строкой.
     Строковой параметр: в Windows 95/98/Me - однобайтовая строка,
@@ -1328,8 +1460,8 @@ _____________________________
   oSys.Call("user32::ShowWindow");
 
 
-AkelPad.SystemFunction().GetLastError
-_____________________________________
+AkelPad.SystemFunction().GetLastError (+ActiveX)
+________________________________________________
 
 Определить последнюю ошибку вызванной системной функции.
 
@@ -1346,8 +1478,8 @@ _____________________________________
   nError=oSys.GetLastError();
 
 
-AkelPad.SystemFunction().RegisterCallback
-_________________________________________
+AkelPad.SystemFunction().RegisterCallback (+ActiveX)
+____________________________________________________
 
 Зарегистрировать функцию обратного вызова.
 
@@ -1415,8 +1547,8 @@ _________________________________________
   End Function
 
 
-AkelPad.SystemFunction().UnregisterCallback
-___________________________________________
+AkelPad.SystemFunction().UnregisterCallback (+ActiveX)
+______________________________________________________
 
 Удалить регистрацию функции обратного вызова.
 
@@ -1433,8 +1565,8 @@ ___________________________________________
   См. пример RegisterCallback.
 
 
-AkelPad.MemAlloc
-________________
+AkelPad.MemAlloc (+ActiveX)
+___________________________
 
 Выделить память.
 
@@ -1471,8 +1603,8 @@ ________________
   }
 
 
-AkelPad.MemCopy
-_______________
+AkelPad.MemCopy (+ActiveX)
+__________________________
 
 Копировать память.
 
@@ -1501,8 +1633,8 @@ _______________
   См. пример MemAlloc.
 
 
-AkelPad.MemRead
-_______________
+AkelPad.MemRead (+ActiveX)
+__________________________
 
 Прочитать память.
 
@@ -1538,27 +1670,49 @@ _______________
   }
 
 
-AkelPad.MemStrPtr
-_________________
+AkelPad.MemStrPtr (+ActiveX)
+____________________________
 
-Получить указатель на двухбайтовую строку в скрипте.
+Получить указатель из строки или на строку.
 
-  MemStrPtr(pString);
+  MemStrPtr(pString[, bConvert]);
 
 Аргументы
   pString
     Строка константой или объектом.
+  bConvert
+    true  получить указатель из pString, т.е конвертировать содержимое pString в число.
+    false получить указатель на pString (по умолчанию).
 
 Возвращаемое значение
-  Число. Указатель на двухбайтовую строку.
+  Число. Указатель.
 
 Пример:
   var hMainWnd=AkelPad.GetMainWnd();
   AkelPad.SendMessage(hMainWnd, 1206 /*AKD_GOTOW*/, 0x1 /*GT_LINE*/, AkelPad.MemStrPtr("10:3"));
 
 
-AkelPad.MemFree
-_______________
+AkelPad.MemPtrStr (+ActiveX)
+____________________________
+
+Получить строковое представление указателя.
+
+  MemPtrStr(lpPointer);
+
+Аргументы
+  lpPointer
+    Любой указатель.
+
+Возвращаемое значение
+  Строка. Строковое представление указателя.
+
+Пример:
+  var hMainWnd=AkelPad.GetMainWnd();
+  WScript.Echo(AkelPad.MemPtrStr(hMainWnd));
+
+
+AkelPad.MemFree (+ActiveX)
+__________________________
 
 Освободить память.
 
@@ -1575,8 +1729,8 @@ _______________
   См. пример MemAlloc.
 
 
-AkelPad.DebugJIT
-________________
+AkelPad.DebugJIT (+ActiveX)
+___________________________
 
 Точка останова. Вызвать программу отладки.
 
@@ -1586,8 +1740,8 @@ ________________
   Ноль.
 
 
-AkelPad.Debug
-_____________
+AkelPad.Debug (+ActiveX)
+________________________
 
 Отладить использование памяти.
 
@@ -1618,8 +1772,8 @@ _____________
   }
 
 
-AkelPad.VarType
-_______________
+AkelPad.VarType (+ActiveX)
+__________________________
 
 Получить тип переменной.
 
@@ -1711,6 +1865,28 @@ __________________
     WScript.Echo(pArgLine);
 
 
+AkelPad.VarDispatch (+ActiveX)
+______________________________
+
+Получить IDispatch объект по указателю.
+
+  VarDispatch(lpPointer);
+
+Аргументы
+  lpPointer
+    Указатель на IDispatch объект.
+
+Возвращаемое значение
+  Объект. IDispatch объект.
+
+Пример:
+  var oIE=new ActiveXObject("InternetExplorer.Application");
+  //IDispatch -> указатель
+  var nIE=_PtrAdd(oIE, 0);
+  //Указатель -> IDispatch
+  var oReturnIE=AkelPad.VarDispatch(nIE);
+
+
 AkelPad.GetArgValue
 ___________________
 
@@ -1764,12 +1940,13 @@ ______________________________
 
 Аргументы
   pScriptBaseName
-    Имя скрипта без расширения.
+    Имя скрипта без расширения. Если "", использовать текущее имя скрипта.
   nFlags
-    0x1  //POB_READ      Начать операции чтения.
-    0x2  //POB_SAVE      Начать операции записи.
-    0x4  //POB_CLEAR     Начать операции записи с очисткой (POB_SAVE|POB_CLEAR).
-    0x20 //POB_NOSCRIPTS Настройки плагина, pScriptBaseName - имя плагина без расширения.
+    0x01 //POB_READ     Начать операции чтения.
+    0x02 //POB_SAVE     Начать операции записи.
+    0x04 //POB_CLEAR    Начать операции записи с очисткой (POB_SAVE|POB_CLEAR).
+    0x20 //POB_PLUGS    Настройки плагина, pScriptBaseName - имя плагина без расширения.
+    0x40 //POB_PROGRAM  Настройки программы, pScriptBaseName - игнорируется.
 
 Возвращаемое значение
   Число. Дескриптор настроек.
@@ -1783,29 +1960,60 @@ _____________________________
 
 Прочитать настройку.
 
-  Read(pOptionName, nType[, vDefault]);
+  Read(vOptionName, nType[, vDefault]);
 
 Аргументы
-  pOptionName
-    Имя настройки.
+  vOptionName
+    Имя настройки как строка или индекс как число.
   nType
-    1   //PO_DWORD   Прочитать четырехбайтовое число (DWORD).
-    2   //PO_BINARY  Прочитать бинарные данные.
-    3   //PO_STRING  Прочитать строку.
+    1   //PO_DWORD         Прочитать четырехбайтовое число (DWORD).
+    2   //PO_BINARY        Прочитать бинарные данные. Возвращается указатель на бинарные данные, который необходимо освободить с помощью AkelPad.MemFree.
+    3   //PO_STRING        Прочитать строку.
+    11  //PO_ENUM          Получить имя настройки по индексу. Индекс передается в vOptionName.
+    20  //PO_BINARYSTRING  Прочитать текст (обычно многострочный), который был сохранен как бинарные данные.
+    21  //PO_BINARYSIZE    Получить размер бинарных данных в байтах.
   vDefault
     Данные по умолчанию.
 
 Возвращаемое значение
   Строка, либо число.
 
-Пример:
+Пример (прочитать настройки скрипта):
   var oSet=AkelPad.ScriptSettings();
 
-  if (oSet.Begin(WScript.ScriptBaseName, 0x1 /*POB_READ*/))
+  if (oSet.Begin("", 0x1 /*POB_READ*/))
   {
     pString=oSet.Read("String", 3 /*PO_STRING*/);
     bMultiline=oSet.Read("Multiline", 1 /*PO_DWORD*/);
+    oSet.End();
+  }
 
+Пример (прочитать настройки плагина):
+  var oSet=AkelPad.ScriptSettings();
+  var pText="";
+
+  if (oSet.Begin("Toolbar", 0x21 /*POB_READ|POB_PLUGS*/))
+  {
+    pText=oSet.Read("ToolBarText", 10 /*PO_BINARYSTRING*/);
+    oSet.End();
+  }
+  WScript.Echo(pText.substr(0,500));
+
+Пример (перебрать имена настроек плагина):
+  var hMainWnd=AkelPad.GetMainWnd();
+  var oSet=AkelPad.ScriptSettings();
+  var pOption;
+  var nIndex;
+
+  if (oSet.Begin("Scripts", 0x21 /*POB_READ|POB_PLUGS*/))
+  {
+    for (nIndex=0; ; ++nIndex)
+    {
+      if ((pOption=oSet.Read(nIndex, 11 /*PO_ENUM*/)) == undefined)
+        break;
+      if (AkelPad.MessageBox(hMainWnd, pOption + "\n\nFind next?", WScript.ScriptName, 4 /*MB_YESNO*/) == 7 /*IDNO*/)
+        break;
+    }
     oSet.End();
   }
 
@@ -1827,7 +2035,7 @@ ______________________________
   vData
     Данные для записи.
   nDataSize
-    Размер данных для записи в байтах. Может не указываться при PO_DWORD или PO_STRING (по умолчанию -1).
+    Размер данных для записи в байтах (по умолчанию -1).
 
 Возвращаемое значение
   Число. Размер записанных данных в байтах.
@@ -1835,11 +2043,10 @@ ______________________________
 Пример:
   var oSet=AkelPad.ScriptSettings();
 
-  if (oSet.Begin(WScript.ScriptBaseName, 0x2 /*POB_SAVE*/))
+  if (oSet.Begin("", 0x2 /*POB_SAVE*/))
   {
     oSet.Write("String", 3 /*PO_STRING*/, "Str1");
     oSet.Write("Sensitive", 1 /*PO_DWORD*/, true);
-
     oSet.End();
   }
 
@@ -1862,11 +2069,10 @@ _______________________________
 Пример:
   var oSet=AkelPad.ScriptSettings();
 
-  if (oSet.Begin(WScript.ScriptBaseName, 0x2 /*POB_SAVE*/))
+  if (oSet.Begin("", 0x2 /*POB_SAVE*/))
   {
     oSet.Delete("String");
     oSet.Delete("Sensitive");
-
     oSet.End();
   }
 
@@ -1886,16 +2092,18 @@ ____________________________
   См. примеры Read, Write и Delete.
 
 
-AkelPad.WindowRegisterClass
-___________________________
+AkelPad.WindowRegisterClass (+ActiveX)
+______________________________________
 
 Зарегистрировать класс окна.
 
-  WindowRegisterClass(pClassName);
+  WindowRegisterClass(pClassName[, ...]);
 
 Аргументы
   pClassName
     Имя класса для регистрации.
+  ...
+    Фильтр сообщений. Будут приходить только указанные сообщения. Если не указан, будут приходить все сообщения.
 
 Возвращаемое значение
   Число. Атом класса.
@@ -1991,13 +2199,13 @@ ___________________________
   Const VK_ESCAPE=27
   Const IDCANCEL=2
 
-  if hMainWnd then
+  if vbPtrMath(hMainWnd, "!=", 0) then
     if AkelPad.WindowRegisterClass("NewClass") then
 
       'Create dialog WS_VISIBLE|WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX
       hWndDialog=oSys.Call("user32::CreateWindowEx" & vbTCHAR, 0, "NewClass", 0, &H90CA0000, 0, 0, 351, 179, hMainWnd, 0, hInstanceDLL, lpCallbackPtr)
 
-      if hWndDialog then
+      if vbPtrMath(hWndDialog, "!=", 0) then
         'Disable main window, to make dialog modal
         oSys.Call "user32::EnableWindow", hMainWnd, false
 
@@ -2034,8 +2242,8 @@ ___________________________
   End Function
 
 
-AkelPad.WindowUnregisterClass
-_____________________________
+AkelPad.WindowUnregisterClass (+ActiveX)
+________________________________________
 
 Отменить регистрацию класса окна.
 
@@ -2053,8 +2261,8 @@ _____________________________
   См. пример WindowRegisterClass.
 
 
-AkelPad.WindowRegisterDialog
-____________________________
+AkelPad.WindowRegisterDialog (+ActiveX)
+_______________________________________
 
 Зарегистрировать диалог для обработки в цикле сообщений. Используется в случае, если диалог создан без WindowRegisterClass.
 
@@ -2142,14 +2350,9 @@ ____________________________
     return (dwNumber & 0xffff);
   }
 
-  function HIWORD(dwNumber)
-  {
-    return (dwNumber >> 16);
-  }
 
-
-AkelPad.WindowUnregisterDialog
-______________________________
+AkelPad.WindowUnregisterDialog (+ActiveX)
+_________________________________________
 
 Отменить регистрацию диалога.
 
@@ -2167,8 +2370,157 @@ ______________________________
   См. пример WindowRegisterDialog.
 
 
-AkelPad.WindowGetMessage
-________________________
+AkelPad.CreateDialog (+ActiveX)
+_______________________________
+
+Создать диалог.
+
+  CreateDialog(nExStyle, pClassName, pTitle, nStyle, x, y, nWidth, nHeight, hWndParent, lParam[, nFlags][, hMenu][, hInstance][, pFaceName][, nFontStyle][, nPointSize], "|",
+               nExStyle1, pClassName1, pTitle1, nStyle1, x1, y1, nWidth1, nHeight1, nId1[, lParam1], "|",
+               nExStyle2, pClassName2, pTitle2, nStyle2, x2, y2, nWidth2, nHeight2, nId2[, lParam2], "|",
+               [...]);
+
+Аргументы
+  nExStyle
+    Расширенный стиль диалога. См. описание CreateWindowEx в MSDN.
+  pClassName
+    Имя класса зарегистрированное с помощью AkelPad.WindowRegisterClass.
+  pTitle
+    Текст заголовка диалога.
+  nStyle
+    Стиль диалога. См. описание CreateWindowEx в MSDN.
+  x
+    Горизонтальная позиция диалога в экранных координатах.
+  y
+    Вертикальная позиция диалога в экранных координатах.
+  nWidth
+    Ширина диалога.
+  nHeight
+    Высота диалога.
+  hWndParent
+    Родительское окно создаваемого диалога.
+  lParam
+    Указатель на процедуру диалога.
+  nFlags
+    0x1  //CDF_MODAL   Создать модальный диалог. Если не указано, создаётся немодальный диалог, который требует наличия AkelPad.WindowGetMessage.
+    0x2  //CDF_PIXELS  Координаты указываются в пикселях для 96 DPI. Если не указано, координаты
+         //            указываются в единицах диалогового окна, которые зависят от размеров шрифта диалога.
+         //По умолчанию 0x0.
+  hMenu
+    Определяет порядковое значение ресурса меню в исполняемом файле или строку, которая определяет название ресурса меню в исполняемом файле. Если ноль, не используется (по умолчанию).
+  hInstance
+    Дескриптор модуля, который будет связан с окном. Если ноль, будет использован дескриптор AkelPad.GetInstanceDll (по умолчанию).
+  pFaceName
+    Имя шрифта, например, "Courier". Если "", используется системный шрифт для диалогов (по умолчанию).
+    Обрабатывается только, когда nStyle имеет флаг 0x40 /*DS_SETFONT*/.
+  nFontStyle
+    0 игнорировать (по умолчанию).
+    1 обычный шрифт.
+    2 жирный шрифт.
+    3 курсивный шрифт.
+    4 жирный курсивный шрифт.
+    Обрабатывается только, когда nStyle имеет флаг 0x40 /*DS_SETFONT*/.
+  nPointSize
+    Размер шрифта. Не изменяется, если 0 (по умолчанию).
+    Обрабатывается только, когда nStyle имеет флаг 0x40 /*DS_SETFONT*/.
+  "|"
+    Свидетельствует об окончании передачи параметров диалога и начале передачи параметров элементов управления.
+  nExStyle1
+    Расширенный стиль окна. См. описание CreateWindowEx в MSDN.
+  pClassName1
+    Имя класса, например, "BUTTON". См. описание CreateWindowEx в MSDN.
+  pTitle1
+    Текст элемента управления.
+  nStyle1
+    Стиль окна. См. описание CreateWindowEx в MSDN.
+  x1
+    Горизонтальная позиция окна в клиентских координатах (относительно родительского окна).
+  y1
+    Вертикальная позиция окна в клиентских координатах (относительно родительского окна).
+  nWidth1
+    Ширина окна.
+  nHeight1
+    Высота окна.
+  nId1
+    Идентификатор элемента управления.
+  lParam1
+    Данные для создания окна. Первый WORD указывает размер данных, в байтах, для создания (включая WORD размера).
+    Элемент управления получит эти данные в параметре lParam сообщения WM_CREATE. Если ноль, не используется (по умолчанию).
+  "|"
+    Свидетельствует об окончании передачи параметров элемента управления.
+  ...
+    Параметры следующего элемента управления.
+
+Возвращаемое значение
+  Если nFlags не содержит флаг CDF_MODAL, то возвращается дескриптор диалога.
+  Если nFlags содержит флаг CDF_MODAL, то возвращается значение переданное в "user32::EndDialog".
+
+Пример:
+  var hMainWnd=AkelPad.GetMainWnd();
+  var oSys=AkelPad.SystemFunction();
+  var hWndDialog=0;
+  var wCommand;
+  var dwFlags=0x2 /*CDF_PIXELS*/;
+
+  //Control IDs
+  var IDC_BUTTON1=1001;
+  var IDC_BUTTON2=1002;
+  var IDC_EDIT=1003;
+
+  if (AkelPad.WindowRegisterClass("My Class"))
+  {
+    AkelPad.CreateDialog(0, "My Class", "My Title",  0x90ca0040 /*DS_SETFONT|WS_VISIBLE|WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX*/, 10, 10, 300, 200, hMainWnd, DialogCallback, dwFlags, "|",
+                         0, "BUTTON", "Button text 1", 0x50010001 /*WS_VISIBLE|WS_CHILD|WS_TABSTOP|BS_DEFPUSHBUTTON*/, 10, 10, 200, 20, IDC_BUTTON1, "|",
+                         0, "BUTTON", "Button text 2", 0x50010000 /*WS_VISIBLE|WS_CHILD|WS_TABSTOP*/, 10, 50, 200, 20, IDC_BUTTON2, "|",
+                         0, "EDIT", "Edit text 3", 0x50010000 /*WS_VISIBLE|WS_CHILD|WS_TABSTOP*/, 10, 90, 200, 20, IDC_EDIT);
+
+    if (hWndDialog && !(dwFlags & 0x1 /*CDF_MODAL*/))
+    {
+      AkelPad.ScriptNoMutex();
+      AkelPad.WindowGetMessage(0x4 /*WGM_KEYDOWNUP*/);
+    }
+    AkelPad.WindowUnregisterClass("My Class");
+  }
+
+  function DialogCallback(hWnd, uMsg, wParam, lParam)
+  {
+    if (uMsg == 0x110 /*WM_INITDIALOG*/)
+    {
+      hWndDialog=hWnd;
+    }
+    else if (uMsg == 273 /*WM_COMMAND*/)
+    {
+      wCommand=LOWORD(wParam);
+
+      if (wCommand == IDC_BUTTON1 ||
+          wCommand == IDC_BUTTON2)
+      {
+        AkelPad.MessageBox(hWnd, "Button=" + wCommand, WScript.ScriptName, 0 /*MB_OK*/);
+      }
+      else if (wCommand == 2 /*IDCANCEL*/)
+      {
+        //Destroy dialog
+        if (!(dwFlags & 0x1 /*CDF_MODAL*/))
+        {
+          //Exit message loop
+          oSys.Call("user32::PostQuitMessage", 0);
+
+          oSys.Call("user32::DestroyWindow", hWnd);
+        }
+        else oSys.Call("user32::EndDialog", hWnd, 0);
+      }
+    }
+    return 0;
+  }
+
+  function LOWORD(dwNumber)
+  {
+    return (dwNumber & 0xffff);
+  }
+
+
+AkelPad.WindowGetMessage (+ActiveX)
+___________________________________
 
 Обработать сообщения потока (цикл сообщений).
 
@@ -2178,7 +2530,8 @@ ________________________
   nFlags
     0x1  //WGM_ENABLE    Устанавливается в любом случае.
     0x2  //WGM_NOKEYSEND Не посылать сообщения клавиш диалогу от дочерних окон
-         //              (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+         //              (WM_KEYDOWN, WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+    0x4  //WGM_KEYDOWNUP Посылать только сообщения WM_KEYDOWN, WM_KEYUP диалогу от дочерних окон.
          //По умолчанию 0x0.
 
 Возвращаемое значение
@@ -2188,8 +2541,8 @@ ________________________
   См. пример WindowRegisterClass.
 
 
-AkelPad.WindowSubClass
-______________________
+AkelPad.WindowSubClass (+ActiveX)
+_________________________________
 
 Установить перехватчик сообщений окна.
 
@@ -2250,8 +2603,8 @@ ______________________
   }
 
 
-AkelPad.WindowNextProc
-______________________
+AkelPad.WindowNextProc (+ActiveX)
+_________________________________
 
 Послать сообщение следующей процедуре в цепи.
 
@@ -2276,8 +2629,8 @@ ______________________
   См. пример WindowSubClass.
 
 
-AkelPad.WindowNoNextProc
-________________________
+AkelPad.WindowNoNextProc (+ActiveX)
+___________________________________
 
 Предотвращает отсыл текущего сообщения следующей процедуре в цепи.
 
@@ -2294,8 +2647,8 @@ ________________________
   См. пример WindowSubClass.
 
 
-AkelPad.WindowUnsubClass
-________________________
+AkelPad.WindowUnsubClass (+ActiveX)
+___________________________________
 
 Удалить перехватчик сообщений окна.
 
@@ -2315,12 +2668,12 @@ ________________________
   См. пример WindowSubClass.
 
 
-AkelPad.ThreadHook
-__________________
+AkelPad.ThreadHook (+ActiveX)
+_____________________________
 
 Установить хук для потока.
 
-  ThreadHook(nId, lpFunction, nThreadId);
+  ThreadHook(nId, lpFunction, nThreadId[, ...]);
 
 Аргументы
   nId
@@ -2329,6 +2682,9 @@ __________________
     Функция с 3 параметрами, куда будут приходить вызовы.
   nThreadId
     Идентификатор потока. Установка глобального хука не поддерживается.
+  ...
+    Фильтр сообщений. Будут приходить только указанные сообщения. Если не указан, будут приходить все сообщения.
+    nId должен быть одним из следующих значений: WH_CALLWNDPROC, WH_CALLWNDPROCRET, WH_GETMESSAGE, WH_MSGFILTER, WH_SYSMSGFILTER.
 
 Возвращаемое значение
   Число. Дескриптор хука.
@@ -2342,7 +2698,7 @@ __________________
   var dwMainThreadID=oSys.Call("user32::GetWindowThreadProcessId", hMainWnd, 0);
   var hHook;
 
-  if (hHook=AkelPad.ThreadHook(3 /*WH_GETMESSAGE*/, HookCallback, dwMainThreadID))
+  if (hHook=AkelPad.ThreadHook(3 /*WH_GETMESSAGE*/, HookCallback, dwMainThreadID, 0x100 /*WM_KEYDOWN*/))
   {
     //Message loop
     AkelPad.WindowGetMessage();
@@ -2352,11 +2708,11 @@ __________________
 
   function HookCallback(nCode, wParam, lParam)
   {
-    var uMsg=AkelPad.MemRead(lParam + (_X64?8:4) /*offsetof(MSG, message)*/, 3 /*DT_DWORD*/);
+    var uMsg=AkelPad.MemRead(_PtrAdd(lParam, _X64?8:4) /*offsetof(MSG, message)*/, 3 /*DT_DWORD*/);
 
     if (uMsg == 0x100 /*WM_KEYDOWN*/)
     {
-      wParam=AkelPad.MemRead(lParam + (_X64?16:8) /*offsetof(MSG, wParam)*/, 2 /*DT_QWORD*/);
+      wParam=AkelPad.MemRead(_PtrAdd(lParam, _X64?16:8) /*offsetof(MSG, wParam)*/, 2 /*DT_QWORD*/);
 
       AkelPad.MessageBox(0, "Key \"" + String.fromCharCode(wParam) + "\" with code \"" + wParam + "\" is pressed.", "", 0);
 
@@ -2366,8 +2722,8 @@ __________________
   }
 
 
-AkelPad.ThreadUnhook
-____________________
+AkelPad.ThreadUnhook (+ActiveX)
+_______________________________
 
 Удалить хук из потока.
 
@@ -2393,10 +2749,12 @@ _____________________
 
 Аргументы
   nUnlockType
-    0x1  //ULT_UNLOCKSCRIPTSQUEUE   Разрешить одновременную работу других скриптов во время работы данного скрипта (по умолчанию).
-    0x2  //ULT_UNLOCKPROGRAMTHREAD  Освободить поток программы от ожидания завершения скрипта. Только для внешнего вызова скрипта с кодом 2.
-    0x4  //ULT_LOCKMULTICOPY        Запретить запуск нескольких копий скрипта. По умолчанию запуск нескольких копий разрешен.
-    0x8  //ULT_UNLOCKMULTICOPY      Отменить запрет на запуск нескольких копий скрипта.
+    0x01  //ULT_UNLOCKSCRIPTSQUEUE   Разрешить одновременную работу других скриптов во время работы данного скрипта (по умолчанию).
+    0x02  //ULT_UNLOCKPROGRAMTHREAD  Освободить поток программы от ожидания завершения скрипта. Только для внешнего вызова скрипта с кодом 2.
+    0x04  //ULT_LOCKMULTICOPY        Запретить запуск нескольких копий скрипта. По умолчанию запуск нескольких копий разрешен.
+    0x08  //ULT_UNLOCKMULTICOPY      Отменить запрет на запуск нескольких копий скрипта.
+    0x10  //ULT_LOCKSENDMESSAGE      Вызовы AkelPad.SendMessage, AkelPad.Command блокируют поток скрипта (по умолчанию).
+    0x20  //ULT_UNLOCKSENDMESSAGE    Вызовы AkelPad.SendMessage, AkelPad.Command не блокируют поток скрипта (медленнее).
 
 Возвращаемое значение
   Число. Измененные объекты синхронизации, см. nUnlockType.
@@ -2405,8 +2763,27 @@ _____________________
   AkelPad.ScriptNoMutex();
 
 
-AkelPad.ScriptHandle
-____________________
+AkelPad.ScriptExitCode
+______________________
+
+Установить код выхода из скрипта. Только для внешнего вызова скрипта с кодом 2 или 4.
+
+  ScriptExitCode([nExitCode]);
+
+Аргументы
+  nExitCode
+    Код выхода из скрипта.
+
+Возвращаемое значение
+  true   успешно.
+  false  вызывающий поток вышел из процедуры внешнего вызова.
+
+Пример:
+  AkelPad.ScriptExitCode(1);
+
+
+AkelPad.ScriptHandle (+ActiveX)
+_______________________________
 
 Позволяет взаимодействовать с другими работающими скриптами.
 
@@ -2425,6 +2802,9 @@ ____________________
     3   //SH_FINDSCRIPT  Найти дескриптор скрипта по его имени.
         //  vData: имя скрипта.
         //  Возвращаемое значение: дескриптор первого найденного работающего скрипта стеке.
+    10  //SH_GETEXECTYPE  Получить код внешнего вызова скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: код внешнего вызова скрипта.
     11  //SH_GETTHREADHANDLE  Получить дескриптор потока скрипта.
         //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: дескриптор потока скрипта.
@@ -2446,6 +2826,12 @@ ____________________
     17  //SH_GETSERVICEWINDOW  Получить дескриптор служебного окна потока скрипта. Автоматически создается при использовании методов WindowSubClass, ThreadHook и RegisterCallback.
         //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: дескриптор служебного окна потока скрипта.
+    18  //SH_GETLOCKSENDMESSAGE  Блокировка потока скрипта вызовами AkelPad.SendMessage, AkelPad.Command.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: true - присутствует, false - отсутствует.
+    20  //SH_GETBASENAME  Получить имя скрипта без расширения.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: имя скрипта без расширения.
     21  //SH_GETNAME  Получить имя скрипта.
         //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: имя скрипта.
@@ -2506,8 +2892,101 @@ ____________________
   }
 
 
-_TCHAR
-______
+AkelPad.ConnectObject (+ActiveX)
+________________________________
+
+Подсоединиться к событиям объекта.
+
+  ConnectObject(oEventSource, pPrefix[, vIID]);
+
+Аргументы
+  oEventSource
+    Объект, к которому необходимо подсоединиться.
+  pPrefix
+    Префикс для функций, куда будут приходить события.
+  vIID
+    IID интерфейса событий.
+    - vIID может быть строкой в формате "{00000000-0000-0000-0000-000000000000}".
+    - vIID может быть указателем. Пример:
+        var lpDIID_DWebBrowserEvents2=AkelPad.MemAlloc(16 /*sizeof(IID)*/);
+        oSys.Call("ole32::IIDFromString", "{34A715A0-6587-11D0-924A-0020AFC7AC4D}", lpDIID_DWebBrowserEvents2);
+    - Если vIID не указан, подсоединиться ко всем возможным интерфейсам объекта.
+
+Возвращаемое значение
+  Число. Количество интерфейсов, к которым успешно удалось подключиться.
+
+Пример:
+  var oIE=new ActiveXObject("InternetExplorer.Application");
+  var oSys=AkelPad.SystemFunction();
+
+  if (AkelPad.ConnectObject(oIE, "IE_", "{34A715A0-6587-11D0-924A-0020AFC7AC4D}" /*DIID_DWebBrowserEvents2*/))
+  {
+    oIE.Visible=true;
+    oIE.Navigate("http://akelpad.sourceforge.net/");
+    AkelPad.WindowGetMessage();
+    AkelPad.DisconnectObject(oIE);
+  }
+  oIE.Quit();
+
+  function IE_DocumentComplete(pDisp, URL)
+  {
+    AkelPad.MessageBox(oIE.HWND, URL, WScript.ScriptName, 0 /*MB_OK*/);
+    oSys.Call("user32::PostQuitMessage", 0);
+  }
+
+
+AkelPad.DisconnectObject (+ActiveX)
+___________________________________
+
+Отсоединиться от событий объекта.
+
+  DisconnectObject(oEventSource);
+
+Аргументы
+  oEventSource
+    Объект, с которым произведено соединение.
+
+Возвращаемое значение
+  Ноль.
+
+Пример:
+  См. пример ConnectObject.
+
+
+AkelPad.ActiveXThis (+ActiveX)
+______________________________
+
+Передать корневой IDispatch плагину. Требуется некоторым методам для работы в режиме ActiveX (ConnectObject, ScriptHandle).
+
+  ActiveXThis(this);
+
+Аргументы
+  this
+    Корневой IDispatch скрипта.
+
+Возвращаемое значение
+  Ноль.
+
+Пример:
+  См. раздел ActiveX.
+
+
+WScript.ScriptBaseName
+______________________
+
+Получить базовое имя скрипта.
+
+  WScript.ScriptBaseName
+
+Возвращаемое значение
+  Строка. Базовое имя скрипта.
+
+Пример:
+  WScript.Echo(WScript.ScriptBaseName);
+
+
+_TCHAR (+ActiveX)
+_________________
 
 Константа, определяющая окончание системных функций. Используется для метода AkelPad.SystemFunction().Call.
 
@@ -2532,14 +3011,14 @@ ______
   }
 
 
-vbTCHAR
-_______
+vbTCHAR (+ActiveX)
+__________________
 
 Тоже, что и _TCHAR. Используется для VBScript.
 
 
-_TSTR
-_____
+_TSTR (+ActiveX)
+________________
 
 Константа, определяющая тип строки. Используется для методов MemCopy и MemRead.
 
@@ -2553,14 +3032,14 @@ _____
   См. пример _TCHAR.
 
 
-vbTSTR
-______
+vbTSTR (+ActiveX)
+_________________
 
 Тоже, что и _TSTR. Используется для VBScript.
 
 
-_TSIZE
-______
+_TSIZE (+ActiveX)
+_________________
 
 Константа, определяющая размер символа в байтах. Используется для метода MemAlloc.
 
@@ -2574,14 +3053,14 @@ ______
   См. пример _TCHAR.
 
 
-vbTSIZE
-_______
+vbTSIZE (+ActiveX)
+__________________
 
 Тоже, что и _TSIZE. Используется для VBScript.
 
 
-_X64
-____
+_X64 (+ActiveX)
+_______________
 
 Константа, определяющая битность программы - x86 или x64.
 
@@ -2598,10 +3077,65 @@ ____
     WScript.Echo("x86 версия");
 
 
-vbX64
-_____
+vbX64 (+ActiveX)
+________________
 
 Тоже, что и _X64. Используется для VBScript.
+
+
+_PtrAdd (+ActiveX)
+__________________
+
+Добавить значение к указателю.
+
+  _PtrAdd(lpPointer, nValue)
+
+Аргументы
+  lpPointer
+    Любой указатель.
+  nValue
+    Значение для добавления. Может быть отрицательным.
+
+Возвращаемое значение
+  Число. Указатель.
+
+Пример:
+  См. пример ThreadHook.
+
+
+vbPtrAdd (+ActiveX)
+___________________
+
+Тоже, что и _PtrAdd. Используется для VBScript.
+
+
+_PtrMath (+ActiveX)
+___________________
+
+Выполнить математическое действие над указателями.
+
+  _PtrMath(lpPointer1, pSign, lpPointer2)
+
+Аргументы
+  lpPointer1
+    Первый указатель.
+  pSign
+    Одно из следующих:
+      "+", "-", "*", "/", "%", "&", "|", "^", ">", "<", "^", "==", "!=", ">=", "<=", "<<", ">>"
+  lpPointer2
+    Второй указатель.
+
+Возвращаемое значение
+  Число. Указатель.
+
+Пример:
+  См. пример WindowRegisterClass (VBScript).
+
+
+vbPtrMath (+ActiveX)
+____________________
+
+Тоже, что и _PtrMath. Используется для VBScript.
 
 
 *** ActiveX ***
@@ -2611,12 +3145,16 @@ Scripts.dll может быть использован в сторонних приложениях после регистрации биб
 - Регистрация версии x64: "%SystemRoot%\System32\regsvr32.exe" Scripts.dll
 
 Пример использования:
-  var AkelPad=new ActiveXObject("AkelPad.Document");
-  var _TCHAR=AkelPad.Constants._TCHAR;
-  var _TSTR=AkelPad.Constants._TSTR;
-  var _TSIZE=AkelPad.Constants._TSIZE;
-  var _X64=AkelPad.Constants._X64;
-
+  if (typeof AkelPad == "undefined")
+  {
+    AkelPad=new ActiveXObject("AkelPad.Document");
+    AkelPad.ActiveXThis(this);
+    _TCHAR=AkelPad.Constants._TCHAR;
+    _TSTR=AkelPad.Constants._TSTR;
+    _TSIZE=AkelPad.Constants._TSIZE;
+    _X64=AkelPad.Constants._X64;
+    _PtrAdd=function(n1, n2) {return AkelPad.Global._PtrAdd(n1, n2);};
+  }
   var oSys=AkelPad.SystemFunction();
   var lpBuffer;
   var pWinDir="";

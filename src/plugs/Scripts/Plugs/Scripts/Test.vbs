@@ -1,4 +1,9 @@
-'''' VBScript test file
+' http://akelpad.sourceforge.net/en/plugins.php#Scripts
+' Version: 1.0
+' Author: Shengalts Aleksander aka Instructor
+'
+' Description(1033): VBScript test file.
+' Description(1049): Тестовый файл VBScript.
 
 'Defines
 Const WM_COMMAND=273

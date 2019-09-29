@@ -1,13 +1,17 @@
-//// Rename current editing file
-//// Переименовать текущий файл.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.1
+// Author: Shengalts Aleksander aka Instructor
+//
+// Description(1033): Rename current editing file.
+// Description(1049): Переименовать текущий файл.
 
 //Variables
 var hMainWnd=AkelPad.GetMainWnd();
 var hWndEdit=AkelPad.GetEditWnd();
 var oSys=AkelPad.SystemFunction();
 var pFileFullName=AkelPad.GetEditFile(0);
-var pFileName=GetFileName(pFileFullName);
-var pFileDir=GetFileDir(pFileFullName);
+var pFileName=AkelPad.GetFilePath(pFileFullName, 2 /*CPF_FILENAME*/);
+var pFileDir=AkelPad.GetFilePath(pFileFullName, 1 /*CPF_DIR*/);
 var pNewFileFullName="";
 var lpPoint64;
 var lpSel;
@@ -66,8 +70,8 @@ if (hWndEdit)
           AkelPad.OpenFile(pNewFileFullName, 0, nCodePage, nBOM);
 
           //Restore document position
-          dwFlags=AkelPad.MemRead(lpSel + (_X64?48:24) /*AESELECTION.dwFlags*/, 3 /*DT_DWORD*/);
-          AkelPad.MemCopy(lpSel + (_X64?48:24) /*AESELECTION.dwFlags*/, dwFlags | 0x808 /*AESELT_LOCKSCROLL|AESELT_INDEXUPDATE*/, 3 /*DT_DWORD*/);
+          dwFlags=AkelPad.MemRead(_PtrAdd(lpSel, _X64?48:24) /*offsetof(AESELECTION, dwFlags)*/, 3 /*DT_DWORD*/);
+          AkelPad.MemCopy(_PtrAdd(lpSel, _X64?48:24) /*offsetof(AESELECTION, dwFlags)*/, dwFlags | 0x808 /*AESELT_LOCKSCROLL|AESELT_INDEXUPDATE*/, 3 /*DT_DWORD*/);
           AkelPad.SendMessage(hWndEdit, 3126 /*AEM_SETSEL*/, lpCaret, lpSel);
           AkelPad.SendMessage(hWndEdit, 3180 /*AEM_SETSCROLLPOS*/, 0, lpPoint64);
         }
@@ -86,24 +90,6 @@ function IsFileExist(pFile)
   if (oSys.Call("kernel32::GetFileAttributes" + _TCHAR, pFile) == -1)
     return false;
   return true;
-}
-
-function GetFileName(pFile)
-{
-  var nOffset=pFile.lastIndexOf("\\");
-
-  if (nOffset != -1)
-    pFile=pFile.substr(nOffset + 1);
-  return pFile;
-}
-
-function GetFileDir(pFile)
-{
-  var nOffset=pFile.lastIndexOf("\\");
-
-  if (nOffset != -1)
-    return pFile.substr(0, nOffset);
-  return "";
 }
 
 function GetLangString(nStringID)

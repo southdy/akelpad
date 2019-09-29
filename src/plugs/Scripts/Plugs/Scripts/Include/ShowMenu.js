@@ -1,67 +1,41 @@
-//// Show custom popup menu. Script implemented as the library for using in other scripts.
-//// Отображение пользовательского меню. Скрипт реализован как библиотека для использования другими скриптами.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.1
+// Author: Shengalts Aleksander aka Instructor
 //
 //
-//// Menu example at caret position (CaretMenu.js):
-//// Пример меню на позиции каретки (CaretMenu.js):
+// Description(1033): Show custom popup menu. Script implemented as the library for using in other scripts.
+// Description(1049): Отображение пользовательского меню. Скрипт реализован как библиотека для использования другими скриптами.
 //
-//  //Include
-//  if (!AkelPad.Include("ShowMenu.js")) WScript.Quit();
+// Menu example at caret position (CaretMenu.js):
+// Пример меню на позиции каретки (CaretMenu.js):
 //
-//  //Variables
-//  var lpItems;
-//  var nItem;
+//   //Include
+//   if (!AkelPad.Include("ShowMenu.js")) WScript.Quit();
 //
-//  lpItems=[["ItemA", MF_NORMAL, 101],
-//           ["ItemB", MF_SUBMENU],
-//             ["ItemB-1", MF_NORMAL, 102],
-//             ["ItemB-2", MF_NORMAL, 103],
-//             ["ItemB-3", MF_NORMAL|MF_LAST, 104],
-//           ["ItemC", MF_NORMAL, 105],
-//           ["", MF_SEPARATOR],
-//           ["ItemD", MF_NORMAL|MF_GRAYED, 106],
-//           ["ItemF", MF_SUBMENU],
-//             ["ItemF-1", MF_NORMAL|MF_CHECKED, 107],
-//             ["ItemF-2", MF_NORMAL, 108],
-//             ["ItemF-3", MF_SUBMENU|MF_LAST],
-//               ["ItemF-3a", MF_NORMAL, 109],
-//               ["ItemF-3b", MF_NORMAL|MF_LAST, 110]];
+//   //Variables
+//   var lpItems;
+//   var nItem;
 //
-//  nItem=ShowMenu(lpItems, POS_CARET, POS_CARET);
-//  if (nItem == -1)
-//    WScript.Echo("Nothing selected");
-//  else
-//    WScript.Echo("Item index: " + nItem + "\nItem name: " + lpItems[nItem][0] + "\nItem ID: " + lpItems[nItem][2]);
+//   lpItems=[["ItemA", MF_NORMAL, 101],
+//            ["ItemB", MF_SUBMENU],
+//              ["ItemB-1", MF_NORMAL, 102],
+//              ["ItemB-2", MF_NORMAL, 103],
+//              ["ItemB-3", MF_NORMAL|MF_LAST, 104],
+//            ["ItemC", MF_NORMAL, 105],
+//            ["", MF_SEPARATOR],
+//            ["ItemD", MF_NORMAL|MF_GRAYED, 106],
+//            ["ItemF", MF_SUBMENU],
+//              ["ItemF-1", MF_NORMAL|MF_CHECKED, 107],
+//              ["ItemF-2", MF_NORMAL, 108],
+//              ["ItemF-3", MF_SUBMENU|MF_LAST],
+//                ["ItemF-3a", MF_NORMAL, 109],
+//                ["ItemF-3b", MF_NORMAL|MF_LAST, 110]];
 //
-//
-//// Toolbar button menu example (ToolbarItemMenu.js):
-//// Пример меню для кнопки панели инструментов (ToolbarItemMenu.js):
-//
-//  //Arguments
-//  if (WScript.Arguments.length < 2) WScript.Quit();
-//  var hToolbarHandle=parseInt(WScript.Arguments(0));
-//  var nToolbarItemID=parseInt(WScript.Arguments(1));
-//
-//  //Include
-//  if (!AkelPad.Include("ShowMenu.js")) WScript.Quit();
-//
-//  //Variables
-//  var lpItems;
-//  var nItem;
-//  var ptPoint=GetToolbarBottonPos(hToolbarHandle, nToolbarItemID)
-//
-//  lpItems=[["ItemA", MF_NORMAL, "Value1"],
-//           ["", MF_SEPARATOR],
-//           ["ItemB", MF_NORMAL|MF_CHECKED|MF_USECHECKBITMAPS, "Value2"]];
-//
-//  nItem=ShowMenu(lpItems, ptPoint.x, ptPoint.y);
-//  if (nItem != -1)
-//    WScript.Echo("Item index: " + nItem + "\nItem value: " + lpItems[nItem][2]);
-//
-//
-//// Toolbar plugin item:
-//// Пункт Toolbar плагина:
-//  -"Button menu" Call("Scripts::Main", 1, "ToolbarItemMenu.js", `"%m" "%i"`) Icon(0)
+//   nItem=ShowMenu(lpItems, POS_CARET, POS_CARET);
+//   if (nItem == -1)
+//     WScript.Echo("Nothing selected");
+//   else
+//     WScript.Echo("Item index: " + nItem + "\nItem name: " + lpItems[nItem][0] + "\nItem ID: " + lpItems[nItem][2]);
 
 //Menu item flags
 var MF_NORMAL          =0x00000; //Normal item.
@@ -81,18 +55,19 @@ var MF_HILITE          =0x00080; //Item is highlighted.
 var POS_CARET   =-1; //Under caret position.
 var POS_CURSOR  =-2; //Cursor position.
 
-
 //Functions
 function ShowMenu(lpItemsArray, X, Y)
 {
   //Variables
   var hMainWnd=AkelPad.GetMainWnd();
+  var hWndEdit=AkelPad.GetEditWnd();
   var oSys=AkelPad.SystemFunction();
+  var hInstanceDLL=AkelPad.GetInstanceDll();
   var lpMenuArray=[];
   var nMenuCount;
   var nItemCount;
-  var ptPoint;
-  var hWndHidden;
+  var ptPoint=[];
+  var hWndContainer;
   var nResult=0;
   var i;
 
@@ -163,59 +138,62 @@ function ShowMenu(lpItemsArray, X, Y)
     if (lpMenuArray[0][MENU])
     {
       //Create window for menu
-      hWndHidden=oSys.Call("user32::CreateWindowEx" + _TCHAR, 0, "Static", 0, 0x50000000 /*WS_VISIBLE|WS_CHILD*/, 0, 0, 0, 0, hMainWnd, 0, AkelPad.GetInstanceDll(), 0);
-      oSys.Call("user32::SetFocus", hWndHidden);
-
-      //Show menu
-      if (X < 0 || Y < 0)
+      if (hWndContainer=oSys.Call("user32::CreateWindowEx" + _TCHAR, 0, "Static", 0, 0x50000000 /*WS_VISIBLE|WS_CHILD*/, 0, 0, 0, 0, hMainWnd, 0, hInstanceDLL, 0))
       {
-        if (X == POS_CARET || Y == POS_CARET)
-          ptPoint=GetCaretPos(AkelPad.GetEditWnd());
-        else if (X == POS_CURSOR || Y == POS_CURSOR)
-          ptPoint=GetCursorPos();
+        oSys.Call("user32::SetFocus", hWndContainer);
+        //Mouse can make incorrect hot selection without Sleep
+        WScript.Sleep(0);
 
-        if (X < 0) X=ptPoint.x;
-        if (Y < 0) Y=ptPoint.y;
+        //Show menu
+        if (X < 0 || Y < 0)
+        {
+          if (X == POS_CARET || Y == POS_CARET)
+            GetCaretPos(hWndEdit, ptPoint);
+          else if (X == POS_CURSOR || Y == POS_CURSOR)
+            GetCursorPos(ptPoint);
+
+          if (X < 0) X=ptPoint.x;
+          if (Y < 0) Y=ptPoint.y;
+        }
+        nResult=oSys.Call("user32::TrackPopupMenu", lpMenuArray[0][MENU], 0x182 /*TPM_RETURNCMD|TPM_NONOTIFY|TPM_RIGHTBUTTON*/, X, Y, 0, hWndContainer, 0);
+
+        oSys.Call("user32::DestroyWindow", hWndContainer);
       }
-      nResult=oSys.Call("user32::TrackPopupMenu", lpMenuArray[0][MENU], 0x100|0x80|0x2 /*TPM_RETURNCMD|TPM_NONOTIFY|TPM_RIGHTBUTTON*/, X, Y, 0, hWndHidden, 0);
-
-      //Clean up
       oSys.Call("user32::DestroyMenu", lpMenuArray[0][MENU]);
-      oSys.Call("user32::DestroyWindow", hWndHidden);
     }
   }
   return nResult - 1;
 }
 
-function GetCaretPos(hWndEdit)
+function GetCaretPos(hWndEdit, ptPoint)
 {
-  var ptPoint=[];
   var lpPoint;
 
   ptPoint.x=0;
   ptPoint.y=0;
 
-  if (lpPoint=AkelPad.MemAlloc(8 /*sizeof(POINT)*/))
+  if (hWndEdit)
   {
-    //Caret position
-    AkelPad.SendMessage(hWndEdit, 3190 /*AEM_GETCARETPOS*/, lpPoint, 0);
-    ptPoint.x=AkelPad.MemRead(lpPoint, 3 /*DT_DWORD*/);
-    ptPoint.y=AkelPad.MemRead(lpPoint + 4, 3 /*DT_DWORD*/);
-    AkelPad.MemFree(lpPoint);
+    if (lpPoint=AkelPad.MemAlloc(8 /*sizeof(POINT)*/))
+    {
+      //Caret position
+      AkelPad.SendMessage(hWndEdit, 3190 /*AEM_GETCARETPOS*/, lpPoint, 0);
+      ptPoint.x=AkelPad.MemRead(_PtrAdd(lpPoint, 0) /*offsetof(POINT, x)*/, 3 /*DT_DWORD*/);
+      ptPoint.y=AkelPad.MemRead(_PtrAdd(lpPoint, 4) /*offsetof(POINT, y)*/, 3 /*DT_DWORD*/);
+      AkelPad.MemFree(lpPoint);
 
-    //Caret bottom
-    ptPoint.y+=AkelPad.SendMessage(hWndEdit, 3188 /*AEM_GETCHARSIZE*/, 0 /*AECS_HEIGHT*/, 0);
+      //Caret bottom
+      ptPoint.y+=AkelPad.SendMessage(hWndEdit, 3188 /*AEM_GETCHARSIZE*/, 0 /*AECS_HEIGHT*/, 0);
 
-    //In screen coordinates
-    ClientToScreen(hWndEdit, ptPoint);
+      //In screen coordinates
+      ClientToScreen(hWndEdit, ptPoint);
+    }
   }
-  return ptPoint;
 }
 
-function GetCursorPos()
+function GetCursorPos(ptPoint)
 {
   var oSys=AkelPad.SystemFunction();
-  var ptPoint=[];
   var lpPoint;
 
   ptPoint.x=0;
@@ -223,13 +201,13 @@ function GetCursorPos()
 
   if (lpPoint=AkelPad.MemAlloc(8 /*sizeof(POINT)*/))
   {
-    //Caret position
-    oSys.Call("user32::GetCursorPos", lpPoint);
-    ptPoint.x=AkelPad.MemRead(lpPoint, 3 /*DT_DWORD*/);
-    ptPoint.y=AkelPad.MemRead(lpPoint + 4, 3 /*DT_DWORD*/);
+    if (oSys.Call("user32::GetCursorPos", lpPoint))
+    {
+      ptPoint.x=AkelPad.MemRead(_PtrAdd(lpPoint, 0) /*offsetof(POINT, x)*/, 3 /*DT_DWORD*/);
+      ptPoint.y=AkelPad.MemRead(_PtrAdd(lpPoint, 4) /*offsetof(POINT, y)*/, 3 /*DT_DWORD*/);
+    }
     AkelPad.MemFree(lpPoint);
   }
-  return ptPoint;
 }
 
 function GetToolbarBottonPos(hToolbarHandle, nToolbarItemID)
@@ -246,8 +224,8 @@ function GetToolbarBottonPos(hToolbarHandle, nToolbarItemID)
     {
       //Get Toolbar button position
       AkelPad.SendMessage(hToolbarHandle, 1075 /*TB_GETRECT*/, nToolbarItemID, lpRect);
-      ptPoint.x=AkelPad.MemRead(lpRect, 3 /*DT_DWORD*/);
-      ptPoint.y=AkelPad.MemRead(lpRect + 12, 3 /*DT_DWORD*/);
+      ptPoint.x=AkelPad.MemRead(_PtrAdd(lpRect, 0) /*offsetof(RECT, left)*/, 3 /*DT_DWORD*/);
+      ptPoint.y=AkelPad.MemRead(_PtrAdd(lpRect, 12) /*offsetof(RECT, bottom)*/, 3 /*DT_DWORD*/);
       AkelPad.MemFree(lpRect);
 
       //In screen coordinates
@@ -264,11 +242,11 @@ function ClientToScreen(hWnd, ptPoint)
 
   if (lpPoint=AkelPad.MemAlloc(8 /*sizeof(POINT)*/))
   {
-    AkelPad.MemCopy(lpPoint, ptPoint.x, 3 /*DT_DWORD*/);
-    AkelPad.MemCopy(lpPoint + 4, ptPoint.y, 3 /*DT_DWORD*/);
+    AkelPad.MemCopy(_PtrAdd(lpPoint, 0) /*offsetof(POINT, x)*/, ptPoint.x, 3 /*DT_DWORD*/);
+    AkelPad.MemCopy(_PtrAdd(lpPoint, 4) /*offsetof(POINT, y)*/, ptPoint.y, 3 /*DT_DWORD*/);
     oSys.Call("user32::ClientToScreen", hWnd, lpPoint);
-    ptPoint.x=AkelPad.MemRead(lpPoint, 3 /*DT_DWORD*/);
-    ptPoint.y=AkelPad.MemRead(lpPoint + 4, 3 /*DT_DWORD*/);
+    ptPoint.x=AkelPad.MemRead(_PtrAdd(lpPoint, 0) /*offsetof(POINT, x)*/, 3 /*DT_DWORD*/);
+    ptPoint.y=AkelPad.MemRead(_PtrAdd(lpPoint, 4) /*offsetof(POINT, y)*/, 3 /*DT_DWORD*/);
     AkelPad.MemFree(lpPoint);
   }
 }

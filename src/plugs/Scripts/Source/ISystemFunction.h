@@ -1,6 +1,32 @@
 #ifndef _ISYSTEMFUNCTION_H_
 #define _ISYSTEMFUNCTION_H_
 
+/*
+// ISystemFunction's VTable
+#undef INTERFACE
+#define INTERFACE ISystemFunction
+DECLARE_INTERFACE_ (INTERFACE, IDispatch)
+{
+  // IUnknown
+  STDMETHOD_(HRESULT, SystemFunction_QueryInterface)(THIS_ REFIID, void **) PURE;
+  STDMETHOD_(ULONG, SystemFunction_AddRef)(THIS) PURE;
+  STDMETHOD_(ULONG, SystemFunction_Release)(THIS) PURE;
+
+  // IDispatch
+  STDMETHOD_(HRESULT, SystemFunction_GetTypeInfoCount)(THIS_ UINT *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_GetTypeInfo)(THIS_ UINT, LCID, ITypeInfo **) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_GetIDsOfNames)(THIS_ REFIID, LPOLESTR *, UINT, LCID, DISPID *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_Invoke)(THIS_ DISPID, REFIID, LCID, WORD, DISPPARAMS *, VARIANT *, EXCEPINFO *, UINT *) PURE;
+
+  // ISystemFunction methods
+  STDMETHOD_(HRESULT, SystemFunction_AddParameter)(THIS_ VARIANT) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_Call)(THIS_ VARIANT, SAFEARRAY **, VARIANT *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_GetLastError)(THIS_ DWORD *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_RegisterCallback)(THIS_ IDispatch *, int, VARIANT *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_UnregisterCallback)(THIS_ IDispatch *) PURE;
+};
+//*/
+
 //Defines
 typedef struct _SYSPARAMITEM {
   struct _SYSPARAMITEM *next;
@@ -46,7 +72,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_GetIDsOfNames(ISystemFunction *this, RE
 HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr);
 
 HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VARIANT vtParameter);
-HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllFunction, SAFEARRAY **psa, INT_PTR *nResult);
+HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtDllFunction, SAFEARRAY **psa, VARIANT *vtResult);
 HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *this, DWORD *dwLastError);
 HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction);
 HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *this, IDispatch *objFunction);

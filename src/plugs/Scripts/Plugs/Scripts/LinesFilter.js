@@ -1,5 +1,9 @@
-//// Filter lines using regular expressions.
-//// ќтфильтровать строки, использу€ регул€рные выражени€.
+// http://akelpad.sourceforge.net/en/plugins.php#Scripts
+// Version: 1.2
+// Author: Shengalts Aleksander aka Instructor
+//
+// Description(1033): Filter lines using regular expressions.
+// Description(1049): ќтфильтровать строки, использу€ регул€рные выражени€.
 
 //Actions
 var ACTL_INCLUDE=1;
@@ -24,6 +28,7 @@ var IDC_STATIC         =-1;
 
 //Variables
 var hMainWnd=AkelPad.GetMainWnd();
+var hWndEdit=AkelPad.GetEditWnd();
 var oSys=AkelPad.SystemFunction();
 var oSet=AkelPad.ScriptSettings();
 var pScriptName=WScript.ScriptName;
@@ -49,7 +54,7 @@ var lpFindStrings=[];
 var pFindIt="";
 var nFindItLength;
 
-if (hMainWnd)
+if (hWndEdit)
 {
   if (ScriptEngineMajorVersion() <= 5 && ScriptEngineMinorVersion() < 5)
   {
@@ -89,7 +94,7 @@ if (hMainWnd)
         AkelPad.ScriptNoMutex();
 
         //Message loop
-        AkelPad.WindowGetMessage();
+        AkelPad.WindowGetMessage(0x4 /*WGM_KEYDOWNUP*/);
       }
       AkelPad.MemFree(lpBuffer);
     }
@@ -108,7 +113,7 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
   if (uMsg == 1)  //WM_CREATE
   {
     //Read settings
-    if (oSet.Begin(WScript.ScriptBaseName, 0x1 /*POB_READ*/))
+    if (oSet.Begin("", 0x1 /*POB_READ*/))
     {
       bRegExp=oSet.Read("RegExp", 1 /*PO_DWORD*/);
       bSensitive=oSet.Read("Sensitive", 1 /*PO_DWORD*/);
@@ -460,7 +465,7 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
   }
   else if (uMsg == 16)  //WM_CLOSE
   {
-    if (oSet.Begin(WScript.ScriptBaseName, 0x2 /*POB_SAVE*/))
+    if (oSet.Begin("", 0x2 /*POB_SAVE*/))
     {
       //Save settings
       oSet.Write("RegExp", 1 /*PO_DWORD*/, bRegExp);
@@ -494,9 +499,9 @@ function LinesFilter(bAllDocuments)
   var pSelText;
   var pArray;
   var pResult;
+  var nFirstLine;
   var nSelStart;
   var nSelEnd;
-  var nFirstLine;
   var bAtLineStart=false;
   var bAtLineEnd=false;
   var i;
@@ -508,11 +513,12 @@ function LinesFilter(bAllDocuments)
     else if (pFindIt.charAt(pFindIt.length - 1) == "$")
       bAtLineEnd=true;
   }
-  oPattern=new RegExp((bAtLineStart?"":"^.*") + "(" + (bRegExp?pFindIt:PatternToString(pFindIt)) + ")" + (bAtLineEnd?"":".*$") + "\n?", "gm" + (bSensitive?"":"i"));
+  oPattern=new RegExp((bAtLineStart?"":"^.*") + "(" + (bRegExp?pFindIt:EscRegExp(pFindIt)) + ")" + (bAtLineEnd?"":".*$") + "\n?", "gm" + (bSensitive?"":"i"));
 
   for (;;)
   {
     hWndEditCur=AkelPad.GetEditWnd();
+    nFirstLine=SaveLineScroll(hWndEditCur);
     nSelStart=AkelPad.GetSelStart();
     nSelEnd=AkelPad.GetSelEnd();
     if (nSelStart == nSelEnd)
@@ -534,8 +540,7 @@ function LinesFilter(bAllDocuments)
       pResult=pSelText.replace(oPattern, "");
     }
 
-    nFirstLine=SaveLineScroll(hWndEditCur);
-    AkelPad.ReplaceSel(pResult, true);
+    AkelPad.ReplaceSel(pResult);
     RestoreLineScroll(hWndEditCur, nFirstLine);
 
     if (bAllDocuments)
@@ -608,8 +613,8 @@ function RestoreLineScroll(hWnd, nBeforeLine)
 
     if (lpScrollPos=AkelPad.MemAlloc(_X64?16:8 /*sizeof(POINT64)*/))
     {
-      AkelPad.MemCopy(lpScrollPos + 0 /*offsetof(POINT64, x)*/, -1, 2 /*DT_QWORD*/);
-      AkelPad.MemCopy(lpScrollPos + (_X64?8:4) /*offsetof(POINT64, y)*/, nPosY, 2 /*DT_QWORD*/);
+      AkelPad.MemCopy(_PtrAdd(lpScrollPos, 0) /*offsetof(POINT64, x)*/, -1, 2 /*DT_QWORD*/);
+      AkelPad.MemCopy(_PtrAdd(lpScrollPos, _X64?8:4) /*offsetof(POINT64, y)*/, nPosY, 2 /*DT_QWORD*/);
       AkelPad.SendMessage(hWnd, 3180 /*AEM_SETSCROLLPOS*/, 0, lpScrollPos);
       AkelPad.MemFree(lpScrollPos);
     }
@@ -621,10 +626,10 @@ function RestoreLineScroll(hWnd, nBeforeLine)
 
 function RectToArray(lpRect, rcRect)
 {
-  rcRect.left=AkelPad.MemRead(lpRect, 3 /*DT_DWORD*/);
-  rcRect.top=AkelPad.MemRead(lpRect + 4, 3 /*DT_DWORD*/);
-  rcRect.right=AkelPad.MemRead(lpRect + 8, 3 /*DT_DWORD*/);
-  rcRect.bottom=AkelPad.MemRead(lpRect + 12, 3 /*DT_DWORD*/);
+  rcRect.left=AkelPad.MemRead(_PtrAdd(lpRect, 0) /*offsetof(RECT, left)*/, 3 /*DT_DWORD*/);
+  rcRect.top=AkelPad.MemRead(_PtrAdd(lpRect, 4) /*offsetof(RECT, top)*/, 3 /*DT_DWORD*/);
+  rcRect.right=AkelPad.MemRead(_PtrAdd(lpRect, 8) /*offsetof(RECT, right)*/, 3 /*DT_DWORD*/);
+  rcRect.bottom=AkelPad.MemRead(_PtrAdd(lpRect, 12) /*offsetof(RECT, bottom)*/, 3 /*DT_DWORD*/);
   return rcRect;
 }
 
@@ -635,10 +640,10 @@ function ArrayToRect(rcRect, lpRect)
 
   if (lpRect)
   {
-    AkelPad.MemCopy(lpRect, rcRect.left, 3 /*DT_DWORD*/);
-    AkelPad.MemCopy(lpRect + 4, rcRect.top, 3 /*DT_DWORD*/);
-    AkelPad.MemCopy(lpRect + 8, rcRect.right, 3 /*DT_DWORD*/);
-    AkelPad.MemCopy(lpRect + 12, rcRect.bottom, 3 /*DT_DWORD*/);
+    AkelPad.MemCopy(_PtrAdd(lpRect, 0) /*offsetof(RECT, left)*/, rcRect.left, 3 /*DT_DWORD*/);
+    AkelPad.MemCopy(_PtrAdd(lpRect, 4) /*offsetof(RECT, top)*/, rcRect.top, 3 /*DT_DWORD*/);
+    AkelPad.MemCopy(_PtrAdd(lpRect, 8) /*offsetof(RECT, right)*/, rcRect.right, 3 /*DT_DWORD*/);
+    AkelPad.MemCopy(_PtrAdd(lpRect, 12) /*offsetof(RECT, bottom)*/, rcRect.bottom, 3 /*DT_DWORD*/);
   }
   return lpRect;
 }
@@ -698,19 +703,9 @@ function SelCompliteLine(hWnd, nMinSel, nMaxSel)
   return 0;
 }
 
-function PatternToString(pPattern)
+function EscRegExp(pString)
 {
-  var pString="";
-  var pCharCode;
-  var i;
-
-  for (i=0; i < pPattern.length; ++i)
-  {
-    pCharCode=pPattern.charCodeAt(i).toString(16);
-    while (pCharCode.length < 4) pCharCode="0" + pCharCode;
-    pString=pString + "\\u" + pCharCode;
-  }
-  return pString;
+  return pString.replace(/[.?*+^$[\]\\(){}|-]/g, "\\$&");
 }
 
 function LOWORD(dwNumber)

@@ -1,6 +1,30 @@
 #ifndef _IWARGUMENTS_H_
 #define _IWARGUMENTS_H_
 
+/*
+// IWArguments's VTable
+#undef INTERFACE
+#define INTERFACE IWArguments
+DECLARE_INTERFACE_ (INTERFACE, IDispatch)
+{
+  // IUnknown
+  STDMETHOD_(HRESULT, WArguments_QueryInterface)(THIS_ REFIID, void **) PURE;
+  STDMETHOD_(ULONG, WArguments_AddRef)(THIS) PURE;
+  STDMETHOD_(ULONG, WArguments_Release)(THIS) PURE;
+
+  // IDispatch
+  STDMETHOD_(HRESULT, WArguments_GetTypeInfoCount)(THIS_ UINT *) PURE;
+  STDMETHOD_(HRESULT, WArguments_GetTypeInfo)(THIS_ UINT, LCID, ITypeInfo **) PURE;
+  STDMETHOD_(HRESULT, WArguments_GetIDsOfNames)(THIS_ REFIID, LPOLESTR *, UINT, LCID, DISPID *) PURE;
+  STDMETHOD_(HRESULT, WArguments_Invoke)(THIS_ DISPID, REFIID, LCID, WORD, DISPPARAMS *, VARIANT *, EXCEPINFO *, UINT *) PURE;
+
+  // IWArguments methods
+  STDMETHOD_(HRESULT, WArguments_Item)(THIS_ int, BSTR *) PURE;
+  STDMETHOD_(HRESULT, WArguments_Length)(THIS_ int *) PURE;
+  STDMETHOD_(HRESULT, WArguments_Count)(THIS_ int *) PURE;
+};
+//*/
+
 //Defines
 typedef struct {
   IWArgumentsVtbl *lpVtbl;

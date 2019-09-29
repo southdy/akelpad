@@ -18,13 +18,13 @@ extern const struct _GUID CLSID_ProcessDebugManager;
 
 //Defines
 typedef struct {
-  const IActiveScriptSiteVtbl *lpVtbl;
+  IActiveScriptSiteVtbl *lpVtbl;
   DWORD dwCount;
   void *lpScriptThread;
 } IRealActiveScriptSite;
 
 typedef struct {
-  const IActiveScriptSiteWindowVtbl *lpVtbl;
+  IActiveScriptSiteWindowVtbl *lpVtbl;
   DWORD dwCount;
   void *lpScriptThread;
 } IRealActiveScriptSiteWindow;
