@@ -95,8 +95,6 @@
 #define OF_LISTTEXT       0x1
 #define OF_SETTINGS       0x2
 
-#define BUFFER_SIZE      1024
-
 #define SCO_SPACE        0
 #define SCO_TAB          1
 #define SCO_NEWLINE      2
@@ -159,44 +157,28 @@ typedef struct {
 #endif
 
 //Coder external call
-#define DLLA_CODER_GETVARTHEMEDATA  24
+#define DLLA_CODER_FILLVARLIST      23
 
-typedef struct _VARINFO {
-  struct _VARINFO *next;
-  struct _VARINFO *prev;
-  wchar_t *wpVarName;
-  int nVarNameLen;
-  wchar_t *wpVarValue;
-  int nVarValueLen;
-} VARINFO;
+//Variable flags
+#define VARF_LOWPRIORITY   0x001 //Global variable has low priority.
+                                 //Next flags for DLLA_CODER_FILLVARLIST:
+#define VARF_EXTSTRING     0x100 //Copy string pointer to (const wchar_t *)CODERTHEMEITEM.nVarValue.
+#define VARF_EXTINTCOLOR   0x200 //Copy color integer to (COLORREF)CODERTHEMEITEM.nVarValue or -1 if not color.
+#define VARF_EXTLPINTCOLOR 0x400 //Copy color integer to (COLORREF *)CODERTHEMEITEM.nVarValue or -1 if not color.
 
 typedef struct {
-  VARINFO *first;
-  VARINFO *last;
-} STACKVAR;
-
-typedef struct _VARTHEME {
-  struct _VARTHEME *next;
-  struct _VARTHEME *prev;
-  STACKVAR hVarStack;
-  wchar_t wszVarThemeName[MAX_PATH];
-  int nVarThemeNameLen;
-  const wchar_t *wpTextData;
-} VARTHEME;
+  const wchar_t *wpVarName;
+  INT_PTR nVarValue;
+  DWORD dwVarFlags;         //See VARF_* defines.
+} CODERTHEMEITEM;
 
 typedef struct {
   UINT_PTR dwStructSize;
   INT_PTR nAction;
   HWND hWndEdit;
   AEHDOC hDocEdit;
-  VARTHEME **lppVarThemeGlobal;
-  VARTHEME **lppVarThemeActive;
-} DLLEXTCODERGETVARTHEMEDATA;
-
-typedef struct {
-  const wchar_t *wpVar;
-  COLORREF *lpcrValue;
-} CODERTHEMEITEM;
+  CODERTHEMEITEM *cti;
+} DLLEXTCODERFILLVARLIST;
 
 //Functions prototypes
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -206,15 +188,15 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 COLORREF GetIndentColor(BOOL bCharInSel, SPECIALCHAR *pscIndentDraw, AECOLORS *aec);
 void GetCoderColors(HWND hWnd);
-VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen);
 void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText);
 void FreeSpecialCharStack(STACKSPECIALCHAR *hStack);
 int HexCharToValue(const wchar_t **wpText);
 int ValueToHexChar(int nValue, wchar_t *wszHexChar);
 int ValueToNormalChar(int nValue, wchar_t *wszNormalChar);
 void SkipWhitespace(const wchar_t **wpText);
-int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus);
-BOOL GetLineSpaces(AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces);
+int GetWord(const wchar_t *wpText, wchar_t *wszWord, int nWordMax, const wchar_t **wppNextWord, BOOL *lpbQuote);
+BOOL NextLine(const wchar_t **wpText);
+BOOL GetLineSpaces(const AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces);
 BOOL GetCharColor(HWND hWndEdit, INT_PTR nCharOffset, AECHARCOLORS *aecc);
 COLORREF GetColorFromStrAnsi(char *pColor);
 COLORREF GetColorFromStr(wchar_t *wpColor);
@@ -259,14 +241,13 @@ int nIndentLineSize=0;
 BOOL bIndentLineSolid=FALSE;
 DWORD dwPaintOptions=0;
 SPECIALCHAR scCoder;
-CODERTHEMEITEM cti[]={{L"SpecialChar_BasicFontStyle", &scCoder.dwBasicFontStyle},
-                      {L"SpecialChar_BasicTextColor", &scCoder.dwBasicTextColor},
-                      {L"SpecialChar_BasicBkColor",   &scCoder.dwBasicBkColor},
-                      {L"SpecialChar_SelFontStyle",   &scCoder.dwSelFontStyle},
-                      {L"SpecialChar_SelTextColor",   &scCoder.dwSelTextColor},
-                      {L"SpecialChar_SelBkColor",     &scCoder.dwSelBkColor},
-                      {0, 0}};
-VARINFO *lpVarInfoFastCheck;
+CODERTHEMEITEM cti[]={{L"SpecialChar_BasicFontStyle", (INT_PTR)&scCoder.dwBasicFontStyle, VARF_EXTLPINTCOLOR},
+                      {L"SpecialChar_BasicTextColor", (INT_PTR)&scCoder.dwBasicTextColor, VARF_EXTLPINTCOLOR},
+                      {L"SpecialChar_BasicBkColor",   (INT_PTR)&scCoder.dwBasicBkColor,   VARF_EXTLPINTCOLOR},
+                      {L"SpecialChar_SelFontStyle",   (INT_PTR)&scCoder.dwSelFontStyle,   VARF_EXTLPINTCOLOR},
+                      {L"SpecialChar_SelTextColor",   (INT_PTR)&scCoder.dwSelTextColor,   VARF_EXTLPINTCOLOR},
+                      {L"SpecialChar_SelBkColor",     (INT_PTR)&scCoder.dwSelBkColor,     VARF_EXTLPINTCOLOR},
+                      {0, 0, 0}};
 BOOL bCoderTheme=TRUE;
 WNDPROCDATA *NewMainProcData=NULL;
 WNDPROCDATA *NewFrameProcData=NULL;
@@ -278,7 +259,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="SpecialChar";
 }
 
@@ -1160,7 +1141,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       if (SendMessage(hWndOldCharHexRadio, BM_GETCHECK, 0, 0) == BST_CHECKED)
       {
         GetWindowTextWide(hWndOldCharHexEdit, wszBuffer, BUFFER_SIZE);
-        scDlgChar.nOldChar=(int)hex2decW(wszBuffer, -1);
+        scDlgChar.nOldChar=(int)hex2decW(wszBuffer, -1, NULL);
         ValueToNormalChar(scDlgChar.nOldChar, wszBuffer);
         SetWindowTextWide(hWndOldCharHexPreview, wszBuffer);
         EnableWindow(hWndOldCharHexEdit, TRUE);
@@ -1176,7 +1157,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     else if (LOWORD(wParam) == IDC_NEWCHARHEX_EDIT)
     {
       GetWindowTextWide(hWndNewCharHexEdit, wszBuffer, BUFFER_SIZE);
-      scDlgChar.nNewChar=(int)hex2decW(wszBuffer, -1);
+      scDlgChar.nNewChar=(int)hex2decW(wszBuffer, -1, NULL);
       ValueToNormalChar(scDlgChar.nNewChar, wszBuffer);
       SetWindowTextWide(hWndNewCharHexPreview, wszBuffer);
     }
@@ -1707,6 +1688,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                              (pscChar->nOldChar == SC_EOF && pscChar->nNewChar == L'\0')))
                   {
                     //Draw new line identificator
+#if 0
                     HBRUSH hBrush;
                     HBRUSH hBrushOld;
                     HPEN hPen;
@@ -1718,7 +1700,6 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     int nPosX=pt.x;
                     int nStrMargin=1;
 
-#if 0
                     if (pscChar->nOldChar == SC_NEWLINE)
                     {
                       //New line string: "r", "n", "rn", "rrn".
@@ -1759,6 +1740,8 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     TextOutW(pnt->hDC, nPosX + nStrMargin, pt.y, wpNewLine, nNewLineLen);
                     SetTextColor(pnt->hDC, crTextColorPrev);
 #else
+                    SIZE sizeNewLine;
+                    int nStrMargin=1;
                     GetTextExtentPoint32W(pnt->hDC, L"  ", 2, &sizeNewLine);
                     pt.x+=nStrMargin;
                     sizeNewLine.cx+=nStrMargin * 2;
@@ -2062,95 +2045,34 @@ COLORREF GetIndentColor(BOOL bCharInSel, SPECIALCHAR *pscIndentDraw, AECOLORS *a
 
 void GetCoderColors(HWND hWnd)
 {
-  scCoder.dwBasicFontStyle=(DWORD)-1;
-  scCoder.dwBasicTextColor=(DWORD)-1;
-  scCoder.dwBasicBkColor=(DWORD)-1;
-  scCoder.dwSelFontStyle=(DWORD)-1;
-  scCoder.dwSelTextColor=(DWORD)-1;
-  scCoder.dwSelBkColor=(DWORD)-1;
+  int i;
+
+  //Default colors
+  for (i=0; cti[i].wpVarName; ++i)
+  {
+    *(COLORREF *)cti[i].nVarValue=(COLORREF)-1;
+  }
 
   if (bCoderTheme)
   {
-    PLUGINFUNCTION *pfCoder=NULL;
+    PLUGINFUNCTION *pfCoder;
     PLUGINCALLSENDW pcs;
-    DLLEXTCODERGETVARTHEMEDATA decgvtd;
-    VARTHEME *lpVarThemeGlobal=NULL;
-    VARTHEME *lpVarThemeActive=NULL;
-    STACKVAR *hStackGlobal=NULL;
-    STACKVAR *hStackActive=NULL;
-    VARINFO *lpVarInfo;
-    int i;
+    DLLEXTCODERFILLVARLIST decfvl;
 
     if ((pfCoder=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::HighLight", 0)) && pfCoder->bRunning)
     {
-      decgvtd.dwStructSize=sizeof(DLLEXTCODERGETVARTHEMEDATA);
-      decgvtd.nAction=DLLA_CODER_GETVARTHEMEDATA;
-      decgvtd.hWndEdit=hWnd;
-      decgvtd.hDocEdit=NULL;
-      decgvtd.lppVarThemeGlobal=&lpVarThemeGlobal;
-      decgvtd.lppVarThemeActive=&lpVarThemeActive;
+      decfvl.dwStructSize=sizeof(DLLEXTCODERFILLVARLIST);
+      decfvl.nAction=DLLA_CODER_FILLVARLIST;
+      decfvl.hWndEdit=hWnd;
+      decfvl.hDocEdit=NULL;
+      decfvl.cti=cti;
 
       pcs.pFunction=L"Coder::Settings";
-      pcs.lParam=(LPARAM)&decgvtd;
+      pcs.lParam=(LPARAM)&decfvl;
       pcs.dwSupport=PDS_STRWIDE;
       SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
-
-      if (lpVarThemeGlobal || lpVarThemeActive)
-      {
-        if (lpVarThemeGlobal) hStackGlobal=&lpVarThemeGlobal->hVarStack;
-        if (lpVarThemeActive) hStackActive=&lpVarThemeActive->hVarStack;
-        lpVarInfoFastCheck=NULL;
-
-        for (i=0; cti[i].wpVar; ++i)
-        {
-          if (lpVarInfo=StackGetVarByName(hStackGlobal, hStackActive, cti[i].wpVar, -1))
-          {
-            if (*lpVarInfo->wpVarValue == L'#')
-              *cti[i].lpcrValue=GetColorFromStr(lpVarInfo->wpVarValue + 1);
-            lpVarInfoFastCheck=lpVarInfo->next;
-          }
-          else break;
-        }
-      }
     }
   }
-}
-
-VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen)
-{
-  STACKVAR *hStackCurrent;
-  VARINFO *lpElement=lpVarInfoFastCheck;
-
-  if (lpElement)
-  {
-    lpVarInfoFastCheck=NULL;
-
-    if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
-        (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
-    {
-      return lpElement;
-    }
-  }
-
-  //Firstly search in GLOBAL var theme
-  hStackCurrent=hStackGlobal;
-
-  for (;;)
-  {
-    for (lpElement=hStackCurrent->first; lpElement; lpElement=lpElement->next)
-    {
-      if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
-          (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
-      {
-        return lpElement;
-      }
-    }
-    if (hStackActive == hStackCurrent || hStackActive == NULL)
-      break;
-    //Secondly search in input var theme
-    hStackCurrent=hStackActive;
-  }
-  return NULL;
 }
 
 void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText)
@@ -2163,9 +2085,9 @@ void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText)
 
   if (wpText)
   {
-    while (*wpText)
+    for (; *wpText; NextLine(&wpText))
     {
-      NextString(wpText, sc.wszName, MAX_PATH, &wpText, NULL);
+      GetWord(wpText, sc.wszName, MAX_PATH, &wpText, NULL);
 
       SkipWhitespace(&wpText);
       sc.nOldChar=HexCharToValue(&wpText);
@@ -2200,8 +2122,6 @@ void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText)
         if (pscChar->nOldChar == SC_INDENTLINE)
           pscIndentLine=pscChar;
       }
-
-      SkipWhitespace(&wpText);
     }
   }
 }
@@ -2222,7 +2142,7 @@ int HexCharToValue(const wchar_t **wpText)
     wpCharStart=wpCount + 2;
     while (*wpCount != L',' && *wpCount != L' ' && *wpCount != L'\t' && *wpCount != L'\r' && *wpCount != L'\n' && *wpCount != L'\0')
       ++wpCount;
-    nValue=(int)hex2decW(wpCharStart, wpCount - wpCharStart);
+    nValue=(int)hex2decW(wpCharStart, wpCount - wpCharStart, NULL);
   }
   else nValue=(int)xatoiW(wpCount, &wpCount);
 
@@ -2260,53 +2180,58 @@ int ValueToNormalChar(int nValue, wchar_t *wszNormalChar)
 
 void SkipWhitespace(const wchar_t **wpText)
 {
-  while (**wpText == L' ' || **wpText == L'\t' || **wpText == L'\r' || **wpText == L'\n') ++*wpText;
+  while (**wpText == L' ' || **wpText == L'\t') ++*wpText;
 }
 
-int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus)
+int GetWord(const wchar_t *wpText, wchar_t *wszWord, int nWordMax, const wchar_t **wppNextWord, BOOL *lpbQuote)
 {
-  int i;
+  const wchar_t *wpCount;
+  wchar_t wchStopChar;
 
-  while (*wpText == L' ' || *wpText == L'\t' || *wpText == L'\r' || *wpText == L'\n') ++wpText;
+  while (*wpText == L' ' || *wpText == L'\t') ++wpText;
 
-  if (*wpText == L'-')
+  if (*wpText == L'\"' || *wpText == L'\'' || *wpText == L'`')
   {
-    if (nMinus) *nMinus=1;
-    ++wpText;
-  }
-  else
-  {
-    if (nMinus) *nMinus=0;
-  }
+    if (lpbQuote) *lpbQuote=TRUE;
+    wchStopChar=*wpText;
+    wpCount=++wpText;
 
-  if (*wpText == L'\"')
-  {
-    ++wpText;
-    i=0;
+    //Parse: "param" or 'param' or `param`
+    while (*wpCount != wchStopChar && *wpCount != L'\r' && *wpCount != L'\0')
+      ++wpCount;
 
-    while (*wpText != L'\"' && *wpText != L'\0')
+    if (wppNextWord)
     {
-      if (i < nStrLen) wszStr[i++]=*wpText;
-      ++wpText;
+      *wppNextWord=wpCount;
+      if (*wpCount == wchStopChar)
+        ++*wppNextWord;
     }
   }
   else
   {
-    i=0;
+    if (lpbQuote) *lpbQuote=FALSE;
+    wpCount=wpText;
 
-    while (*wpText != L' ' && *wpText != L'\r' && *wpText != L'\0')
-    {
-      if (i < nStrLen) wszStr[i++]=*wpText;
-      ++wpText;
-    }
+    //Parse: param1 param2 param3
+    while (*wpCount != L' ' && *wpCount != L'\t' && *wpCount != L'\r' && *wpCount != L'\0')
+      ++wpCount;
+
+    if (wppNextWord)
+      *wppNextWord=wpCount;
   }
-  wszStr[i]=L'\0';
-  if (*wpText != L'\r' && *wpText != L'\0') ++wpText;
-  if (wppText) *wppText=wpText;
-  return i;
+  return (int)xstrcpynW(wszWord, wpText, min(nWordMax, wpCount - wpText + 1));
 }
 
-BOOL GetLineSpaces(AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces)
+BOOL NextLine(const wchar_t **wpText)
+{
+  while (**wpText != L'\r' && **wpText != L'\n' && **wpText != L'\0') ++*wpText;
+  if (**wpText == L'\0') return FALSE;
+  if (**wpText == L'\r') ++*wpText;
+  if (**wpText == L'\n') ++*wpText;
+  return TRUE;
+}
+
+BOOL GetLineSpaces(const AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces)
 {
   AECHARINDEX ciCount;
   INT_PTR nLineSpaces=0;
@@ -2344,7 +2269,7 @@ COLORREF GetColorFromStrAnsi(char *pColor)
 {
   COLORREF crColor;
 
-  if ((crColor=(COLORREF)hex2decA(pColor, 6)) != (COLORREF)-1)
+  if ((crColor=(COLORREF)hex2decA(pColor, 6, NULL)) != (COLORREF)-1)
     crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
 }
@@ -2353,7 +2278,7 @@ COLORREF GetColorFromStr(wchar_t *wpColor)
 {
   COLORREF crColor;
 
-  if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (COLORREF)-1)
+  if ((crColor=(COLORREF)hex2decW(wpColor, 6, NULL)) != (COLORREF)-1)
     crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
 }
@@ -2491,18 +2416,16 @@ INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BY
 void ReadOptions(DWORD dwFlags)
 {
   HANDLE hOptions;
-  DWORD dwSize;
+  int nSize;
 
   if (hOptions=(HANDLE)SendMessage(hMainWnd, AKD_BEGINOPTIONSW, POB_READ, (LPARAM)wszPluginName))
   {
     //OF_LISTTEXT
-    dwSize=(DWORD)WideOption(hOptions, L"SpecialCharText", PO_BINARY, NULL, 0);
-
-    if (dwSize)
+    if ((nSize=(int)WideOption(hOptions, L"SpecialCharText", PO_BINARY, NULL, 0)) > 0)
     {
-      if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize))
+      if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize))
       {
-        WideOption(hOptions, L"SpecialCharText", PO_BINARY, (LPBYTE)wszSpecialCharText, dwSize);
+        WideOption(hOptions, L"SpecialCharText", PO_BINARY, (LPBYTE)wszSpecialCharText, nSize);
       }
     }
 
@@ -2516,9 +2439,9 @@ void ReadOptions(DWORD dwFlags)
 
   if (!wszSpecialCharText)
   {
-    dwSize=(DWORD)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTSPECIALCHARS));
+    nSize=(int)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTSPECIALCHARS));
 
-    if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize * sizeof(wchar_t)))
+    if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize * sizeof(wchar_t)))
     {
       xprintfW(wszSpecialCharText, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTSPECIALCHARS));
     }
