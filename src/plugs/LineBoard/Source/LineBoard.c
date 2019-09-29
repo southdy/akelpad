@@ -108,8 +108,6 @@
 
 #define OF_SETTINGS       0x1
 
-#define BUFFER_SIZE      1024
-
 //UpdateEdit flags
 #define UE_ERASE        0x01
 #define UE_ALLRECT      0x02
@@ -121,6 +119,12 @@
 #define DOF_NONE        0x0
 #define DOF_OPEN        0x1
 #define DOF_REOPEN      0x2
+
+//Save bookmarks
+#define MBS_NONE       0
+#define MBS_ALLTEXT    1
+#define MBS_UNDO       2
+#define MBS_REPLACESEL 3
 
 //StackGetBoard flags
 #define GB_READ   0x0
@@ -157,44 +161,28 @@ typedef struct _WINDOWBOARD {
 } WINDOWBOARD;
 
 //Coder external call
-#define DLLA_CODER_GETVARTHEMEDATA  24
+#define DLLA_CODER_FILLVARLIST      23
 
-typedef struct _VARINFO {
-  struct _VARINFO *next;
-  struct _VARINFO *prev;
-  wchar_t *wpVarName;
-  int nVarNameLen;
-  wchar_t *wpVarValue;
-  int nVarValueLen;
-} VARINFO;
+//Variable flags
+#define VARF_LOWPRIORITY   0x001 //Global variable has low priority.
+                                 //Next flags for DLLA_CODER_FILLVARLIST:
+#define VARF_EXTSTRING     0x100 //Copy string pointer to (const wchar_t *)CODERTHEMEITEM.nVarValue.
+#define VARF_EXTINTCOLOR   0x200 //Copy color integer to (COLORREF)CODERTHEMEITEM.nVarValue or -1 if not color.
+#define VARF_EXTLPINTCOLOR 0x400 //Copy color integer to (COLORREF *)CODERTHEMEITEM.nVarValue or -1 if not color.
 
 typedef struct {
-  VARINFO *first;
-  VARINFO *last;
-} STACKVAR;
-
-typedef struct _VARTHEME {
-  struct _VARTHEME *next;
-  struct _VARTHEME *prev;
-  STACKVAR hVarStack;
-  wchar_t wszVarThemeName[MAX_PATH];
-  int nVarThemeNameLen;
-  const wchar_t *wpTextData;
-} VARTHEME;
+  const wchar_t *wpVarName;
+  INT_PTR nVarValue;
+  DWORD dwVarFlags;         //See VARF_* defines.
+} CODERTHEMEITEM;
 
 typedef struct {
   UINT_PTR dwStructSize;
   INT_PTR nAction;
   HWND hWndEdit;
   AEHDOC hDocEdit;
-  VARTHEME **lppVarThemeGlobal;
-  VARTHEME **lppVarThemeActive;
-} DLLEXTCODERGETVARTHEMEDATA;
-
-typedef struct {
-  const wchar_t *wpVar;
-  COLORREF *lpcrValue;
-} CODERTHEMEITEM;
+  CODERTHEMEITEM *cti;
+} DLLEXTCODERFILLVARLIST;
 
 //Functions prototypes
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -241,9 +229,7 @@ void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings);
 void SetEditRect(AEHDOC hDocEdit, HWND hWndEdit, int nNewWidth, int nOldWidth, int nNewHeight, int nOldHeight);
 HWND GetCurEdit();
 HWND GetFocusEdit();
-void GetBoardColors(HWND hWnd);
-VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen);
-COLORREF GetColorFromStr(wchar_t *wpColor);
+void GetCoderColors(HWND hWnd);
 int GetMaxNumberWidth(HDC hDC, int *nNumberAverageWidth);
 void GetPosFromChar(HWND hWnd, INT_PTR nCharIndex, POINT *pt);
 int GetCurrentLine(HWND hWnd);
@@ -306,18 +292,17 @@ COLORREF crDrawBoardLineUnsaved;
 COLORREF crDrawBoardLineSaved;
 COLORREF crDrawBoardRulerScale;
 COLORREF crDrawBoardRulerCaret;
-CODERTHEMEITEM cti[]={{L"LineBoard_TextColor",           &crDrawBoardText},
-                      {L"LineBoard_BkColor",             &crDrawBoardBk},
-                      {L"LineBoard_BorderColor",         &crDrawBoardBorder},
-                      {L"LineBoard_BookmarkTextColor",   &crDrawBoardBookmarkText},
-                      {L"LineBoard_BookmarkBkColor",     &crDrawBoardBookmarkBk},
-                      {L"LineBoard_BookmarkBorderColor", &crDrawBoardBookmarkBorder},
-                      {L"LineBoard_LineUnsavedColor",    &crDrawBoardLineUnsaved},
-                      {L"LineBoard_LineSavedColor",      &crDrawBoardLineSaved},
-                      {L"LineBoard_RulerScaleColor",     &crDrawBoardRulerScale},
-                      {L"LineBoard_RulerCaretColor",     &crDrawBoardRulerCaret},
-                      {0, 0}};
-VARINFO *lpVarInfoFastCheck;
+CODERTHEMEITEM cti[]={{L"LineBoard_TextColor",           (INT_PTR)&crDrawBoardText,           VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_BkColor",             (INT_PTR)&crDrawBoardBk,             VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_BorderColor",         (INT_PTR)&crDrawBoardBorder,         VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_BookmarkTextColor",   (INT_PTR)&crDrawBoardBookmarkText,   VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_BookmarkBkColor",     (INT_PTR)&crDrawBoardBookmarkBk,     VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_BookmarkBorderColor", (INT_PTR)&crDrawBoardBookmarkBorder, VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_LineUnsavedColor",    (INT_PTR)&crDrawBoardLineUnsaved,    VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_LineSavedColor",      (INT_PTR)&crDrawBoardLineSaved,      VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_RulerScaleColor",     (INT_PTR)&crDrawBoardRulerScale,     VARF_EXTLPINTCOLOR},
+                      {L"LineBoard_RulerCaretColor",     (INT_PTR)&crDrawBoardRulerCaret,     VARF_EXTLPINTCOLOR},
+                      {0, 0, 0}};
 BOOL bLineUnsavedEnable=TRUE;
 BOOL bLineSavedEnable=TRUE;
 int nLineModificationWidth=3;
@@ -346,7 +331,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="LineBoard";
 }
 
@@ -1230,10 +1215,11 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   else if (uMsg == AKDN_SAVEDOCUMENT_FINISH)
   {
     WINDOWBOARD *lpBoard;
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
 
     if (bRememberBookmarks)
     {
-      if (lpBoard=StackGetBoard(&hWindowStack, (HWND)wParam, NULL, GB_READ))
+      if (lpBoard=StackGetBoard(&hWindowStack, lpFrame->ei.hWndEdit, lpFrame->ei.hDocEdit, GB_READ))
       {
         if (ResetBookmarksMovedFlag(lpBoard))
           SaveRecentFile(lpBoard);
@@ -1242,7 +1228,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     if (nLineModificationWidth && (bLineUnsavedEnable || bLineSavedEnable))
     {
-      if (bShowBoard) UpdateEditAndClones((HWND)wParam, UE_FIRSTPIXEL);
+      if (bShowBoard) UpdateEditAndClones(lpFrame->ei.hWndEdit, UE_FIRSTPIXEL);
     }
   }
   else if (uMsg == AKDN_EDIT_ONFINISH)
@@ -1291,7 +1277,7 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 {
   static int nMobileBookmarksStartLine;
   static int nMobileBookmarksEndLine;
-  static BOOL bMobileBookmarksSave;
+  static int nMobileBookmarksSave;
   static BOOL bUndoRedo;
 
   if (uMsg == WM_NOTIFY)
@@ -1305,30 +1291,30 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
           AENTEXTCHANGE *aentc=(AENTEXTCHANGE *)lParam;
           WINDOWBOARD *lpBoard;
 
-          bMobileBookmarksSave=FALSE;
+          nMobileBookmarksSave=MBS_NONE;
           bUndoRedo=FALSE;
 
           if (((aentc->dwType & AETCT_SETTEXT) || (aentc->dwType & AETCT_STREAMIN)) && (dwDocOpen & DOF_REOPEN))
           {
             nMobileBookmarksStartLine=0;
             nMobileBookmarksEndLine=-1;
-            bMobileBookmarksSave=TRUE;
+            nMobileBookmarksSave=MBS_ALLTEXT;
           }
           else if ((aentc->dwType & AETCT_UNDO) || (aentc->dwType & AETCT_REDO))
           {
             nMobileBookmarksStartLine=-1;
             nMobileBookmarksEndLine=-1;
-            bMobileBookmarksSave=TRUE;
+            nMobileBookmarksSave=MBS_UNDO;
             bUndoRedo=TRUE;
           }
           else if (!aentc->bColumnSel && (aentc->dwType & AETCT_REPLACESEL) && aentc->crSel.ciMin.nLine < aentc->crSel.ciMax.nLine)
           {
             nMobileBookmarksStartLine=aentc->crSel.ciMin.nLine;
             nMobileBookmarksEndLine=aentc->crSel.ciMax.nLine;
-            bMobileBookmarksSave=TRUE;
+            nMobileBookmarksSave=MBS_REPLACESEL;
           }
 
-          if (bMobileBookmarksSave)
+          if (nMobileBookmarksSave)
           {
             //SaveMobileBookmarks
             HWND hWndMaster;
@@ -1379,10 +1365,13 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
       }
       else if (((NMHDR *)lParam)->code == AEN_TEXTCHANGED)
       {
-        if (bMobileBookmarksSave && nMobileBookmarksStartLine != -1)
+        AENTEXTCHANGE *aentc=(AENTEXTCHANGE *)lParam;
+
+        if (nMobileBookmarksStartLine != -1 &&
+            ((nMobileBookmarksSave == MBS_REPLACESEL || nMobileBookmarksSave == MBS_UNDO) ?
+                nMobileBookmarksEndLine == aentc->crSel.ciMax.nLine : nMobileBookmarksSave))
         {
           //RestoreMobileBookmarks
-          AENTEXTCHANGE *aentc=(AENTEXTCHANGE *)lParam;
           WINDOWBOARD *lpBoard;
           HWND hWndMaster;
           HWND hWndEdit;
@@ -1573,7 +1562,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
 
         if (hDC=GetDC(hWnd))
         {
-          GetBoardColors(hWnd);
+          GetCoderColors(hWnd);
 
           //Create buffer DC to avoid flashing
           hBufferDC=CreateCompatibleDC(hDC);
@@ -1758,7 +1747,8 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             }
             else
             {
-              SendMessage(hWnd, AEM_GETINDEX, AEGI_NEXTUNCOLLAPSEDLINE, (LPARAM)&ciFirstLine);
+              if (!SendMessage(hWnd, AEM_GETINDEX, AEGI_NEXTUNCOLLAPSEDLINE, (LPARAM)&ciFirstLine))
+                break;
 
               if (nLineModificationWidth && (hPenModifiedSaved || hPenModifiedUnsaved))
               {
@@ -1770,7 +1760,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             }
           }
 
-          if (ciFirstLine.nLine > ciLastLine.nLine && rcDraw.top < rcDraw.bottom)
+          if (rcDraw.top < rcDraw.bottom)
           {
             FillRect(hBufferDC, &rcDraw, hBrushBoard);
           }
@@ -2885,23 +2875,20 @@ HWND GetCurEdit()
 
 HWND GetFocusEdit()
 {
-  EDITINFO ei;
   WINDOWBOARD *lpBoard;
   HWND hWndFocus=GetFocus();
 
   if (hWndFocus)
   {
-    //Check that focused window is a known edit window
-    if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWndFocus, (LPARAM)&ei))
-      return ei.hWndEdit;
     if (lpBoard=StackGetBoard(&hWindowStack, hWndFocus, NULL, GB_READ))
       return lpBoard->hWndEdit;
   }
-  return NULL;
+  return GetCurEdit();
 }
 
-void GetBoardColors(HWND hWnd)
+void GetCoderColors(HWND hWnd)
 {
+  //Default colors
   crDrawBoardText=crBoardText;
   crDrawBoardBk=crBoardBk;
   crDrawBoardBorder=crBoardBorder;
@@ -2915,95 +2902,24 @@ void GetBoardColors(HWND hWnd)
 
   if (bCoderTheme)
   {
-    PLUGINFUNCTION *pfCoder=NULL;
+    PLUGINFUNCTION *pfCoder;
     PLUGINCALLSENDW pcs;
-    DLLEXTCODERGETVARTHEMEDATA decgvtd;
-    VARTHEME *lpVarThemeGlobal=NULL;
-    VARTHEME *lpVarThemeActive=NULL;
-    STACKVAR *hStackGlobal=NULL;
-    STACKVAR *hStackActive=NULL;
-    VARINFO *lpVarInfo;
-    int i;
+    DLLEXTCODERFILLVARLIST decfvl;
 
     if ((pfCoder=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::HighLight", 0)) && pfCoder->bRunning)
     {
-      decgvtd.dwStructSize=sizeof(DLLEXTCODERGETVARTHEMEDATA);
-      decgvtd.nAction=DLLA_CODER_GETVARTHEMEDATA;
-      decgvtd.hWndEdit=hWnd;
-      decgvtd.hDocEdit=NULL;
-      decgvtd.lppVarThemeGlobal=&lpVarThemeGlobal;
-      decgvtd.lppVarThemeActive=&lpVarThemeActive;
+      decfvl.dwStructSize=sizeof(DLLEXTCODERFILLVARLIST);
+      decfvl.nAction=DLLA_CODER_FILLVARLIST;
+      decfvl.hWndEdit=hWnd;
+      decfvl.hDocEdit=NULL;
+      decfvl.cti=cti;
 
       pcs.pFunction=L"Coder::Settings";
-      pcs.lParam=(LPARAM)&decgvtd;
+      pcs.lParam=(LPARAM)&decfvl;
       pcs.dwSupport=PDS_STRWIDE;
       SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
-
-      if (lpVarThemeGlobal || lpVarThemeActive)
-      {
-        if (lpVarThemeGlobal) hStackGlobal=&lpVarThemeGlobal->hVarStack;
-        if (lpVarThemeActive) hStackActive=&lpVarThemeActive->hVarStack;
-        lpVarInfoFastCheck=NULL;
-
-        for (i=0; cti[i].wpVar; ++i)
-        {
-          if (lpVarInfo=StackGetVarByName(hStackGlobal, hStackActive, cti[i].wpVar, -1))
-          {
-            if (*lpVarInfo->wpVarValue == L'#')
-              *cti[i].lpcrValue=GetColorFromStr(lpVarInfo->wpVarValue + 1);
-            lpVarInfoFastCheck=lpVarInfo->next;
-          }
-          else break;
-        }
-      }
     }
   }
-}
-
-VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen)
-{
-  STACKVAR *hStackCurrent;
-  VARINFO *lpElement=lpVarInfoFastCheck;
-
-  if (lpElement)
-  {
-    lpVarInfoFastCheck=NULL;
-
-    if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
-        (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
-    {
-      return lpElement;
-    }
-  }
-
-  //Firstly search in GLOBAL var theme
-  hStackCurrent=hStackGlobal;
-
-  for (;;)
-  {
-    for (lpElement=hStackCurrent->first; lpElement; lpElement=lpElement->next)
-    {
-      if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
-          (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
-      {
-        return lpElement;
-      }
-    }
-    if (hStackActive == hStackCurrent || hStackActive == NULL)
-      break;
-    //Secondly search in input var theme
-    hStackCurrent=hStackActive;
-  }
-  return NULL;
-}
-
-COLORREF GetColorFromStr(wchar_t *wpColor)
-{
-  COLORREF crColor;
-
-  if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (COLORREF)-1)
-    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
-  return crColor;
 }
 
 int GetMaxNumberWidth(HDC hDC, int *nNumberAverageWidth)

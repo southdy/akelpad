@@ -75,6 +75,8 @@ IDI_ICON_35             ICON    DISCARDABLE     "35.ico"
 IDI_ICON_36             ICON    DISCARDABLE     "36.ico"
 IDI_ICON_37             ICON    DISCARDABLE     "37.ico"
 IDI_ICON_38             ICON    DISCARDABLE     "38.ico"
+IDI_ICONARROW1          ICON    DISCARDABLE     "IconArrow1.ico"
+IDI_ICONARROW2          ICON    DISCARDABLE     "IconArrow2.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -83,12 +85,12 @@ IDI_ICON_38             ICON    DISCARDABLE     "38.ico"
 
 IDD_SETUP DIALOGEX 70, 70, 355, 241
 STYLE DS_3DLOOK | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | 
-    WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+    WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 FONT 8, "MS Shell Dlg"
 BEGIN
     CONTROL         "",IDC_TOOLBARTEXT,"richedit20w",WS_VSCROLL | WS_HSCROLL | 
                     WS_TABSTOP | 0x1104,7,9,341,202,WS_EX_CLIENTEDGE
-    CONTROL         "",IDC_BIGICONS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,
+    CONTROL         "",IDC_BIGICONS,"Button",BS_AUTO3STATE | WS_TABSTOP,7,
                     216,73,8
     CONTROL         "",IDC_FLATBUTTONS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     7,228,73,8

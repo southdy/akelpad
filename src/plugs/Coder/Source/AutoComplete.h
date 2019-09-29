@@ -19,13 +19,15 @@
 #define STRID_ADDDOCUMENTWORDS           313
 #define STRID_COMPLETENONSYNTAXDOCUMENT  314
 #define STRID_SAVETYPEDCASE              315
-#define STRID_MAXDOCUMENT                316
-#define STRID_CHARS                      317
-#define STRID_ADDHIGHLIGHTWORDS          318
-#define STRID_HLBASECOLORS               319
-#define STRID_NOSYMBOLMARK               320
-#define STRID_RIGHTDELIMITERS            321
-#define STRID_SYNTAXDELIMITERS           322
+#define STRID_INHERITTYPEDCASE           316
+#define STRID_MAXDOCUMENT                317
+#define STRID_CHARS                      318
+#define STRID_ADDHIGHLIGHTWORDS          319
+#define STRID_HLBASECOLORS               320
+#define STRID_NOSYMBOLMARK               321
+#define STRID_RIGHTDELIMITERS            322
+#define STRID_SYNTAXDELIMITERS           323
+#define STRID_COMPLETECASESENSITIVE      324
 
 #define DLLA_AUTOCOMPLETE_ADDWINDOW 50
 #define DLLA_AUTOCOMPLETE_DELWINDOW 51
@@ -55,7 +57,12 @@
 #define BIT_BLOCK          0x1
 #define BIT_HLBASE         0x2
 #define BIT_DOCWORD        0x4
-#define BIT_NOSYNTAXFILE   0x8
+
+//Title flags
+#define TF_FORCECASESENSITIVE   0x1
+#define TF_FORCECASEINSENSITIVE 0x2
+#define TF_REGEXP               0x4
+#define TF_NOLISTBOX            0x8
 
 //dwCompleteListSymbolMark
 #define CLSM_NOMARK        0x0
@@ -84,20 +91,28 @@ typedef struct _BLOCKINFO {
   struct _BLOCKINFO *prev;
   DWORD dwStructType;
   wchar_t wchFirstLowerChar;
-  wchar_t *wpTitle;
+  const wchar_t *wpTitle;
   int nTitleLen;
+  DWORD dwTitleFlags;
   BOOL bExactTitle;
+  STACKREGROUP *sregTitle;
 
   struct _BLOCKINFO *master;
   INT_PTR *firstHandle;
   INT_PTR *lastHandle;
-  wchar_t *wpBlock;
+  const wchar_t *wpBlock;
   int nBlockLen;
   int nLinesInBlock;
   HSTACK hHotSpotStack;
   INT_PTR nHotSpotBlockBegin;
   void *lpRef;
 } BLOCKINFO;
+
+typedef struct _BLOCKORDER {
+  struct _BLOCKORDER *next;
+  struct _BLOCKORDER *prev;
+  BLOCKINFO *lpBlockInfo;
+} BLOCKORDER;
 
 typedef struct _BLOCKINFOHANDLE {
   struct _BLOCKINFOHANDLE *next;
@@ -118,7 +133,7 @@ typedef struct _DOCWORDINFO {
   struct _DOCWORDINFO *next;
   struct _DOCWORDINFO *prev;
   DWORD dwStructType;
-  wchar_t wchFirstLowerChar;
+  wchar_t wchFirstChar;
   wchar_t *wpDocWord;
   int nDocWordLen;
 } DOCWORDINFO;
@@ -127,7 +142,7 @@ typedef struct {
   DOCWORDINFO *first;
   DOCWORDINFO *last;
   INT_PTR lpSorted[FIRST_NONLATIN + 1];
-} HDOCWORDS;
+} STACKDOCWORDS;
 
 
 //// Prototypes
@@ -150,9 +165,12 @@ BOOL MoveAutoCompleteWindow();
 void CloseAutoCompleteWindow();
 
 //AutoComplete window listbox
-void FillListbox(SYNTAXFILE *lpSyntaxFile, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart);
+void FillListbox(SYNTAXFILE *lpSyntaxFile, STACKDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen);
 void SetSelListbox(int nIndex);
 BLOCKINFO* GetDataListbox(int nItem);
+int CompleteStrCmp(DWORD dwTitleFlags, const wchar_t *wpString1, const wchar_t *wpString2);
+int CompleteStrCmpLen(DWORD dwTitleFlags, const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength);
+wchar_t CompleteFirstChar(wchar_t wchChar);
 
 //Scheme
 int ParseBlock(SYNTAXFILE *lpScheme, HSTACK *hHotSpotStack, const wchar_t *wpInput, int nInputLen, wchar_t *wszOutput, int *nOutputLines);
@@ -162,15 +180,15 @@ TITLEINFO* StackInsertTitle(STACKTITLE *hStack);
 void StackFreeTitle(STACKTITLE *hStack);
 
 //Title part
-BOOL GetEditTitlePart(STACKDELIM *hDelimiterStack, wchar_t *wszTitle, int nTitleMax, INT_PTR *nMin, INT_PTR *nMax);
-void CompleteTitlePart(BLOCKINFO *lpBlockInfo, INT_PTR nMin, INT_PTR nMax);
+BOOL GetEditTitlePart(SYNTAXFILE *lpSyntaxFile, wchar_t *wszTitle, int nTitleMax, INT_PTR *nMin, INT_PTR *nMax);
+void CompleteTitlePart(SYNTAXFILE *lpSyntaxFile, BLOCKINFO *lpBlockInfo, INT_PTR nMin, INT_PTR nMax);
 
 //Block
-BLOCKINFO* StackInsertBlock(STACKBLOCK *hBlockStack);
-BLOCKINFO* StackInsertAndSortBlock(STACKBLOCK *hBlockStack, wchar_t *wpTitle, int nTitleLen);
+BLOCKINFO* StackInsertExactBlock(STACKBLOCK *hStack);
+BLOCKINFO* StackInsertBlock(STACKBLOCK *hStack, STACKBLOCKORDER *hOrderStack, wchar_t *wpTitle);
 BLOCKINFO* StackGetExactBlock(SYNTAXFILE *lpSyntaxFile, AECHARINDEX *ciCaret, INT_PTR nCaretOffset, INT_PTR *nMin, INT_PTR *nMax);
-BLOCKINFO* StackGetBlock(SYNTAXFILE *lpSyntaxFile, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen, BOOL *bOnlyOne);
-void StackFreeBlock(STACKBLOCK *hBlockStack);
+BLOCKINFO* StackGetBlock(SYNTAXFILE *lpSyntaxFile, STACKDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen, BOOL *bOnlyOne);
+void StackFreeBlock(STACKBLOCK *hStack, STACKBLOCKORDER *hOrderStack);
 
 //Hot spot
 HOTSPOT* StackInsertHotSpot(HSTACK *hStack, int nHotSpotPos);
@@ -180,10 +198,10 @@ void StackResetHotSpot(BLOCKINFO *lpBlockInfo);
 void StackFreeHotSpot(HSTACK *hStack);
 
 //Document words
-void StackFillDocWord(SYNTAXFILE *lpSyntaxFile, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen);
-DOCWORDINFO* StackInsertDocWord(HDOCWORDS *hStack, wchar_t *wpWordDoc, int nWordDocLen);
-DOCWORDINFO* StackGetDocWord(HDOCWORDS *hStack, const wchar_t *wpDocWord, int nDocWordLen);
-void StackFreeDocWord(HDOCWORDS *hStack);
+void StackFillDocWord(SYNTAXFILE *lpSyntaxFile, STACKDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen);
+DOCWORDINFO* StackInsertDocWord(STACKDOCWORDS *hStack, wchar_t *wpWordDoc, int nWordDocLen);
+DOCWORDINFO* StackGetDocWord(STACKDOCWORDS *hStack, const wchar_t *wpDocWord, int nDocWordLen);
+void StackFreeDocWord(STACKDOCWORDS *hStack);
 
 //Options
 void ReadAutoCompleteOptions(HANDLE hOptions);
@@ -195,5 +213,7 @@ void UninitAutoComplete();
 //// Global variables
 
 extern SYNTAXFILE *lpSyntaxFileAutoComplete;
+extern BOOL bAddHighLightWords;
+extern BOOL bCompleteCaseSensitive;
 
 #endif

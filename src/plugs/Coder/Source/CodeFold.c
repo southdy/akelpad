@@ -28,11 +28,10 @@ RECT rcCodeFoldDockRect={0};
 int nCodeFoldDockSide=DKS_RIGHT;
 DOCK *dkCodeFoldDlg=NULL;
 BOOL bCodeFoldDockWaitResize=FALSE;
-BOOL bCodeFoldDialogRectSave=FALSE;
 STACKFOLDWINDOW hFoldWindowsStack={0};
 FOLDWINDOW *lpCurrentFoldWindow=NULL;
 BOOL bFocusResetList=FALSE;
-BOOL bResetFold=FALSE;
+DWORD dwResetFold=0;
 BOOL bIgnoreFilter=FALSE;
 FRAMEDATA *lpLastPostUpdateFrame=NULL;
 DWORD dwLastPostUpdateFlags=0;
@@ -42,21 +41,27 @@ int nShowDock=CFSD_AUTO;
 int nFollowCaret=FCO_ANYWHERE;
 BOOL bFoldListSystemColors=FALSE;
 BOOL bFoldListSystemFont=TRUE;
-BOOL bNoPrintCollapsed=FALSE;
-BOOL bCollapseOnOpen=FALSE;
-BOOL bTagMarkEnable=TRUE;
+int nShowNodes=CFSN_AUTO;
 int nDrawNodeType=DNT_ROUND;
+BOOL bTagMarkEnable=TRUE;
+BOOL bCollapseOnOpen=FALSE;
+BOOL bNoPrintCollapsed=FALSE;
+BOOL bHideFoldEnd=FALSE;
 int nFindRootMaxDepth=0;
+DWORD dwFindRootFlags=0;
 HCURSOR hCursorArrow=NULL;
 DWORD dwFoldListTextColor;
 DWORD dwFoldListBkColor;
+HBRUSH hFoldFilterBkBrush=NULL;
+DWORD dwFoldFilterTextColor=(DWORD)-1;
+DWORD dwFoldFilterBkColor=(DWORD)-1;
 DWORD dwCurrentCollapse=699;  //"Ctrl+="
 DWORD dwCurrentGoBegin=731;   //"Ctrl+["
 DWORD dwCurrentGoEnd=733;     //"Ctrl+]"
 DWORD dwCurrentSelect=732;    //"Ctrl+\"
-DWORD dwAllCollapse=1723;     //"Ctrl+Alt+="
-DWORD dwAllNextLevel=1757;    //"Ctrl+Alt+]"
-DWORD dwAllPrevLevel=1755;    //"Ctrl+Alt+["
+DWORD dwAllCollapse=955;     //"Ctrl+Shift+="
+DWORD dwAllNextLevel=989;    //"Ctrl+Shift+]"
+DWORD dwAllPrevLevel=987;    //"Ctrl+Shift+["
 DWORD dwFindRootLevel=123;    //"F12"
 //DWORD dwFindRootLevel=703;    //"Ctrl+/"
 PLUGINFUNCTION *pfwCurrentCollapse=NULL;
@@ -86,127 +91,142 @@ void __declspec(dllexport) CodeFold(PLUGINDATA *pd)
     if (pd->lParam)
     {
       INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
+      BOOL bCheckInit=TRUE;
 
-      if (nInitCodeFold)
+      if (nAction == DLLA_CODEFOLD_SHOWDOCK)
       {
-        if (nAction == DLLA_CODEFOLD_SHOWDOCK)
+        HWND *lpWndDock=NULL;
+
+        if (IsExtCallParamValid(pd->lParam, 2))
+          lpWndDock=(HWND *)GetExtCallParam(pd->lParam, 2);
+
+        if (lpWndDock)
         {
-          HWND *lpWndDock=NULL;
-
-          if (IsExtCallParamValid(pd->lParam, 2))
-            lpWndDock=(HWND *)GetExtCallParam(pd->lParam, 2);
-
-          if (lpWndDock)
-          {
-            if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
-              *lpWndDock=dkCodeFoldDlg->hWnd;
-          }
-          else SendMessage(hWndCodeFoldDlg, WM_COMMAND, IDC_CODEFOLD_HIDE, 0);
+          if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
+            *lpWndDock=dkCodeFoldDlg->hWnd;
+          bCheckInit=FALSE;
         }
-        else if (nAction == DLLA_CODEFOLD_ADDWINDOW)
+        else if (nInitCodeFold)
+          SendMessage(hWndCodeFoldDlg, WM_COMMAND, IDC_CODEFOLD_HIDE, 0);
+      }
+      if (bCheckInit)
+      {
+        if (nInitCodeFold)
         {
-          MANUALSET *lpManual;
-          HWND hWndEdit=NULL;
-          HWND hWndParent=NULL;
-          unsigned char *pAlias=NULL;
-
-          if (IsExtCallParamValid(pd->lParam, 2))
-            hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
-          if (IsExtCallParamValid(pd->lParam, 3))
-            pAlias=(unsigned char *)GetExtCallParam(pd->lParam, 3);
-          hWndParent=GetParent(hWndEdit);
-
-          if (hWndEdit && hWndParent && pAlias)
+          if (nAction == DLLA_CODEFOLD_GORULE)
           {
-            //Subclass window
-            if (!(lpManual=StackGetManual(&hManualStack, hWndEdit, NULL)))
+            AEFOLD *lpFold;
+
+            if (lpFold=GetCaretFold(lpCurrentFoldWindow, NULL))
             {
-              if (lpManual=StackInsertManual(&hManualStack))
-              {
-                lpManual->hWndEdit=hWndEdit;
-                lpManual->hDocEdit=(AEHDOC)SendMessage(hWndEdit, AEM_GETDOCUMENT, 0, 0);
-                lpManual->hWndParent=hWndParent;
-
-                lpManual->lpOldEditProc=(WNDPROC)GetWindowLongPtrWide(hWndEdit, GWLP_WNDPROC);
-                SetWindowLongPtrWide(hWndEdit, GWLP_WNDPROC, (UINT_PTR)NewUserEditProc);
-
-                lpManual->lpOldParentProc=(WNDPROC)GetWindowLongPtrWide(hWndParent, GWLP_WNDPROC);
-                SetWindowLongPtrWide(hWndParent, GWLP_WNDPROC, (UINT_PTR)NewUserParentProc);
-              }
+              GoRule(lpCurrentFoldWindow, lpFold);
             }
+          }
+          else if (nAction == DLLA_CODEFOLD_ADDWINDOW)
+          {
+            MANUALSET *lpManual;
+            HWND hWndEdit=NULL;
+            HWND hWndParent=NULL;
+            unsigned char *pAlias=NULL;
 
-            if (lpManual)
+            if (IsExtCallParamValid(pd->lParam, 2))
+              hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
+            if (IsExtCallParamValid(pd->lParam, 3))
+              pAlias=(unsigned char *)GetExtCallParam(pd->lParam, 3);
+            hWndParent=GetParent(hWndEdit);
+
+            if (hWndEdit && hWndParent && pAlias)
             {
-              if (bOldWindows)
-                MultiByteToWideChar(CP_ACP, 0, (char *)pAlias, -1, lpManual->wszAlias, MAX_PATH);
-              else
-                xstrcpynW(lpManual->wszAlias, (wchar_t *)pAlias, MAX_PATH);
-
-              //Add CodeFold element
-              lpManual->dwDllFunction|=CODER_CODEFOLD;
-
-              if (!StackGetFoldWindow(&hFoldWindowsStack, hWndEdit, NULL))
+              //Subclass window
+              if (!(lpManual=StackGetManual(&hManualStack, hWndEdit, NULL)))
               {
-                if (lpManual->lpFoldWindow=FillLevelsStack(NULL, NULL, hWndEdit, NULL))
+                if (lpManual=StackInsertManual(&hManualStack))
                 {
-                  ((FOLDWINDOW *)lpManual->lpFoldWindow)->hWndEdit=lpManual->hWndEdit;
-                  ((FOLDWINDOW *)lpManual->lpFoldWindow)->hDocEdit=lpManual->hDocEdit;
-                  ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser=lpManual;
+                  lpManual->hWndEdit=hWndEdit;
+                  lpManual->hDocEdit=(AEHDOC)SendMessage(hWndEdit, AEM_GETDOCUMENT, 0, 0);
+                  lpManual->hWndParent=hWndParent;
 
-                  if (nInitCodeFold)
+                  lpManual->lpOldEditProc=(WNDPROC)GetWindowLongPtrWide(hWndEdit, GWLP_WNDPROC);
+                  SetWindowLongPtrWide(hWndEdit, GWLP_WNDPROC, (UINT_PTR)NewUserEditProc);
+
+                  lpManual->lpOldParentProc=(WNDPROC)GetWindowLongPtrWide(hWndParent, GWLP_WNDPROC);
+                  SetWindowLongPtrWide(hWndParent, GWLP_WNDPROC, (UINT_PTR)NewUserParentProc);
+                }
+              }
+
+              if (lpManual)
+              {
+                if (bOldWindows)
+                  MultiByteToWideChar(CP_ACP, 0, (char *)pAlias, -1, lpManual->wszAlias, MAX_PATH);
+                else
+                  xstrcpynW(lpManual->wszAlias, (wchar_t *)pAlias, MAX_PATH);
+
+                //Add CodeFold element
+                lpManual->dwDllFunction|=CODER_CODEFOLD;
+
+                if (!StackGetFoldWindow(&hFoldWindowsStack, hWndEdit, NULL))
+                {
+                  if (lpManual->lpFoldWindow=FillLevelsStack(NULL, NULL, hWndEdit, NULL))
                   {
-                    SendMessage(hMainWnd, AKD_SETEDITNOTIFY, (LPARAM)hWndEdit, 0);
-                    UpdateEdit(hWndEdit, UE_ALLRECT);
+                    ((FOLDWINDOW *)lpManual->lpFoldWindow)->hWndEdit=lpManual->hWndEdit;
+                    ((FOLDWINDOW *)lpManual->lpFoldWindow)->hDocEdit=lpManual->hDocEdit;
+                    ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser=lpManual;
+
+                    if (nInitCodeFold)
+                    {
+                      SendMessage(hMainWnd, AKD_SETEDITNOTIFY, (LPARAM)hWndEdit, 0);
+                      UpdateEdit(hWndEdit, UE_ALLRECT);
+                    }
                   }
                 }
               }
             }
           }
-        }
-        else if (nAction == DLLA_CODEFOLD_DELWINDOW)
-        {
-          MANUALSET *lpManual;
-          HWND hWndEdit=NULL;
-
-          if (IsExtCallParamValid(pd->lParam, 2))
-            hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
-
-          if (hWndEdit)
+          else if (nAction == DLLA_CODEFOLD_DELWINDOW)
           {
-            if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
+            MANUALSET *lpManual;
+            HWND hWndEdit=NULL;
+
+            if (IsExtCallParamValid(pd->lParam, 2))
+              hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
+
+            if (hWndEdit)
             {
-              if (lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
-                StackDeleteManual(&hManualStack, lpManual, CODER_CODEFOLD);
+              if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
+              {
+                if (lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
+                  StackDeleteManual(&hManualStack, lpManual, CODER_CODEFOLD);
+              }
+            }
+          }
+          else if (nAction == DLLA_CODEFOLD_GETWINDOW)
+          {
+            MANUALSET *lpManual;
+            HWND hWndEdit=NULL;
+            BOOL *lpbFound=NULL;
+            BOOL bFound=FALSE;
+
+            if (IsExtCallParamValid(pd->lParam, 2))
+              hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
+            if (IsExtCallParamValid(pd->lParam, 3))
+              lpbFound=(BOOL *)GetExtCallParam(pd->lParam, 3);
+
+            if (hWndEdit && lpbFound)
+            {
+              if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
+              {
+                if (lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
+                  bFound=TRUE;
+              }
+              *lpbFound=bFound;
             }
           }
         }
-        else if (nAction == DLLA_CODEFOLD_GETWINDOW)
+        else
         {
-          MANUALSET *lpManual;
-          HWND hWndEdit=NULL;
-          BOOL *lpbFound=NULL;
-          BOOL bFound=FALSE;
-
-          if (IsExtCallParamValid(pd->lParam, 2))
-            hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
-          if (IsExtCallParamValid(pd->lParam, 3))
-            lpbFound=(BOOL *)GetExtCallParam(pd->lParam, 3);
-
-          if (hWndEdit && lpbFound)
-          {
-            if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
-            {
-              if (lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
-                bFound=TRUE;
-            }
-            *lpbFound=bFound;
-          }
+          xprintfW(wszBuffer, GetLangStringW(wLangModule, STRID_LOADFIRST), L"Coder::CodeFold");
+          MessageBoxW(pd->hMainWnd, wszBuffer, L"Coder::CodeFold", MB_OK|MB_ICONEXCLAMATION);
         }
-      }
-      else
-      {
-        xprintfW(wszBuffer, GetLangStringW(wLangModule, STRID_LOADFIRST), L"Coder::CodeFold");
-        MessageBoxW(pd->hMainWnd, wszBuffer, L"Coder::CodeFold", MB_OK|MB_ICONEXCLAMATION);
       }
 
       //If plugin already loaded, stay in memory and don't change active status
@@ -301,13 +321,13 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
   static HWND hWndTitleClose;
   static HMENU hMenuLabel;
   static HMENU hMenuTreeView;
-  static DIALOGRESIZE drs[]={{&hWndTitleText,      DRS_SIZE|DRS_X, 0},
-                             {&hWndTitleHide,      DRS_MOVE|DRS_X, 0},
-                             {&hWndTitleClose,     DRS_MOVE|DRS_X, 0},
-                             {&hWndCodeFoldList,   DRS_SIZE|DRS_X, 0},
-                             {&hWndCodeFoldList,   DRS_SIZE|DRS_Y, 0},
-                             {&hWndCodeFoldFilter, DRS_MOVE|DRS_Y, 0},
-                             {&hWndCodeFoldFilter, DRS_SIZE|DRS_X, 0},
+  static RESIZEDIALOG rds[]={{&hWndTitleText,      RDS_SIZE|RDS_X, 0},
+                             {&hWndTitleHide,      RDS_MOVE|RDS_X, 0},
+                             {&hWndTitleClose,     RDS_MOVE|RDS_X, 0},
+                             {&hWndCodeFoldList,   RDS_SIZE|RDS_X, 0},
+                             {&hWndCodeFoldList,   RDS_SIZE|RDS_Y, 0},
+                             {&hWndCodeFoldFilter, RDS_MOVE|RDS_Y, 0},
+                             {&hWndCodeFoldFilter, RDS_SIZE|RDS_X, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -329,14 +349,19 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
     AppendMenuWide(hMenuTreeView, MF_SEPARATOR, 0, NULL);
     AppendMenuWide(hMenuTreeView, MF_STRING, IDM_CODEFOLD_LISTEXPAND, GetLangStringW(wLangModule, STRID_LISTEXPAND));
     AppendMenuWide(hMenuTreeView, MF_STRING, IDM_CODEFOLD_LISTCOLLAPSE, GetLangStringW(wLangModule, STRID_LISTCOLLAPSE));
+    AppendMenuWide(hMenuTreeView, MF_STRING, IDM_CODEFOLD_LISTCOPY, GetLangStringW(wLangModule, STRID_LISTCOPY));
     AppendMenuWide(hMenuTreeView, MF_STRING, IDM_CODEFOLD_STATISTICS, GetLangStringW(wLangModule, STRID_STATISTICS));
     AppendMenuWide(hMenuTreeView, MF_SEPARATOR, 0, NULL);
+    AppendMenuWide(hMenuTreeView, MF_STRING, IDM_CODEFOLD_GORULE, GetLangStringW(wLangModule, STRID_GORULE));
     AppendMenuWide(hMenuTreeView, MF_STRING, IDM_CODEFOLD_SETUP, GetLangStringW(wLangModule, STRID_SETUP));
     SetMenuDefaultItem(hMenuTreeView, IDM_CODEFOLD_GOBEGIN, FALSE);
 
     //Set dock title
     {
       BUTTONDRAW bd;
+      RECT rcTitleText;
+      RECT rcTitleHide;
+      RECT rcTitleClose;
 
       xprintfW(wszBuffer, L"%s::CodeFold", wszPluginName);
       SetWindowTextWide(hWndTitleText, wszBuffer);
@@ -344,8 +369,20 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
       bd.dwFlags=BIF_DOWNARROW|BIF_ETCHED;
       SendMessage(hMainWnd, AKD_SETBUTTONDRAW, (WPARAM)hWndTitleHide, (LPARAM)&bd);
 
-      bd.dwFlags=BIF_CROSS|BIF_ETCHED;
-      SendMessage(hMainWnd, AKD_SETBUTTONDRAW, (WPARAM)hWndTitleClose, (LPARAM)&bd);
+      if (!bCodeFoldDockWaitResize)
+      {
+        bd.dwFlags=BIF_CROSS|BIF_ETCHED;
+        SendMessage(hMainWnd, AKD_SETBUTTONDRAW, (WPARAM)hWndTitleClose, (LPARAM)&bd);
+      }
+      else
+      {
+        GetWindowSize(hWndTitleText, hDlg, &rcTitleText);
+        GetWindowSize(hWndTitleHide, hDlg, &rcTitleHide);
+        GetWindowSize(hWndTitleClose, hDlg, &rcTitleClose);
+        ShowWindow(hWndTitleClose, SW_HIDE);
+        SetWindowPos(hWndTitleHide, 0, rcTitleClose.left, rcTitleClose.top, 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
+        SetWindowPos(hWndTitleText, 0, 0, 0, rcTitleText.right + (rcTitleClose.left - rcTitleHide.left), rcTitleText.bottom, SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
+      }
     }
 
     lpOldFilterProc=(WNDPROC)GetWindowLongPtrWide(hWndCodeFoldFilter, GWLP_WNDPROC);
@@ -467,10 +504,83 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
         {
           ExpandTreeView(hWndCodeFoldList, lpCurrentFoldWindow, FALSE);
         }
+        else if (nCmd == IDM_CODEFOLD_LISTCOPY)
+        {
+          TVITEMW tvi;
+          HTREEITEM hItem;
+          HTREEITEM hNextItem;
+          wchar_t *wszText=NULL;
+          wchar_t *wpText=NULL;
+          int nSpaces=0;
+          int i;
+
+          for (;;)
+          {
+            hItem=(HTREEITEM)SendMessage(hWndCodeFoldList, TVM_GETNEXTITEM, TVGN_ROOT, (LPARAM)NULL);
+
+            tvi.mask=TVIF_PARAM|TVIF_STATE|TVIF_TEXT;
+            tvi.stateMask=TVIS_EXPANDED;
+            tvi.pszText=wszBuffer;
+            tvi.cchTextMax=BUFFER_SIZE;
+
+            while (hItem)
+            {
+              tvi.hItem=hItem;
+
+              if (TreeView_GetItemWide(hWndCodeFoldList, &tvi))
+              {
+                for (i=0; i < nSpaces; ++i)
+                {
+                  if (wszText) *wpText=L' ';
+                  ++wpText;
+                }
+                wpText+=xprintfW(wszText?wpText:NULL, L"%s\r\n", wszBuffer) - !wszText;
+
+                if (tvi.state & TVIS_EXPANDED)
+                {
+                  if (hNextItem=(HTREEITEM)SendMessage(hWndCodeFoldList, TVM_GETNEXTITEM, TVGN_CHILD, (LPARAM)hItem))
+                  {
+                    nSpaces+=2;
+                    hItem=hNextItem;
+                    continue;
+                  }
+                }
+                for (;;)
+                {
+                  if (hNextItem=(HTREEITEM)SendMessage(hWndCodeFoldList, TVM_GETNEXTITEM, TVGN_NEXT, (LPARAM)hItem))
+                  {
+                    hItem=hNextItem;
+                    break;
+                  }
+                  else if (hItem=(HTREEITEM)SendMessage(hWndCodeFoldList, TVM_GETNEXTITEM, TVGN_PARENT, (LPARAM)hItem))
+                    nSpaces-=2;
+                  else
+                    break;
+                }
+              }
+            }
+
+            if (!wszText)
+            {
+              //Allocate wszText and loop again
+              if (wszText=(wchar_t *)GlobalAlloc(GPTR, (INT_PTR)(wpText + 1)))
+                wpText=wszText;
+              else
+                break;
+            }
+            else
+            {
+              *wpText=L'\0';
+              break;
+            }
+          }
+          SendMessage(hMainWnd, AKD_SETCLIPBOARDTEXT, (WPARAM)wszText, (LPARAM)-1);
+        }
         else if (nCmd == IDM_CODEFOLD_STATISTICS)
         {
-          AEFOLD *lpFold;
+          AEFOLD *lpCurFold;
           AEFOLD *lpStopFold;
+          AEFOLD *lpFold;
           int nRootFoldCount=0;
           int nSelChildCount=-1;
           int nAllFoldCount;
@@ -479,8 +589,10 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
           {
             ++nRootFoldCount;
           }
-          if (lpFold=GetCurFoldTreeView(hWndCodeFoldList))
+          if (lpCurFold=GetCurFoldTreeView(hWndCodeFoldList))
           {
+            lpFold=lpCurFold;
+
             for (lpStopFold=AEC_NextFold(lpFold, FALSE); lpFold != lpStopFold; lpFold=AEC_NextFold(lpFold, TRUE))
             {
               ++nSelChildCount;
@@ -490,6 +602,15 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
           xprintfW(wszBuffer, GetLangStringW(wLangModule, STRID_STATISTICS_MSG), nAllFoldCount, nRootFoldCount, nAllFoldCount - nRootFoldCount, nSelChildCount);
           MessageBoxW(hMainWnd, wszBuffer, L"Coder::CodeFold", MB_OK|MB_ICONINFORMATION);
+        }
+        else if (nCmd == IDM_CODEFOLD_GORULE)
+        {
+          AEFOLD *lpFold;
+
+          if (lpFold=GetCurFoldTreeView(hWndCodeFoldList))
+          {
+            GoRule(lpCurrentFoldWindow, lpFold);
+          }
         }
         else if (nCmd == IDM_CODEFOLD_SETUP)
         {
@@ -580,7 +701,7 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
           pfCodeFold->bRunning=FALSE;
           SendMessage(hMainWnd, WM_COMMAND, 0, 0);
         }
-        else PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
+        else SendMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
       }
     }
   }
@@ -610,13 +731,28 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
       }
     }
   }
+  else if (uMsg == WM_CTLCOLOREDIT)
+  {
+    if (hWndCodeFoldFilter == (HWND)lParam)
+    {
+      if (hFoldFilterBkBrush)
+      {
+        if (dwFoldFilterTextColor != (DWORD)-1)
+          SetTextColor((HDC)wParam, dwFoldFilterTextColor);
+        if (dwFoldFilterBkColor != (DWORD)-1)
+          SetBkColor((HDC)wParam, dwFoldFilterBkColor);
+        SetWindowLongPtrWide(hDlg, DWLP_MSGRESULT, (INT_PTR)hFoldFilterBkBrush);
+        return (BOOL)(INT_PTR)hFoldFilterBkBrush;
+      }
+    }
+  }
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], NULL, &rcCodeFoldCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], NULL, &rcCodeFoldCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
-      if (dkCodeFoldDlg) GetWindowPos(hWndTitleText, hDlg, &dkCodeFoldDlg->rcDragDrop);
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
+      if (dkCodeFoldDlg) GetWindowSize(hWndTitleText, hDlg, &dkCodeFoldDlg->rcDragDrop);
   }
 
   return FALSE;
@@ -648,7 +784,14 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   static HWND hWndFollowCaretNone;
   static HWND hWndListSystemColors;
   static HWND hWndListSystemFont;
+  static HWND hWndShowNodesAuto;
+  static HWND hWndShowNodesAsList;
+  static HWND hWndShowNodesNone;
+  static HWND hWndDrawNodeSquare;
+  static HWND hWndDrawNodeRound;
   static int nShowDockDlg;
+  static int nShowNodesDlg;
+  static int nDrawNodeTypeDlg;
 
   if (uMsg == WM_INITDIALOG)
   {
@@ -663,6 +806,11 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     hWndFollowCaretNone=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_NONE);
     hWndListSystemColors=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS);
     hWndListSystemFont=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMFONT);
+    hWndShowNodesAuto=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_AUTO);
+    hWndShowNodesAsList=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_ASLIST);
+    hWndShowNodesNone=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_NONE);
+    hWndDrawNodeSquare=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_SQUARE);
+    hWndDrawNodeRound=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_ROUND);
 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWDOCK_GROUP, GetLangStringW(wLangModule, STRID_SHOWDOCK_GROUP));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWDOCK_AUTO, GetLangStringW(wLangModule, STRID_AUTO));
@@ -673,10 +821,17 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_ANYWHERE, GetLangStringW(wLangModule, STRID_ANYWHERE));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_ONLYROOT, GetLangStringW(wLangModule, STRID_ROOT));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_NONE, GetLangStringW(wLangModule, STRID_NONE));
-    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_GROUP, GetLangStringW(wLangModule, STRID_MAXDOCUMENT));
-    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_POSTLABEL, GetLangStringW(wLangModule, STRID_CHARS));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS, GetLangStringW(wLangModule, STRID_LISTSYSTEMCOLORS));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMFONT, GetLangStringW(wLangModule, STRID_LISTSYSTEMFONT));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_GROUP, GetLangStringW(wLangModule, STRID_MAXDOCUMENT));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_POSTLABEL, GetLangStringW(wLangModule, STRID_CHARS));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_GROUP, GetLangStringW(wLangModule, STRID_SHOWNODES_GROUP));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_AUTO, GetLangStringW(wLangModule, STRID_AUTO));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_ASLIST, GetLangStringW(wLangModule, STRID_ASLIST));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWNODES_NONE, GetLangStringW(wLangModule, STRID_NONE));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_GROUP, GetLangStringW(wLangModule, STRID_DRAWNODE));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_SQUARE, GetLangStringW(wLangModule, STRID_SQUARE));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_ROUND, GetLangStringW(wLangModule, STRID_ROUND));
 
     nShowDockDlg=nShowDock;
     if (nShowDockDlg == CFSD_NONE)
@@ -694,12 +849,29 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     else if (nFollowCaret == FCO_NONE)
       SendMessage(hWndFollowCaretNone, BM_SETCHECK, BST_CHECKED, 0);
 
-    SetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, nCharsLimit, FALSE);
-
     if (bFoldListSystemColors)
       SendMessage(hWndListSystemColors, BM_SETCHECK, BST_CHECKED, 0);
     if (bFoldListSystemFont)
       SendMessage(hWndListSystemFont, BM_SETCHECK, BST_CHECKED, 0);
+
+    nShowNodesDlg=nShowNodes;
+    if (nShowNodesDlg == CFSN_NONE)
+      SendMessage(hWndShowNodesNone, BM_SETCHECK, BST_CHECKED, 0);
+    else if (nShowNodesDlg == CFSN_ASLIST)
+      SendMessage(hWndShowNodesAsList, BM_SETCHECK, BST_CHECKED, 0);
+    else //if (nShowNodesDlg == CFSN_AUTO)
+      SendMessage(hWndShowNodesAuto, BM_SETCHECK, BST_CHECKED, 0);
+
+    nDrawNodeTypeDlg=nDrawNodeType;
+    if (nDrawNodeTypeDlg == DNT_ROUND)
+      SendMessage(hWndDrawNodeRound, BM_SETCHECK, BST_CHECKED, 0);
+    else
+      SendMessage(hWndDrawNodeSquare, BM_SETCHECK, BST_CHECKED, 0);
+
+    SetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, nCharsLimit, FALSE);
+
+    SendMessage(hDlg, WM_COMMAND, IDC_CODEFOLD_SETUP_SHOWDOCK_AUTO, 0);
+    SendMessage(hDlg, WM_COMMAND, IDC_CODEFOLD_SETUP_SHOWNODES_AUTO, 0);
   }
   else if (uMsg == WM_COMMAND)
   {
@@ -716,6 +888,11 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
       EnableWindow(hWndShowDockFoldLimitLabel, (nShowDockDlg == CFSD_AUTO));
       EnableWindow(hWndShowDockFoldLimit, (nShowDockDlg == CFSD_AUTO));
+      EnableWindow(hWndFollowCaretEverywhere, (nShowDockDlg != CFSD_NONE));
+      EnableWindow(hWndFollowCaretOnlyRoot, (nShowDockDlg != CFSD_NONE));
+      EnableWindow(hWndFollowCaretNone, (nShowDockDlg != CFSD_NONE));
+      EnableWindow(hWndListSystemColors, (nShowDockDlg != CFSD_NONE));
+      EnableWindow(hWndListSystemFont, (nShowDockDlg != CFSD_NONE));
 
       if (nShowDockDlg != nShowDock)
         SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
@@ -725,6 +902,34 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
              LOWORD(wParam) == IDC_CODEFOLD_SETUP_FOLLOWCARET_NONE)
     {
       SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
+    }
+    else if (LOWORD(wParam) == IDC_CODEFOLD_SETUP_SHOWNODES_AUTO ||
+             LOWORD(wParam) == IDC_CODEFOLD_SETUP_SHOWNODES_ASLIST ||
+             LOWORD(wParam) == IDC_CODEFOLD_SETUP_SHOWNODES_NONE)
+    {
+      if (SendMessage(hWndShowNodesNone, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        nShowNodesDlg=CFSN_NONE;
+      else if (SendMessage(hWndShowNodesAsList, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        nShowNodesDlg=CFSN_ASLIST;
+      else
+        nShowNodesDlg=CFSN_AUTO;
+
+      EnableWindow(hWndDrawNodeRound, (nShowNodesDlg != CFSN_NONE));
+      EnableWindow(hWndDrawNodeSquare, (nShowNodesDlg != CFSN_NONE));
+
+      if (nShowNodesDlg != nShowNodes)
+        SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
+    }
+    else if (LOWORD(wParam) == IDC_CODEFOLD_SETUP_DRAWNODE_SQUARE ||
+             LOWORD(wParam) == IDC_CODEFOLD_SETUP_DRAWNODE_ROUND)
+    {
+      if (SendMessage(hWndDrawNodeSquare, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        nDrawNodeTypeDlg=DNT_SQUARE;
+      else if (SendMessage(hWndDrawNodeRound, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        nDrawNodeTypeDlg=DNT_ROUND;
+
+      if (nDrawNodeTypeDlg != nDrawNodeType)
+        SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
     }
     else if (LOWORD(wParam) == IDC_CODEFOLD_SETUP_SHOWDOCK_FOLDLIMIT ||
              LOWORD(wParam) == IDC_CODEFOLD_SETUP_CHARSLIMIT)
@@ -761,17 +966,26 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
       else if (SendMessage(hWndFollowCaretNone, BM_GETCHECK, 0, 0) == BST_CHECKED)
         nFollowCaret=FCO_NONE;
 
-      nCharsLimit=GetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, NULL, FALSE);
-
       bFoldListSystemColors=(BOOL)SendMessage(hWndListSystemColors, BM_GETCHECK, 0, 0);
 
       bState=(BOOL)SendMessage(hWndListSystemFont, BM_GETCHECK, 0, 0);
       if (bState != bFoldListSystemFont)
       {
         bFoldListSystemFont=bState;
-        if (bFoldListSystemFont)
-          SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)NULL, FALSE);
+        if (!bFoldListSystemFont)
+        {
+          HFONT hFontEdit;
+
+          hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
+          SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
+        }
+        else SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)NULL, FALSE);
       }
+
+      nShowNodes=nShowNodesDlg;
+      nDrawNodeType=nDrawNodeTypeDlg;
+
+      nCharsLimit=GetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, NULL, FALSE);
 
       if (nInitCodeFold)
       {
@@ -797,14 +1011,15 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
 BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  static HWND hWndDrawNodeSquare;
-  static HWND hWndDrawNodeRound;
   static HWND hWndTagMark;
   static HWND hWndCollapseOnOpen;
   static HWND hWndNoPrintCollapsed;
+  static HWND hWndHideFoldEnd;
   static HWND hWndFindRootHotkey;
   static HWND hWndFindRootDepth;
   static HWND hWndFindRootDepthSpin;
+  static HWND hWndFindRootMatchCase;
+  static HWND hWndFindRootWholeWord;
   static HWND hWndCurrentCollapse;
   static HWND hWndCurrentGoBegin;
   static HWND hWndCurrentGoEnd;
@@ -812,19 +1027,19 @@ BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   static HWND hWndAllCollapse;
   static HWND hWndAllNextLevel;
   static HWND hWndAllPrevLevel;
-  static int nDrawNodeTypeDlg;
 
   if (uMsg == WM_INITDIALOG)
   {
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hMainIcon);
-    hWndDrawNodeSquare=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_SQUARE);
-    hWndDrawNodeRound=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_ROUND);
     hWndTagMark=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_TAGMARK);
     hWndCollapseOnOpen=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_COLLAPSEONOPEN);
     hWndNoPrintCollapsed=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_NOPRINTCOLLAPSED);
+    hWndHideFoldEnd=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_HIDEFOLDEND);
     hWndFindRootHotkey=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FINDROOTHOTKEY);
     hWndFindRootDepth=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FINDROOTDEPTH_EDIT);
     hWndFindRootDepthSpin=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FINDROOTDEPTH_SPIN);
+    hWndFindRootMatchCase=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FINDROOTMATCHCASE);
+    hWndFindRootWholeWord=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FINDROOTWHOLEWORD);
     hWndCurrentCollapse=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_HOTKEYCURRENT_COLLAPSE);
     hWndCurrentGoBegin=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_HOTKEYCURRENT_GOBEGIN);
     hWndCurrentGoEnd=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_HOTKEYCURRENT_GOEND);
@@ -833,15 +1048,15 @@ BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     hWndAllNextLevel=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_HOTKEYALL_NEXTLEVEL);
     hWndAllPrevLevel=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_HOTKEYALL_PREVLEVEL);
 
-    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_GROUP, GetLangStringW(wLangModule, STRID_DRAWNODE));
-    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_SQUARE, GetLangStringW(wLangModule, STRID_SQUARE));
-    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_DRAWNODE_ROUND, GetLangStringW(wLangModule, STRID_ROUND));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_TAGMARK, GetLangStringW(wLangModule, STRID_TAGMARK));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_COLLAPSEONOPEN, GetLangStringW(wLangModule, STRID_COLLAPSEONOPEN));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_NOPRINTCOLLAPSED, GetLangStringW(wLangModule, STRID_NOPRINTCOLLAPSED));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_HIDEFOLDEND, GetLangStringW(wLangModule, STRID_HIDEFOLDEND));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FINDROOT_GROUP, GetLangStringW(wLangModule, STRID_FINDROOT));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FINDROOTHOTKEY_LABEL, GetLangStringW(wLangModule, STRID_HOTKEY));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FINDROOTDEPTH_LABEL, GetLangStringW(wLangModule, STRID_DEPTH));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FINDROOTMATCHCASE, GetLangStringW(wLangModule, STRID_MATCHCASE));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FINDROOTWHOLEWORD, GetLangStringW(wLangModule, STRID_WHOLEWORD));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_HOTKEYCURRENT_GROUP, GetLangStringW(wLangModule, STRID_HOTKEYCURRENT));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_HOTKEYCURRENT_COLLAPSE_LABEL, GetLangStringW(wLangModule, STRID_COLLAPSE));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_HOTKEYCURRENT_GOBEGIN_LABEL, GetLangStringW(wLangModule, STRID_GOBEGIN));
@@ -852,22 +1067,23 @@ BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_HOTKEYALL_NEXTLEVEL_LABEL, GetLangStringW(wLangModule, STRID_NEXTLEVEL));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_HOTKEYALL_PREVLEVEL_LABEL, GetLangStringW(wLangModule, STRID_PREVLEVEL));
 
-    nDrawNodeTypeDlg=nDrawNodeType;
-    if (nDrawNodeTypeDlg == DNT_ROUND)
-      SendMessage(hWndDrawNodeRound, BM_SETCHECK, BST_CHECKED, 0);
-    else
-      SendMessage(hWndDrawNodeSquare, BM_SETCHECK, BST_CHECKED, 0);
-
     if (bTagMarkEnable)
       SendMessage(hWndTagMark, BM_SETCHECK, BST_CHECKED, 0);
     if (bCollapseOnOpen)
       SendMessage(hWndCollapseOnOpen, BM_SETCHECK, BST_CHECKED, 0);
     if (bNoPrintCollapsed)
       SendMessage(hWndNoPrintCollapsed, BM_SETCHECK, BST_CHECKED, 0);
+    if (bHideFoldEnd)
+      SendMessage(hWndHideFoldEnd, BM_SETCHECK, BST_CHECKED, 0);
 
     SendMessage(hWndFindRootDepthSpin, UDM_SETBUDDY, (WPARAM)hWndFindRootDepth, 0);
     SendMessage(hWndFindRootDepthSpin, UDM_SETRANGE, 0, MAKELONG(99, 0));
     SetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_FINDROOTDEPTH_EDIT, nFindRootMaxDepth, FALSE);
+
+    if (dwFindRootFlags & AEFR_MATCHCASE)
+      SendMessage(hWndFindRootMatchCase, BM_SETCHECK, BST_CHECKED, 0);
+    if (dwFindRootFlags & AEFR_WHOLEWORD)
+      SendMessage(hWndFindRootWholeWord, BM_SETCHECK, BST_CHECKED, 0);
 
     InitCodeFold();
     SendMessage(hWndFindRootHotkey, HKM_SETHOTKEY, dwFindRootLevel, 0);
@@ -890,19 +1106,8 @@ BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   }
   else if (uMsg == WM_COMMAND)
   {
-    if (LOWORD(wParam) == IDC_CODEFOLD_SETUP_DRAWNODE_SQUARE ||
-        LOWORD(wParam) == IDC_CODEFOLD_SETUP_DRAWNODE_ROUND)
-    {
-      if (SendMessage(hWndDrawNodeSquare, BM_GETCHECK, 0, 0) == BST_CHECKED)
-        nDrawNodeTypeDlg=DNT_SQUARE;
-      else if (SendMessage(hWndDrawNodeRound, BM_GETCHECK, 0, 0) == BST_CHECKED)
-        nDrawNodeTypeDlg=DNT_ROUND;
-
-      if (nDrawNodeTypeDlg != nDrawNodeType)
-        SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
-    }
-    else if (LOWORD(wParam) >= IDC_CODEFOLD_SETUP_TAGMARK &&
-             LOWORD(wParam) <= IDC_CODEFOLD_SETUP_HOTKEYALL_PREVLEVEL)
+    if (LOWORD(wParam) >= IDC_CODEFOLD_SETUP_TAGMARK &&
+        LOWORD(wParam) <= IDC_CODEFOLD_SETUP_HOTKEYALL_PREVLEVEL)
     {
       SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
     }
@@ -918,13 +1123,19 @@ BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     {
       PSHNOTIFY *pshn=(PSHNOTIFY *)lParam;
 
-      nDrawNodeType=nDrawNodeTypeDlg;
       bTagMarkEnable=(BOOL)SendMessage(hWndTagMark, BM_GETCHECK, 0, 0);
       bCollapseOnOpen=(BOOL)SendMessage(hWndCollapseOnOpen, BM_GETCHECK, 0, 0);
       bNoPrintCollapsed=(BOOL)SendMessage(hWndNoPrintCollapsed, BM_GETCHECK, 0, 0);
+      bHideFoldEnd=(BOOL)SendMessage(hWndHideFoldEnd, BM_GETCHECK, 0, 0);
 
       dwFindRootLevel=(WORD)SendMessage(hWndFindRootHotkey, HKM_GETHOTKEY, 0, 0);
       nFindRootMaxDepth=GetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_FINDROOTDEPTH_EDIT, NULL, FALSE);
+
+      dwFindRootFlags=0;
+      if (SendMessage(hWndFindRootMatchCase, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        dwFindRootFlags|=AEFR_MATCHCASE;
+      if (SendMessage(hWndFindRootWholeWord, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        dwFindRootFlags|=AEFR_WHOLEWORD;
 
       dwCurrentCollapse=(WORD)SendMessage(hWndCurrentCollapse, HKM_GETHOTKEY, 0, 0);
       dwCurrentGoBegin=(WORD)SendMessage(hWndCurrentGoBegin, HKM_GETHOTKEY, 0, 0);
@@ -936,9 +1147,9 @@ BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
       if (nInitCodeFold)
       {
+        //Reassign hotkeys
         UninitCodeFold(INIT_CODEFOLD_HOTKEYS);
         InitCodeFold();
-        UpdateEditAll(UE_FIRSTPIXEL);
       }
 
       if (pshn->lParam)
@@ -965,11 +1176,12 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
   if (uMsg == AKDN_OPENDOCUMENT_START)
   {
     NOPENDOCUMENT *nod=(NOPENDOCUMENT *)lParam;
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
     FOLDWINDOW *lpFoldWindow;
 
     if ((*nod->dwFlags) & OD_REOPEN)
     {
-      if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, (HWND)wParam, NULL))
+      if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, lpFrame->ei.hWndEdit, lpFrame->ei.hDocEdit))
       {
         if (lpFoldWindow->pfwd->lpSyntaxFile && lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.first)
         {
@@ -978,49 +1190,49 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
         }
       }
     }
-    bResetFold=TRUE;
+    dwResetFold|=OSM_OPEN;
   }
   else if (uMsg == AKDN_SAVEDOCUMENT_START)
   {
     NSAVEDOCUMENT *nsd=(NSAVEDOCUMENT *)lParam;
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
     FOLDWINDOW *lpFoldWindow;
-    EDITINFO ei;
 
     if (nsd->dwFlags & SD_UPDATE)
     {
-      if (SendMessage(hMainWnd, AKD_GETEDITINFO, wParam, (LPARAM)&ei))
+      if (StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(nsd->wszFile, -1)) != StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(lpFrame->ei.wszFile, -1)))
       {
-        if (StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(nsd->wszFile, -1)) != StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(ei.wszFile, -1)))
-        {
-          if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, (HWND)wParam, NULL))
-            FreeFolds(lpFoldWindow, FALSE);
-          bResetFold=TRUE;
-        }
+        if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, lpFrame->ei.hWndEdit, lpFrame->ei.hDocEdit))
+          FreeFolds(lpFoldWindow, FALSE);
+        dwResetFold|=OSM_SAVE;
       }
     }
   }
   else if (uMsg == AKDN_OPENDOCUMENT_FINISH ||
            uMsg == AKDN_SAVEDOCUMENT_FINISH)
   {
-    if (bResetFold)
+    if ((uMsg == AKDN_OPENDOCUMENT_FINISH && (dwResetFold & OSM_OPEN)) ||
+        (uMsg == AKDN_SAVEDOCUMENT_FINISH && (dwResetFold & OSM_SAVE)))
     {
-      FRAMEDATA *lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_CURRENT, 0);
+      FRAMEDATA *lpFrameCurrent=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_CURRENT, 0);
+      FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
       FOLDWINDOW *lpFoldWindow;
-      bResetFold=FALSE;
 
-      if (lpFrame->ei.hWndEdit == (HWND)wParam)
+      dwResetFold=0;
+
+      if (lpFrame == lpFrameCurrent)
       {
         lpLastPostUpdateFrame=lpFrame;
         dwLastPostUpdateFlags|=SAE_RESETFOLD|SAE_RESETLIST;
 
-        if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, (HWND)wParam, NULL))
+        if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, lpFrame->ei.hWndEdit, lpFrame->ei.hDocEdit))
         {
           if (lpFoldWindow->pfwd->lpSyntaxFile && lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.first)
           {
             //Document opened in the same window - SDI open command or reopen command in MDI/PMDI.
             if (nMDI == WMD_SDI)
               FreeFolds(lpFoldWindow, FALSE);
-            FillLevelsStack(lpFoldWindow, &lpFoldWindow->pfwd->hLevelStack, hWndEdit, NULL);
+            FillLevelsStack(lpFoldWindow, &lpFoldWindow->pfwd->hLevelStack, lpFrame->ei.hWndEdit, NULL);
             dwLastPostUpdateFlags&=~SAE_RESETFOLD;
           }
           else if (!lpFoldWindow->rcBoard.right)
@@ -1031,7 +1243,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
         }
         PostMessage(hWndCodeFoldDlg, AKDLL_UPDATE, 0, (LPARAM)lpFrame);
       }
-      else SetActiveEdit((HWND)wParam, hWndCodeFoldList, SAE_RESETFOLD|SAE_NOLIST);
+      else SetActiveEdit(lpFrame->ei.hWndEdit, hWndCodeFoldList, SAE_RESETFOLD|SAE_NOLIST);
     }
   }
   else if (uMsg == AKDN_FRAME_ACTIVATE)
@@ -1175,7 +1387,11 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
             }
           }
         }
-        SendMessage(aensc->hdr.hwndFrom, AEM_COLLAPSELINE, aensc->ciCaret.nLine, AECF_EXPAND);
+        if (SendMessage(aensc->hdr.hwndFrom, AEM_COLLAPSELINE, aensc->ciCaret.nLine, AECF_EXPAND))
+        {
+          if (aensc->dwType & AESCT_KEYBOARD)
+            ScrollToPoint(aensc->hdr.hwndFrom, NULL);
+        }
       }
       else
       {
@@ -1196,7 +1412,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
               {
                 RemoveTagMark(fwChange);
               }
-              if (!bResetFold)
+              if (!dwResetFold)
               {
                 if (fwChange->pfwd->lpSyntaxFile)
                 {
@@ -1221,7 +1437,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
               (aenpt->dwType & AEPTT_STREAMIN) ||
               (aenpt->lpPoint->dwFlags & AEPTF_FOLD))
           {
-            if (!bResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
+            if (!dwResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
             {
               fwChange->bLevelChanged=TRUE;
 
@@ -1232,7 +1448,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
                 while (lpFold->parent)
                   lpFold=lpFold->parent;
 
-                if (!fwChange->crTextChange.ciMin.lpLine || AEC_IndexCompare(&lpFold->lpMinPoint->ciPoint, &fwChange->crTextChange.ciMin) <= 0)
+                if (!fwChange->crTextChange.ciMin.lpLine || AEC_IndexCompare(&lpFold->lpMinPoint->ciPoint, &fwChange->crTextChange.ciMin) < 0)
                 {
                   fwChange->crTextChange.ciMin=lpFold->lpMinPoint->ciPoint;
                   fwChange->lpTextChangeMinParent=lpFold;
@@ -1251,7 +1467,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
         {
           AECHARRANGE *lpcrRange;
 
-          if (!bResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
+          if (!dwResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
           {
             if (((NMHDR *)lParam)->code == AEN_TEXTINSERTBEGIN)
               lpcrRange=&((AENTEXTINSERT *)lParam)->crAkelRange;
@@ -1268,7 +1484,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
         {
           AECHARRANGE *lpcrRange;
 
-          if (!bResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
+          if (!dwResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
           {
             if (((NMHDR *)lParam)->code == AEN_TEXTINSERTEND)
               lpcrRange=&((AENTEXTINSERT *)lParam)->crAkelRange;
@@ -1310,7 +1526,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 
           if (!(aentc->dwType & AETCT_NONE))
           {
-            if (!bResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
+            if (!dwResetFold && fwChange && fwChange->pfwd->lpSyntaxFile)
             {
               if (aentc->dwType & AETCT_DELETEALL)
               {
@@ -1439,7 +1655,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
                       }
                       if (lpFoldDataExist)
                       {
-                        if (lpFoldExist->bCollapse)
+                        if (lpFoldExist->dwFlags & AEFOLDF_COLLAPSED)
                           bNeedUpdate=TRUE;
                         DeleteFoldData(lpFoldDataExist);
                         SendMessage(fwChange->hWndEdit, AEM_DELETEFOLD, (WPARAM)lpFoldExist, FALSE);
@@ -1458,7 +1674,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
                         (!AEC_IndexCompare(&lpFoldExist->lpMinPoint->ciPoint, &fwChange->crTextChange.ciMax) &&
                          !AEC_IndexCompare(&lpFoldExist->lpMinPoint->ciPoint, &lpFoldExist->lpMaxPoint->ciPoint)))
                     {
-                      if (lpFoldExist->bCollapse)
+                      if (lpFoldExist->dwFlags & AEFOLDF_COLLAPSED)
                         bNeedUpdate=TRUE;
                       DeleteFoldData(FoldData(lpFoldExist));
                       SendMessage(fwChange->hWndEdit, AEM_DELETEFOLD, (WPARAM)lpFoldExist, FALSE);
@@ -1469,7 +1685,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
                   }
 
                   //Fill lpFold member.
-                  CreateAllFolds(&fwChange->pfwd->hTempStack, fwChange->hWndEdit);
+                  CreateAllFolds(lpCurrentFoldWindow, &fwChange->pfwd->hTempStack, fwChange->hWndEdit);
 
                   //Update list and edit control
                   if (lpCurrentFoldWindow && lpCurrentFoldWindow->hWndEdit == fwChange->hWndEdit)
@@ -1532,29 +1748,19 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
       }
     }
   }
-  else if (uMsg == AKD_SETFONT ||
-           uMsg == AKD_SETFONTA ||
-           uMsg == AKD_SETFONTW)
-  {
-    if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
-    {
-      if (!bFoldListSystemFont)
-      {
-        HFONT hFontEdit;
-
-        *lResult=NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
-        hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
-        SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
-        return TRUE;
-      }
-    }
-  }
   return FALSE;
 }
 
 BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
 {
-  if (uMsg == WM_PAINT)
+  if (uMsg == WM_SETFONT)
+  {
+    if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN) && !bFoldListSystemFont)
+    {
+      SendMessage(hWndCodeFoldList, WM_SETFONT, wParam, FALSE);
+    }
+  }
+  else if (uMsg == WM_PAINT)
   {
     FOLDWINDOW *lpFoldWindow;
     HDC hDC;
@@ -1566,7 +1772,8 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     if (lpFoldWindow)
     {
-      if (!lpFoldWindow->pfwd->lpSyntaxFile)
+      if (nShowNodes == CFSN_NONE || !lpFoldWindow->pfwd->lpSyntaxFile ||
+          (nShowNodes == CFSN_ASLIST && (!dkCodeFoldDlg || (dkCodeFoldDlg->dwFlags & DKF_HIDDEN))))
       {
         if (lpFoldWindow->rcBoard.right)
         {
@@ -1793,7 +2000,7 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                   }
 
                   //Draw node
-                  if (lpFold->bCollapse)
+                  if (lpFold->dwFlags & AEFOLDF_COLLAPSED)
                   {
                     if (hActiveNodeCloseBrush && hCurrentPen == hActiveFoldPen)
                       SelectObject(hBufferDC, hActiveNodeCloseBrush);
@@ -1819,11 +2026,15 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                   RoundRect(hBufferDC, (nHPos - BOARD_WIDTH / 2), (nVPos + nCharHeight / 2 - BOARD_WIDTH / 2), (nHPos + BOARD_WIDTH / 2) + 1, (nVPos + nCharHeight / 2 + BOARD_WIDTH / 2) + 1, (nDrawNodeType == DNT_ROUND)?BOARD_WIDTH:0, (nDrawNodeType == DNT_ROUND)?BOARD_WIDTH:0);
 
                   //Line after node
-                  MoveToEx(hBufferDC, nHPos, nVPos + nCharHeight / 2 + BOARD_WIDTH / 2, NULL);
-                  LineTo(hBufferDC, nHPos, nVPos + nCharHeight);
+                  if (lpFoldWindow->nHideMaxLineOffset < 0 || !(lpFold->dwFlags & AEFOLDF_COLLAPSED) || lpFold->parent ||
+                      (lpFoldWindow->nHideMaxLineOffset == 0 && lpFold->next && lpFold->lpMaxPoint->ciPoint.nLine == lpFold->next->lpMinPoint->ciPoint.nLine))
+                  {
+                    MoveToEx(hBufferDC, nHPos, nVPos + nCharHeight / 2 + BOARD_WIDTH / 2, NULL);
+                    LineTo(hBufferDC, nHPos, nVPos + nCharHeight);
+                  }
 
                   //Draw sign
-                  if (lpFold->bCollapse)
+                  if (lpFold->dwFlags & AEFOLDF_COLLAPSED)
                   {
                     if (hActiveNodeClosePen && hCurrentPen == hActiveFoldPen)
                       SelectObject(hBufferDC, hActiveNodeClosePen);
@@ -1839,7 +2050,7 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                     else if (hNormalNodeOpenPen && hCurrentPen != hActiveFoldPen)
                       SelectObject(hBufferDC, hNormalNodeOpenPen);
                   }
-                  if (lpFold->bCollapse)
+                  if (lpFold->dwFlags & AEFOLDF_COLLAPSED)
                   {
                     //Plus
                     MoveToEx(hBufferDC, nHPos - BOARD_WIDTH / 2 + 2, nVPos + nCharHeight / 2, NULL);
@@ -1879,17 +2090,10 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                 }
                 else
                 {
-                  if (lpFold->bCollapse)
-                  {
-                    nVPos-=nCharHeight;
-                  }
-                  else
-                  {
-                    //Vertical line
-                    MoveToEx(hBufferDC, nHPos, nVPos, NULL);
-                    LineTo(hBufferDC, nHPos, nVPos + nCharHeight);
-                    nLastFigure=FRG_LINE;
-                  }
+                  //Vertical line
+                  MoveToEx(hBufferDC, nHPos, nVPos, NULL);
+                  LineTo(hBufferDC, nHPos, nVPos + nCharHeight);
+                  nLastFigure=FRG_LINE;
                 }
               }
               else nLastFigure=FRG_NONE;
@@ -1898,7 +2102,8 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
               nVPos+=nCharHeight;
               AEC_NextLine(&ciFirstLine);
             }
-            else SendMessage(hWnd, AEM_GETINDEX, AEGI_NEXTUNCOLLAPSEDLINE, (LPARAM)&ciFirstLine);
+            else if (!SendMessage(hWnd, AEM_GETINDEX, AEGI_NEXTUNCOLLAPSEDLINE, (LPARAM)&ciFirstLine))
+              break;
           }
           BitBlt(hDC, lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.top, lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.bottom - lpFoldWindow->rcBoard.top, hBufferDC, lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.top, SRCCOPY);
 
@@ -1938,14 +2143,14 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     if (lpFoldWindow=StackGetFoldWindow(&hFoldWindowsStack, hWnd, NULL))
     {
-      dwOptions=(DWORD)SendMessage(hWnd, AEM_GETOPTIONS, 0, 0);
+      dwOptions=(DWORD)SendMessage(hWnd, AEM_EXGETOPTIONS, 0, 0);
 
-      if (!bNoPrintCollapsed != !(dwOptions & AECO_NOPRINTCOLLAPSED))
+      if (!bNoPrintCollapsed != !(dwOptions & AECOE_NOPRINTCOLLAPSED))
       {
         if (bNoPrintCollapsed)
-          SendMessage(hWnd, AEM_SETOPTIONS, AECOOP_OR, AECO_NOPRINTCOLLAPSED);
+          SendMessage(hWnd, AEM_EXSETOPTIONS, AECOOP_OR, AECOE_NOPRINTCOLLAPSED);
         else
-          SendMessage(hWnd, AEM_SETOPTIONS, AECOOP_XOR, AECO_NOPRINTCOLLAPSED);
+          SendMessage(hWnd, AEM_EXSETOPTIONS, AECOOP_XOR, AECOE_NOPRINTCOLLAPSED);
         lpFoldWindow->bReturnPrintOption=TRUE;
       }
       else lpFoldWindow->bReturnPrintOption=FALSE;
@@ -1960,9 +2165,9 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
       if (lpFoldWindow->bReturnPrintOption)
       {
         if (bNoPrintCollapsed)
-          SendMessage(hWnd, AEM_SETOPTIONS, AECOOP_XOR, AECO_NOPRINTCOLLAPSED);
+          SendMessage(hWnd, AEM_EXSETOPTIONS, AECOOP_XOR, AECOE_NOPRINTCOLLAPSED);
         else
-          SendMessage(hWnd, AEM_SETOPTIONS, AECOOP_OR, AECO_NOPRINTCOLLAPSED);
+          SendMessage(hWnd, AEM_EXSETOPTIONS, AECOOP_OR, AECOE_NOPRINTCOLLAPSED);
       }
     }
   }
@@ -1976,7 +2181,6 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     RECT rcClickable;
     POINT pt;
     int nClickLine;
-    BOOL bWithChildren;
 
     GetCursorPos(&pt);
     ScreenToClient(hWnd, &pt);
@@ -1998,23 +2202,22 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
           {
             if (lpClick->lpMinPoint->ciPoint.nLine == nClickLine)
             {
-              //If folds start at the same line, use deepless
-              for (lpDeepless=lpClick->parent; lpDeepless; lpDeepless=lpDeepless->parent)
-              {
-                if (lpDeepless->lpMinPoint->ciPoint.nLine == nClickLine)
-                  lpClick=lpDeepless;
-                else
-                  break;
-              }
-              if (GetKeyState(VK_CONTROL) < 0)
-                bWithChildren=TRUE;
-              else
-                bWithChildren=FALSE;
-
               if (uMsg == WM_SETCURSOR)
+              {
                 SetCursor(hCursorArrow);
+              }
               else
-                FoldSwitchCollapse(lpFoldWindow, lpClick, bWithChildren?AECF_RECURSE:0);
+              {
+                //If folds start at the same line, use deepless
+                for (lpDeepless=lpClick->parent; lpDeepless; lpDeepless=lpDeepless->parent)
+                {
+                  if (lpDeepless->lpMinPoint->ciPoint.nLine == nClickLine)
+                    lpClick=lpDeepless;
+                  else
+                    break;
+                }
+                FoldSwitchCollapse(lpFoldWindow, lpClick, (GetKeyState(VK_CONTROL) < 0?AECF_RECURSE:0));
+              }
               *lResult=1;
               return TRUE;
             }
@@ -2352,7 +2555,7 @@ BOOL CALLBACK FindRootLevelProc(void *lpParameter, LPARAM lParam, DWORD dwSuppor
                           continue;
                       }
 
-                      ft.dwFlags=AEFR_DOWN;
+                      ft.dwFlags=AEFR_DOWN|(dwFindRootFlags & (AEFR_MATCHCASE|AEFR_WHOLEWORD));
                       ft.pText=wszText;
                       ft.dwTextLen=(UINT_PTR)-1;
                       ft.nNewLine=AELB_ASIS;
@@ -2449,14 +2652,7 @@ SKIPSTART* StackInsertSkipStart(HSTACK *hSkipStartStack, SKIPINFO *lpSkipInfo, w
         if (nSkipStartLen && !PatCompile(&lpSkipStart->sregStart, wpSkipStart, wpSkipStart + nSkipStartLen))
         {
           lpSkipStart->sregStart.first->dwFlags&=~REGF_ROOTANY;
-          if (lpSkipStart->sregStart.first->nGroupLen == -1)
-          {
-            xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_FIXEDLENGTH), lpLoadSyntaxFile->wszSyntaxFileName, nSkipStartLen, wpSkipStart);
-            MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
-            PatFree(&lpSkipStart->sregStart);
-            StackDelete((stack **)&hSkipStartStack->first, (stack **)&hSkipStartStack->last, (stack *)lpSkipStart);
-            return NULL;
-          }
+          lpSkipStart->nSkipStartLen=(int)lpSkipInfo->sregEnd.first->nGroupLen;
         }
         else
         {
@@ -2528,15 +2724,15 @@ FOLDSTART* StackInsertFoldStart(HSTACK *hFoldStartStack, FOLDINFO *lpFoldInfo, w
 
   while (lpFoldStart)
   {
-    if (lpFoldStart->nFoldStartLen == nFoldStartLen)
+    if (lpFoldStart->nFoldStartLen == nFoldStartLen &&
+        (lpFoldStart->dwFlags & FIF_MATCHCASE) == (lpFoldInfo->dwFlags & FIF_MATCHCASE) &&
+        lpFoldStart->nParentID == lpFoldInfo->nParentID &&
+        lpFoldStart->nRuleID == lpFoldInfo->nRuleID)
     {
-      if (!(lpFoldStart->dwFlags & FIF_MATCHCASE) == !(lpFoldInfo->dwFlags & FIF_MATCHCASE))
+      if (((lpFoldStart->dwFlags & FIF_MATCHCASE) && !xstrcmpW(lpFoldStart->wpFoldStart, wpFoldStart)) ||
+          (!(lpFoldStart->dwFlags & FIF_MATCHCASE) && !xstrcmpiW(lpFoldStart->wpFoldStart, wpFoldStart)))
       {
-        if (((lpFoldStart->dwFlags & FIF_MATCHCASE) && !xstrcmpW(lpFoldStart->wpFoldStart, wpFoldStart)) ||
-            (!(lpFoldStart->dwFlags & FIF_MATCHCASE) && !xstrcmpiW(lpFoldStart->wpFoldStart, wpFoldStart)))
-        {
-          break;
-        }
+        break;
       }
     }
     lpFoldStart=lpFoldStart->next;
@@ -2550,22 +2746,16 @@ FOLDSTART* StackInsertFoldStart(HSTACK *hFoldStartStack, FOLDINFO *lpFoldInfo, w
       lpFoldStart->wpFoldStart=wpFoldStart;
       lpFoldStart->nFoldStartLen=nFoldStartLen;
       lpFoldStart->nFoldStartPointLen=nFoldStartLen;
+      lpFoldStart->nParentID=lpFoldInfo->nParentID;
+      lpFoldStart->nRuleID=lpFoldInfo->nRuleID;
 
       if (lpFoldStart->dwFlags & FIF_REGEXPSTART)
       {
-        lpFoldStart->sregStart.dwOptions=REO_MULTILINE|(lpFoldStart->dwFlags & FIF_MATCHCASE?REO_MATCHCASE:0);;
+        lpFoldStart->sregStart.dwOptions=REO_MULTILINE|(lpFoldStart->dwFlags & FIF_MATCHCASE?REO_MATCHCASE:0);
         if (nFoldStartLen && !PatCompile(&lpFoldStart->sregStart, wpFoldStart, wpFoldStart + nFoldStartLen))
         {
           lpFoldStart->sregStart.first->dwFlags&=~REGF_ROOTANY;
           lpFoldStart->nFoldStartPointLen=(int)lpFoldStart->sregStart.first->nGroupLen;
-          if (lpFoldStart->nFoldStartPointLen == -1)
-          {
-            xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_FIXEDLENGTH), lpLoadSyntaxFile->wszSyntaxFileName, nFoldStartLen, wpFoldStart);
-            MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
-            PatFree(&lpFoldStart->sregStart);
-            StackDelete((stack **)&hFoldStartStack->first, (stack **)&hFoldStartStack->last, (stack *)lpFoldStart);
-            return NULL;
-          }
         }
         else
         {
@@ -2596,8 +2786,12 @@ void StackDeleteFoldInfo(STACKFOLD *hFoldStack, HSTACK *hFoldStartStack, FOLDINF
     PatFree(&lpFoldInfo->lpFoldStart->sregStart);
     StackDelete((stack **)&hFoldStartStack->first, (stack **)&hFoldStartStack->last, (stack *)lpFoldInfo->lpFoldStart);
   }
+  if (lpFoldInfo->wpRuleFile)
+    --hFoldStack->nFoldWithThemeCount;
   if (lpFoldInfo->wpFoldEnd) GlobalFree((HGLOBAL)lpFoldInfo->wpFoldEnd);
   if (lpFoldInfo->wpDelimiters) GlobalFree((HGLOBAL)lpFoldInfo->wpDelimiters);
+  if (lpFoldInfo->wpRuleFile) GlobalFree((HGLOBAL)lpFoldInfo->wpRuleFile);
+
   PatFree(&lpFoldInfo->sregEnd);
   StackDelete((stack **)&hFoldStack->first, (stack **)&hFoldStack->last, (stack *)lpFoldInfo);
 }
@@ -2617,11 +2811,13 @@ void StackFreeFoldInfo(STACKFOLD *hFoldStack, HSTACK *hFoldStartStack)
 
   for (lpFoldInfo=(FOLDINFO *)hFoldStack->first; lpFoldInfo; lpFoldInfo=lpFoldInfo->next)
   {
-    GlobalFree((HGLOBAL)lpFoldInfo->wpFoldEnd);
-    GlobalFree((HGLOBAL)lpFoldInfo->wpDelimiters);
+    if (lpFoldInfo->wpFoldEnd) GlobalFree((HGLOBAL)lpFoldInfo->wpFoldEnd);
+    if (lpFoldInfo->wpDelimiters) GlobalFree((HGLOBAL)lpFoldInfo->wpDelimiters);
+    if (lpFoldInfo->wpRuleFile) GlobalFree((HGLOBAL)lpFoldInfo->wpRuleFile);
     PatFree(&lpFoldInfo->sregEnd);
   }
   StackClear((stack **)&hFoldStack->first, (stack **)&hFoldStack->last);
+  hFoldStack->nFoldWithThemeCount=0;
 }
 
 void StackEndBoard(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow)
@@ -2724,6 +2920,7 @@ void StackDeleteFoldWindow(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow)
 
   if (lpFoldWindow->pfwd == &lpFoldWindow->fwd)
     FreeFolds(lpFoldWindow, FALSE);
+  RestoreHideLineEnd(lpFoldWindow);
   StackDelete((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpFoldWindow);
 }
 
@@ -2741,6 +2938,7 @@ void StackFreeFoldWindows(STACKFOLDWINDOW *hStack)
       StackDeleteManual(&hManualStack, lpFoldWindow->lpUser, CODER_CODEFOLD);
     else
       FreeFolds(lpFoldWindow, TRUE);
+    RestoreHideLineEnd(lpFoldWindow);
   }
 
   if (nMDI == WMD_PMDI)
@@ -2772,6 +2970,7 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
   SKIPINFOHANDLE *lpSkipInfoHandle;
   int nFirstVisibleLine=0;
   int nTagNameLen;
+  BOOL bFoldEndNoCatch;
   DWORD dwMatchResult=0;
 
   if (lpSyntaxFile=StackGetSyntaxFileByWindow(&hSyntaxFilesStack, hWnd, NULL, NULL))
@@ -2827,6 +3026,20 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
           lpFoldWindow->pfwd->lpFoldStack=(HSTACK *)SendMessage(hWnd, AEM_GETFOLDSTACK, 0, 0);
         }
       }
+
+      //Initialize edit settings
+      {
+        DWORD dwHideLineOffsets=(DWORD)SendMessage(hWnd, AEM_GETFOLDHIDEOFFSET, 0, 0);
+
+        lpFoldWindow->nHideMinLineOffset=(short)LOWORD(dwHideLineOffsets);
+        lpFoldWindow->nHideMaxLineOffset=(short)HIWORD(dwHideLineOffsets);
+        lpFoldWindow->nHideMaxLineOffsetOld=lpFoldWindow->nHideMaxLineOffset;
+        if (bHideFoldEnd && lpFoldWindow->nHideMaxLineOffset != 0)
+        {
+          lpFoldWindow->nHideMaxLineOffset=0;
+          SendMessage(hWnd, AEM_SETFOLDHIDEOFFSET, MAKELONG(lpFoldWindow->nHideMinLineOffset, lpFoldWindow->nHideMaxLineOffset), 0);
+        }
+      }
       hLevelStack=&lpFoldWindow->pfwd->hLevelStack;
     }
   }
@@ -2860,7 +3073,7 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
     while (ciCount.lpLine)
     {
       CheckChar:
-      while (ciCount.nCharInLine < ciCount.lpLine->nLineLen)
+      while (ciCount.nCharInLine <= ciCount.lpLine->nLineLen)
       {
         if (!lpParent && AEC_IndexCompare(&ciCount, &crScan.ciMax) >= 0)
           goto Close;
@@ -2869,16 +3082,21 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
         {
           if (lpFoldInfo=IsFold(lpFoldWindow, lpLevel, &ft, &ciCount, &dwMatchResult))
           {
+            bFoldEndNoCatch=FALSE;
+
             if (dwMatchResult & IFE_FOLDEND)
             {
+              if (lpFoldInfo->dwFlags & FIF_FOLDEND_NOCATCH)
+                bFoldEndNoCatch=TRUE;
+
               if (lpLevel)
               {
                 lpParent=lpLevel->lpParent;
-                if (lpParent && lpLevel->bMultiLine)
-                  lpParent->bMultiLine=TRUE;
+                if (lpParent && (lpLevel->dwFlags & LVLF_MULTILINE))
+                  lpParent->dwFlags|=LVLF_MULTILINE;
 
                 if ((lpFoldInfo->dwFlags & FIF_DENYFOLD) ||
-                    (!bTagMarkEnable && !lpLevel->bMultiLine))
+                    (!bTagMarkEnable && !(lpLevel->dwFlags & LVLF_MULTILINE)))
                 {
                   if ((lpFoldInfo->dwFlags & FIF_DENYFOLD) && lpFoldInfo->lpFoldStart->nElements > 1)
                   {
@@ -2891,20 +3109,19 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
                   lpLevel=lpParent;
                   goto CheckNoCatch;
                 }
-                if (lpFoldInfo->dwFlags & FIF_FOLDEND_NOCATCH)
-                {
-                  lpLevel->pointMax.nPointLen=0;
-                }
-                else if ((lpFoldInfo->dwFlags & FIF_XMLTAG) &&
-                         (lpFoldInfo->dwFlags & FIF_XMLNONAME_TWOTAG))
+                if (lpFoldInfo->dwFlags & FIF_REGEXPEND)
+                  lpLevel->pointMax.nPointLen=(int)ft.dwTextLen;
+                else
+                  lpLevel->pointMax.nPointLen=lpFoldInfo->nFoldEndPointLen;
+
+                if ((lpFoldInfo->dwFlags & FIF_XMLTAG) &&
+                     (lpFoldInfo->dwFlags & FIF_XMLNONAME_TWOTAG))
                 {
                   AEC_NextCharEx(&lpLevel->crFoundMin.ciMin, &ciOpenTag);
                   AEC_ValidCharInLine(&ft.crFound.ciMax);
                   ciCloseTag=ft.crFound.ciMax;
 
                   //Expand XML tag from "</" to "</name>"
-                  lpLevel->pointMax.nPointLen=lpFoldInfo->nFoldEndPointLen;
-
                   do
                   {
                     ++lpLevel->pointMax.nPointLen;
@@ -2928,15 +3145,29 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
                       if (WideCharLower((wchar_t)AEC_CharAtIndex(&ciCloseTag)) !=
                           WideCharLower((wchar_t)AEC_CharAtIndex(&ciOpenTag)))
                         break;
-                      if (!--nTagNameLen) goto SetLevelMax;
+                      if (!--nTagNameLen)
+                      {
+                        bFoldEndNoCatch=FALSE;
+                        goto SetLevelMax;
+                      }
                     }
                     while (AEC_NextCharInLine(&ciCloseTag) && AEC_NextCharInLine(&ciOpenTag));
+                  }
+                  if (bFoldEndNoCatch)
+                  {
+                    //Close "<x>" fold in "<y><x></y>"
+                    ft.crFound.ciMax=ft.crFound.ciMin;
+                    lpLevel->pointMax.nPointLen=0;
+                    goto SetLevelMax;
                   }
                   ciCount=ft.crFound.ciMax;
                   lpParent=lpLevel;
                   goto CheckChar;
                 }
-                else lpLevel->pointMax.nPointLen=lpFoldInfo->nFoldEndPointLen;
+                if (bFoldEndNoCatch)
+                {
+                  lpLevel->pointMax.nPointLen=0;
+                }
 
                 SetLevelMax:
                 lpLevel->pfd->lpFoldInfo=lpFoldInfo;
@@ -2947,10 +3178,17 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
                 if (hLevelStack != &lpFoldWindow->pfwd->hTempStack)
                 {
                   //Create fold
-                  CreateFold(lpLevel, hWnd, (bCollapseOnOpen && !crRange && !lpLevel->lpParent));
+                  CreateFold(lpFoldWindow, lpLevel, hWnd, (bCollapseOnOpen && !crRange && !lpLevel->lpParent));
 
                   //LEVEL item now is not needed
                   StackDeleteLevel(hLevelStack, lpLevel);
+                }
+
+                if (lpFoldInfo->wpRuleFile && lpFoldInfo->lpRuleFile == lpFoldWindow->pfwd->lpSyntaxFile)
+                {
+                  //Return syntax file
+                  lpFoldWindow->pfwd->lpSyntaxFile=lpFoldInfo->lpPrevFile;
+                  lpFoldInfo->lpPrevFile=NULL;
                 }
                 lpLevel=lpParent;
               }
@@ -2965,10 +3203,17 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
               {
                 if (lpLevel=StackInsertLevel(hLevelStack, &ft.crFound.ciMin))
                 {
+                  if (lpFoldInfo->dwFlags & FIF_REGEXPSTART)
+                    lpLevel->pointMin.nPointLen=(int)ft.dwTextLen;
+                  else
+                    lpLevel->pointMin.nPointLen=lpFoldInfo->lpFoldStart->nFoldStartPointLen;
+
+                  if ((lpFoldInfo->dwFlags & FIF_XMLCHILD) && lpParent)
+                    lpParent->dwFlags|=LVLF_XMLCHILD;
+
                   if ((lpFoldInfo->dwFlags & FIF_XMLTAG) &&
                       (lpFoldInfo->dwFlags & FIF_XMLNONAME_TWOTAG))
                   {
-                    lpLevel->pointMin.nPointLen=lpFoldInfo->lpFoldStart->nFoldStartPointLen;
                     AEC_ValidCharInLine(&ft.crFound.ciMax);
 
                     do
@@ -2985,7 +3230,6 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
                     }
                     while (AEC_NextCharInLine(&ft.crFound.ciMax));
                   }
-                  else lpLevel->pointMin.nPointLen=lpFoldInfo->lpFoldStart->nFoldStartPointLen;
 
                   SetLevelMin:
                   lpLevel->lpParent=lpParent;
@@ -2996,13 +3240,32 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
                   lpLevel->crFoundMin.ciMax=ft.crFound.ciMax;
                   GetFoldName(lpLevel->pfd, &lpLevel->pointMin.ciPoint, NULL);
 
+                  if (lpFoldInfo->wpRuleFile)
+                  {
+                    //Assign rule syntax file
+                    if (!lpFoldInfo->lpRuleFile)
+                    {
+                      if (!xstrcmpnW(L"alias:", lpFoldInfo->wpRuleFile, (UINT_PTR)-1))
+                        lpFoldInfo->lpRuleFile=StackGetSyntaxFileByFile(&hSyntaxFilesStack, lpFoldInfo->wpRuleFile + 6);
+                      else
+                        lpFoldInfo->lpRuleFile=StackGetSyntaxFileByName(&hSyntaxFilesStack, lpFoldInfo->wpRuleFile);
+                    }
+                    if (lpFoldInfo->lpRuleFile)
+                    {
+                      StackRequestSyntaxFile(lpFoldInfo->lpRuleFile);
+                      if (!lpFoldInfo->lpRuleFile->hThemeHighLight)
+                        CreateEditTheme(lpFoldInfo->lpRuleFile, hWnd);
+                      lpFoldInfo->lpPrevFile=lpFoldWindow->pfwd->lpSyntaxFile;
+                      lpFoldWindow->pfwd->lpSyntaxFile=lpFoldInfo->lpRuleFile;
+                    }
+                  }
                   lpParent=lpLevel;
                 }
               }
             }
 
             CheckNoCatch:
-            if ((lpFoldInfo->dwFlags & FIF_FOLDEND_NOCATCH) && (dwMatchResult & IFE_FOLDEND))
+            if (bFoldEndNoCatch)
             {
               if (lpFoldInfo->dwFlags & FIF_FOLDEND_NOCATCH_SIBLING)
                 dwMatchResult=IFF_CHECKFIRSTFOLDSTART;
@@ -3049,6 +3312,8 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
 
         NextChar:
         AEC_IndexInc(&ciCount);
+        if (ciCount.nCharInLine >= ciCount.lpLine->nLineLen && ciCount.lpLine->nLineBreak == AELB_WRAP)
+          break;
       }
       if (ciCount.lpLine->nLineBreak != AELB_WRAP)
       {
@@ -3056,7 +3321,7 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
         lpSkipInfo=NULL;
 
         //Level contain more than one line
-        if (lpLevel) lpLevel->bMultiLine=TRUE;
+        if (lpLevel) lpLevel->dwFlags|=LVLF_MULTILINE;
       }
       AEC_NextLine(&ciCount);
     }
@@ -3077,6 +3342,7 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
     while (lpLevel)
     {
       lpParent=lpLevel->lpParent;
+      lpFoldInfo=lpLevel->pfd->lpFoldInfo;
 
       if (!lpLevel->pointMax.ciPoint.lpLine)
       {
@@ -3094,12 +3360,18 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
           if (hLevelStack != &lpFoldWindow->pfwd->hTempStack)
           {
             //Create fold
-            CreateFold(lpLevel, hWnd, (bCollapseOnOpen && !crRange && !lpLevel->lpParent));
+            CreateFold(lpFoldWindow, lpLevel, hWnd, (bCollapseOnOpen && !crRange && !lpLevel->lpParent));
 
             //LEVEL item now is not needed
             StackDeleteLevel(hLevelStack, lpLevel);
           }
         }
+      }
+      if (lpFoldInfo->wpRuleFile && lpFoldInfo->lpRuleFile == lpFoldWindow->pfwd->lpSyntaxFile)
+      {
+        //Return syntax file
+        lpFoldWindow->pfwd->lpSyntaxFile=lpFoldInfo->lpPrevFile;
+        lpFoldInfo->lpPrevFile=NULL;
       }
       lpLevel=lpParent;
     }
@@ -3109,16 +3381,20 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
   return lpFoldWindow;
 }
 
-void CreateFold(LEVEL *lpLevel, HWND hWnd, BOOL bCollapse)
+void CreateFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, HWND hWnd, BOOL bCollapse)
 {
   AEFOLD fold;
+  FOLDINFO *lpFoldInfo=lpLevel->pfd->lpFoldInfo;
 
   fold.lpMinPoint=&lpLevel->pointMin;
   fold.lpMaxPoint=&lpLevel->pointMax;
-  fold.bCollapse=bCollapse;
-  fold.dwFontStyle=lpLevel->pfd->lpFoldInfo->dwFontStyle;
-  fold.crText=lpLevel->pfd->lpFoldInfo->dwColor1;
-  fold.crBk=lpLevel->pfd->lpFoldInfo->dwColor2;
+  fold.dwFlags=(bCollapse ? AEFOLDF_COLLAPSED : 0);
+  fold.dwFontStyle=lpFoldInfo->dwFontStyle;
+  fold.crText=lpFoldInfo->dwColor1;
+  fold.crBk=lpFoldInfo->dwColor2;
+  fold.nParentID=lpFoldInfo->nParentID;
+  fold.nRuleID=lpFoldInfo->nRuleID;
+  fold.hRuleTheme=(lpFoldInfo->lpRuleFile ? lpFoldInfo->lpRuleFile->hThemeHighLight : 0);
   fold.dwUserData=(UINT_PTR)lpLevel->pfd;
   fold.dwFontStyle=fold.dwFontStyle;
   lpLevel->pfd->lpFold=(AEFOLD *)SendMessage(hWnd, AEM_ADDFOLD, 0, (LPARAM)&fold);
@@ -3126,7 +3402,7 @@ void CreateFold(LEVEL *lpLevel, HWND hWnd, BOOL bCollapse)
   lpLevel->pfd->lpFold->lpMaxPoint->dwUserData=(UINT_PTR)lpLevel->pfd->lpFold;
 }
 
-void CreateAllFolds(STACKLEVEL *hLevelStack, HWND hWnd)
+void CreateAllFolds(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, HWND hWnd)
 {
   LEVEL *lpLevel=(LEVEL *)hLevelStack->first;
   LEVEL *lpNextLevel;
@@ -3138,7 +3414,7 @@ void CreateAllFolds(STACKLEVEL *hLevelStack, HWND hWnd)
     if (!lpLevel->pfd->lpFold)
     {
       //Create fold
-      CreateFold(lpLevel, hWnd, FALSE);
+      CreateFold(lpFoldWindow, lpLevel, hWnd, FALSE);
 
       //LEVEL item now is not needed
       StackDeleteLevel(hLevelStack, lpLevel);
@@ -3187,6 +3463,23 @@ void StackFreeLevels(STACKLEVEL *hLevelStack)
   StackClear((stack **)&hLevelStack->first, (stack **)&hLevelStack->last);
 }
 
+SYNTAXFILE* GetSyntaxFileByFold(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold)
+{
+  FOLDINFO *lpFoldInfo;
+
+  for (; lpFold; lpFold=lpFold->parent)
+  {
+    if (lpFold->hRuleTheme)
+    {
+      lpFoldInfo=FoldData(lpFold)->lpFoldInfo;
+      if (lpFoldInfo->wpRuleFile)
+        return lpFoldInfo->lpRuleFile;
+      break;
+    }
+  }
+  return lpFoldWindow->pfwd->lpSyntaxFile;
+}
+
 AEFOLD* FoldNextDepth(AEFOLD *lpFold, int *nCurDepth, int nFindRootMaxDepth)
 {
   if (lpFold)
@@ -3224,7 +3517,6 @@ AEFOLD* FoldGet(FOLDWINDOW *lpFoldWindow, DWORD dwFlags, UINT_PTR dwFindIt, AEFO
 AEFOLD* FoldAtIndex(FOLDWINDOW *lpFoldWindow, AECHARINDEX *ciChar, DWORD dwFoldStop)
 {
   AEFINDFOLD ff;
-  AECHARINDEX ciEndOfPoint;
 
   ff.dwFlags=AEFF_FINDINDEX|(dwFoldStop & IFE_FOLDSTART?AEFF_FOLDSTART:0)|(dwFoldStop & IFE_FOLDEND?AEFF_FOLDEND:0)|AEFF_RECURSE;
   ff.dwFindIt=(UINT_PTR)ciChar;
@@ -3239,9 +3531,19 @@ AEFOLD* FoldAtIndex(FOLDWINDOW *lpFoldWindow, AECHARINDEX *ciChar, DWORD dwFoldS
     }
     if (dwFoldStop & IFE_FOLDEND)
     {
-      EndOfPoint(lpFoldWindow, ff.lpParent->lpMaxPoint, &ciEndOfPoint);
-      if (!AEC_IndexCompare(&ciEndOfPoint, ciChar))
-        return ff.lpParent;
+      if (dwFoldStop & IFE_FOLDENDMAX)
+      {
+        AECHARINDEX ciEndOfPoint;
+
+        EndOfPoint(lpFoldWindow, ff.lpParent->lpMaxPoint, &ciEndOfPoint);
+        if (!AEC_IndexCompare(&ciEndOfPoint, ciChar))
+          return ff.lpParent;
+      }
+      else
+      {
+        if (!AEC_IndexCompare(&ff.lpParent->lpMaxPoint->ciPoint, ciChar))
+          return ff.lpParent;
+      }
     }
   }
   return NULL;
@@ -3281,30 +3583,36 @@ BOOL IsFoldNameFromLeft(FOLDDATA *lpFoldData)
   return FALSE;
 }
 
-BOOL GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciInput, AECHARRANGE *crNameRange)
+int GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciMinPoint, AECHARRANGE *crNameRange)
 {
   AECHARRANGE cr;
   AELINEDATA *lpCount;
   int nNameLen;
+  int nNameOffset=0;
   int nCount;
 
   if (IsFoldNameFromLeft(lpFoldData))
   {
-    for (cr.ciMax=*ciInput; AEC_PrevChar(&cr.ciMax); )
+    for (cr.ciMax=*ciMinPoint; AEC_PrevChar(&cr.ciMax); )
     {
+      --nNameOffset;
+
       if (cr.ciMax.nCharInLine < cr.ciMax.lpLine->nLineLen)
       {
         if (cr.ciMax.lpLine->wpLine[cr.ciMax.nCharInLine] != L' ' &&
             cr.ciMax.lpLine->wpLine[cr.ciMax.nCharInLine] != L'\t')
         {
           AEC_NextChar(&cr.ciMax);
+          ++nNameOffset;
           nNameLen=AEC_WrapLineBeginEx(&cr.ciMax, &cr.ciMin);
+          nNameOffset-=nNameLen;
 
           while (cr.ciMin.lpLine->wpLine[cr.ciMin.nCharInLine] == L' ' ||
                  cr.ciMin.lpLine->wpLine[cr.ciMin.nCharInLine] == L'\t')
           {
             AEC_NextChar(&cr.ciMin);
             --nNameLen;
+            ++nNameOffset;
           }
           nNameLen=min(nNameLen, MAX_PATH);
 
@@ -3337,6 +3645,7 @@ BOOL GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciInput, AECHARRANGE *
             crNameRange->ciMin=cr.ciMin;
             crNameRange->ciMax=cr.ciMax;
           }
+          lpFoldData->nNameOffsetFromPoint=nNameOffset;
           return nNameLen;
         }
       }
@@ -3344,22 +3653,23 @@ BOOL GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciInput, AECHARRANGE *
   }
   else
   {
-    nNameLen=min(ciInput->lpLine->nLineLen - ciInput->nCharInLine, MAX_PATH);
+    nNameLen=min(ciMinPoint->lpLine->nLineLen - ciMinPoint->nCharInLine, MAX_PATH);
 
     if (lpFoldData)
     {
       if (!lpFoldData->wpName)
       {
         if (lpFoldData->wpName=(wchar_t *)GlobalAlloc(GPTR, (nNameLen + 1) * sizeof(wchar_t)))
-          xstrcpynW(lpFoldData->wpName, ciInput->lpLine->wpLine + ciInput->nCharInLine, nNameLen + 1);
+          xstrcpynW(lpFoldData->wpName, ciMinPoint->lpLine->wpLine + ciMinPoint->nCharInLine, nNameLen + 1);
       }
     }
     if (crNameRange)
     {
-      crNameRange->ciMin=*ciInput;
-      crNameRange->ciMax=*ciInput;
+      crNameRange->ciMin=*ciMinPoint;
+      crNameRange->ciMax=*ciMinPoint;
       crNameRange->ciMax.nCharInLine+=nNameLen;
     }
+    lpFoldData->nNameOffsetFromPoint=0;
     return nNameLen;
   }
   return 0;
@@ -3398,8 +3708,8 @@ BOOL FoldSelect(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold)
 {
   AECHARRANGE crNameRange;
 
-  if (!GetFoldName(FoldData(lpFold), &lpFold->lpMinPoint->ciPoint, &crNameRange))
-    crNameRange.ciMin=lpFold->lpMinPoint->ciPoint;
+  crNameRange.ciMin=lpFold->lpMinPoint->ciPoint;
+  IndexOffset(lpFoldWindow, &crNameRange.ciMin, FoldData(lpFold)->nNameOffsetFromPoint);
   EndOfPoint(lpFoldWindow, lpFold->lpMaxPoint, &crNameRange.ciMax);
 
   //Set selection
@@ -3421,12 +3731,71 @@ void FoldSwitchCollapse(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold, DWORD dwFlags)
 {
   if (lpFold)
   {
-    SendMessage(lpFoldWindow->hWndEdit, AEM_COLLAPSEFOLD, (WPARAM)lpFold, (lpFold->bCollapse?AECF_EXPAND:AECF_COLLAPSE)|dwFlags);
+    SendMessage(lpFoldWindow->hWndEdit, AEM_COLLAPSEFOLD, (WPARAM)lpFold, dwFlags|(lpFold->dwFlags & AEFOLDF_COLLAPSED ? AECF_EXPAND : AECF_COLLAPSE));
   }
   else
   {
     if (lpFold=(AEFOLD *)lpFoldWindow->pfwd->lpFoldStack->first)
-      SendMessage(lpFoldWindow->hWndEdit, AEM_COLLAPSEFOLD, (WPARAM)NULL, (lpFold->bCollapse?AECF_EXPAND:AECF_COLLAPSE)|dwFlags);
+    {
+      SendMessage(lpFoldWindow->hWndEdit, AEM_COLLAPSEFOLD, (WPARAM)NULL, dwFlags|(lpFold->dwFlags & AEFOLDF_COLLAPSED ? AECF_EXPAND : AECF_COLLAPSE));
+      ScrollToPoint(lpFoldWindow->hWndEdit, NULL);
+    }
+  }
+}
+
+void GoRule(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold)
+{
+  SYNTAXFILE *lpSyntaxFile;
+  OPENDOCUMENTW od;
+  AEINDEXOFFSET aeio;
+  AESELECTION aes;
+  AECHARRANGE crLine;
+  CHARRANGE64 crSyntaxFileLine;
+  HWND hWndEdit;
+  int nOpenResult;
+
+  if (!lpFold) return;
+
+  if (lpSyntaxFile=GetSyntaxFileByFold(lpFoldWindow, lpFold->hRuleTheme?lpFold->parent:lpFold))
+  {
+    crSyntaxFileLine=FoldData(lpFold)->lpFoldInfo->crSyntaxFileLine;
+
+    xprintfW(wszBuffer, L"%s\\%s", wszCoderDir, lpSyntaxFile->wszSyntaxFileName);
+    od.pFile=wszBuffer;
+    od.pWorkDir=NULL;
+    od.dwFlags=OD_ADT_BINARYERROR|OD_ADT_REGCODEPAGE;
+    od.nCodePage=0;
+    od.bBOM=0;
+    od.hDoc=NULL;
+    nOpenResult=(int)SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
+    if (nOpenResult == EOD_SUCCESS || nOpenResult == EOD_WINDOWEXIST)
+    {
+      if (hWndEdit=GetCurEdit())
+      {
+        SendMessage(hWndEdit, AEM_GETINDEX, AEGI_FIRSTCHAR, (LPARAM)&crLine.ciMin);
+        aeio.ciCharIn=&crLine.ciMin;
+        aeio.ciCharOut=&crLine.ciMin;
+        aeio.nOffset=crSyntaxFileLine.cpMin;
+        aeio.nNewLine=AELB_ASIS;
+        SendMessage(hWndEdit, AEM_INDEXOFFSET, 0, (LPARAM)&aeio);
+
+        aeio.ciCharIn=&crLine.ciMin;
+        aeio.ciCharOut=&crLine.ciMax;
+        aeio.nOffset=crSyntaxFileLine.cpMax - crSyntaxFileLine.cpMin;
+        aeio.nNewLine=AELB_ASIS;
+        SendMessage(hWndEdit, AEM_INDEXOFFSET, 0, (LPARAM)&aeio);
+
+        aes.crSel.ciMin=crLine.ciMin;
+        aes.crSel.ciMax=crLine.ciMax;
+        aes.dwFlags=AESELT_LOCKSCROLL;
+        aes.dwType=0;
+        SendMessage(hWndEdit, AEM_SETSEL, (WPARAM)&crLine.ciMin, (LPARAM)&aes);
+
+        ScrollToPoint(hWndEdit, NULL);
+
+        if (hWndCodeFoldDlg) PostMessage(hWndCodeFoldDlg, AKDLL_SETFOCUS, 0, 0);
+      }
+    }
   }
 }
 
@@ -3452,6 +3821,32 @@ void FreeFolds(FOLDWINDOW *lpFoldWindow, BOOL bUpdate)
     SendToDoc(lpFoldWindow->hDocEdit, lpFoldWindow->hWndEdit, AEM_DELETEFOLD, (WPARAM)NULL, bUpdate);
   else
     SendMessage(lpFoldWindow->hWndEdit, AEM_DELETEFOLD, (WPARAM)NULL, bUpdate);
+}
+
+void RestoreHideLineEnd(FOLDWINDOW *lpFoldWindow)
+{
+  if (nMDI == WMD_PMDI)
+  {
+    if (lpFoldWindow->nHideMaxLineOffset != lpFoldWindow->nHideMaxLineOffsetOld)
+      SendToDoc(lpFoldWindow->hDocEdit, lpFoldWindow->hWndEdit, AEM_SETFOLDHIDEOFFSET, MAKELONG(lpFoldWindow->nHideMinLineOffset, lpFoldWindow->nHideMaxLineOffsetOld), 0);
+  }
+  else
+  {
+    if (lpFoldWindow->nHideMaxLineOffset != lpFoldWindow->nHideMaxLineOffsetOld)
+      SendMessage(lpFoldWindow->hWndEdit, AEM_SETFOLDHIDEOFFSET, MAKELONG(lpFoldWindow->nHideMinLineOffset, lpFoldWindow->nHideMaxLineOffsetOld), 0);
+  }
+  lpFoldWindow->nHideMaxLineOffsetOld=lpFoldWindow->nHideMaxLineOffset;
+}
+
+INT_PTR IndexOffset(FOLDWINDOW *lpFoldWindow, AECHARINDEX *ciChar, INT_PTR nOffset)
+{
+  AEINDEXOFFSET io;
+
+  io.ciCharIn=ciChar;
+  io.ciCharOut=ciChar;
+  io.nOffset=nOffset;
+  io.nNewLine=AELB_R;
+  return SendMessage(lpFoldWindow->hWndEdit, AEM_INDEXOFFSET, 0, (LPARAM)&io);
 }
 
 INT_PTR EndOfPoint(FOLDWINDOW *lpFoldWindow, const AEPOINT *lpPoint, AECHARINDEX *ciChar)
@@ -3654,10 +4049,8 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
   if (!(dwFlags & SAE_NOLIST))
   {
     if ((nShowDock == CFSD_ALWAYS) ||
-        (nShowDock == CFSD_AUTO && lpFoldWindow &&
-                                        lpFoldWindow->pfwd->lpSyntaxFile &&
-                                        lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.bVisible &&
-                                        ((dwFlags & SAE_IGNOREMAXFOLDS) || SendMessage(lpFoldWindow->hWndEdit, AEM_GETFOLDCOUNT, 0, 0) < nFoldLimit)))
+        (nShowDock == CFSD_AUTO && lpFoldWindow && lpFoldWindow->pfwd->lpSyntaxFile && lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.bVisible &&
+                                   ((dwFlags & SAE_IGNOREMAXFOLDS) || SendMessage(lpFoldWindow->hWndEdit, AEM_GETFOLDCOUNT, 0, 0) < nFoldLimit)))
     {
       if (hWndTreeView)
       {
@@ -3687,6 +4080,21 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETBKCOLOR, 0, 0) != dwBk)
           SendMessage(hWndTreeView, TVM_SETBKCOLOR, 0, (LPARAM)dwBk);
 
+        dwFoldFilterTextColor=dwText;
+        dwFoldFilterBkColor=dwBk;
+        if (hFoldFilterBkBrush)
+        {
+          DeleteObject(hFoldFilterBkBrush);
+          hFoldFilterBkBrush=NULL;
+        }
+        if (dwFoldFilterTextColor != (DWORD)-1 || dwFoldFilterBkColor != (DWORD)-1)
+        {
+          if (dwFoldFilterBkColor == (DWORD)-1)
+            hFoldFilterBkBrush=CreateSolidBrush(GetSysColor(COLOR_WINDOW));
+          else
+            hFoldFilterBkBrush=CreateSolidBrush(dwFoldFilterBkColor);
+        }
+
         if (!bFoldListSystemFont)
         {
           HFONT hFontEdit;
@@ -3697,7 +4105,12 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
       }
 
       if (dkCodeFoldDlg && (dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
+      {
         SendMessage(hMainWnd, AKD_DOCK, DK_SHOW, (LPARAM)dkCodeFoldDlg);
+        //Dockable window not updated on Win7 with line in AkelPad.c:
+        //hbrBackground=(HBRUSH)(UINT_PTR)(COLOR_WINDOW + 1);
+        UpdateWindow(dkCodeFoldDlg->hWnd);
+      }
 
       if (dwFlags & SAE_RESETLIST)
       {
@@ -3735,13 +4148,23 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
       dwLastPostUpdateFlags=0;
     }
   }
+
+  //Send AKDN_DLLCODER notification
+  {
+    NCODERUPDATE ncu;
+
+    ncu.hWndEdit=hWndEdit;
+    ncu.dwFlags=dwFlags;
+    SendMessage(hMainWnd, AKDN_DLLCODER, 0, (LPARAM)&ncu);
+  }
   return lpFoldWindow;
 }
 
 void UpdateTagMark(FOLDWINDOW *lpFoldWindow)
 {
-  AEFINDTEXTW ftXmlHeadClose;
   AECHARINDEX ciCaret;
+  CHARRANGE64 crTagStart;
+  CHARRANGE64 crTagEnd;
   CHARRANGE64 crXmlHeadClose={0};
   SYNTAXFILE *lpSyntaxFile=lpFoldWindow->pfwd->lpSyntaxFile;
   AEFOLD *lpFold;
@@ -3759,58 +4182,94 @@ void UpdateTagMark(FOLDWINDOW *lpFoldWindow)
   {
     SendMessage(lpFoldWindow->hWndEdit, AEM_GETINDEX, AEGI_CARETCHAR, (LPARAM)&ciCaret);
     nCaretOffset=(int)SendMessage(lpFoldWindow->hWndEdit, AEM_INDEXTORICHOFFSET, 0, (LPARAM)&ciCaret);
+    lpFold=FoldGet(lpFoldWindow, AEFF_FINDOFFSET|AEFF_FOLDSTART|AEFF_FOLDEND|AEFF_RECURSE, nCaretOffset, NULL);
 
-    if (lpFold=FoldGet(lpFoldWindow, AEFF_FINDOFFSET|AEFF_FOLDSTART|AEFF_FOLDEND|AEFF_RECURSE, nCaretOffset, NULL))
+    Begin:
+    if (lpFold)
     {
       lpFoldInfo=FoldData(lpFold)->lpFoldInfo;
-      if (lpFoldInfo->dwFlags & FIF_FOLDEND_NOCATCH)
+      if (lpFoldInfo->dwFlags & FIF_XMLCHILD)
       {
-        if (lpFold->next || lpFold->parent)
-          nTagEndLen=lpFoldInfo->nFoldEndPointLen;
-        else
-          lpFoldInfo=NULL;
-      }
-      else
-      {
-        if (lpFold->lpMaxPoint->nPointLen)
-          nTagEndLen=lpFold->lpMaxPoint->nPointLen;
-        else
-          lpFoldInfo=NULL;
+        lpFold=lpFold->parent;
+        goto Begin;
       }
 
       if (lpFoldInfo)
       {
+        if (lpFold->lpMaxPoint->nPointLen)
+          nTagEndLen=lpFold->lpMaxPoint->nPointLen;
+        else
+        {
+          if (lpFoldInfo->dwFlags & FIF_REGEXPEND)
+            nTagEndLen=1;
+          else
+            nTagEndLen=lpFoldInfo->nFoldEndPointLen;
+        }
+        crTagStart.cpMin=lpFold->lpMinPoint->nPointOffset;
+        crTagStart.cpMax=lpFold->lpMinPoint->nPointOffset + lpFold->lpMinPoint->nPointLen;
+        crTagEnd.cpMin=lpFold->lpMaxPoint->nPointOffset;
+        crTagEnd.cpMax=lpFold->lpMaxPoint->nPointOffset + nTagEndLen;
+
         if (((lpFold->lpMinPoint->nPointLen == 1 && !(lpFoldInfo->dwFlags & FIF_XMLTAG)) ?
-               (nCaretOffset == lpFold->lpMinPoint->nPointOffset || nCaretOffset == lpFold->lpMinPoint->nPointOffset + lpFold->lpMinPoint->nPointLen) :
-               (nCaretOffset > lpFold->lpMinPoint->nPointOffset && nCaretOffset < lpFold->lpMinPoint->nPointOffset + lpFold->lpMinPoint->nPointLen)) ||
+               (nCaretOffset == crTagStart.cpMin || nCaretOffset == crTagStart.cpMax) :
+               (nCaretOffset > crTagStart.cpMin && nCaretOffset < crTagStart.cpMax)) ||
             ((nTagEndLen == 1 && !(lpFoldInfo->dwFlags & FIF_XMLTAG)) ?
-               (nCaretOffset == lpFold->lpMaxPoint->nPointOffset || nCaretOffset == lpFold->lpMaxPoint->nPointOffset + nTagEndLen) :
-               (nCaretOffset > lpFold->lpMaxPoint->nPointOffset && nCaretOffset < lpFold->lpMaxPoint->nPointOffset + nTagEndLen)))
+               (nCaretOffset == crTagEnd.cpMin || nCaretOffset == crTagEnd.cpMax) :
+               (nCaretOffset > crTagEnd.cpMin && nCaretOffset < crTagEnd.cpMax)))
         {
           bMark=TRUE;
         }
         if (lpFoldInfo->dwFlags & FIF_XMLTAG)
         {
-          if ((lpFoldInfo->dwFlags & FIF_XMLNONAME_ONETAG) ||
-              (lpFoldInfo->dwFlags & FIF_XMLNAMED_ONETAG))
+          if (lpFoldInfo->dwFlags & (FIF_XMLNONAME_ONETAG|FIF_XMLNAMED_ONETAG))
           {
-            if (nCaretOffset > lpFold->lpMinPoint->nPointOffset && nCaretOffset < lpFold->lpMaxPoint->nPointOffset + nTagEndLen)
+            if (nCaretOffset > crTagStart.cpMin && nCaretOffset < crTagEnd.cpMax)
               bMark=TRUE;
           }
-          else
+          else if (lpFoldInfo->dwFlags & (FIF_XMLNONAME_TWOTAG|FIF_XMLNAMED_TWOTAG))
           {
-            ftXmlHeadClose.dwFlags=AEFR_DOWN|AEFR_MATCHCASE;
-            ftXmlHeadClose.pText=L">";
-            ftXmlHeadClose.dwTextLen=1;
-            ftXmlHeadClose.nNewLine=AELB_ASIS;
-            ftXmlHeadClose.crSearch.ciMin=lpFold->lpMinPoint->ciPoint;
-            ftXmlHeadClose.crSearch.ciMax=lpFold->lpMaxPoint->ciPoint;
-            if (bXmlHeadClose=(BOOL)SendMessage(hWndEdit, AEM_FINDTEXTW, 0, (LPARAM)&ftXmlHeadClose))
+            AECHARINDEX ciCount;
+            INT_PTR nCountOffset=lpFold->lpMinPoint->nPointOffset;
+            wchar_t wchQuote=0;
+            wchar_t wchChar;
+
+            //Find tag open name and then ">"
+            crTagStart.cpMin=nCountOffset;
+            crTagStart.cpMax=0;
+
+            for (ciCount=lpFold->lpMinPoint->ciPoint; AEC_IndexCompare(&ciCount, &lpFold->lpMaxPoint->ciPoint) < 0; AEC_NextChar(&ciCount), ++nCountOffset)
             {
-              crXmlHeadClose.cpMin=SendMessage(lpFoldWindow->hWndEdit, AEM_INDEXTORICHOFFSET, 0, (LPARAM)&ftXmlHeadClose.crFound.ciMin);
-              crXmlHeadClose.cpMax=SendMessage(lpFoldWindow->hWndEdit, AEM_INDEXTORICHOFFSET, 0, (LPARAM)&ftXmlHeadClose.crFound.ciMax);
-              if (nCaretOffset > lpFold->lpMinPoint->nPointOffset && nCaretOffset < crXmlHeadClose.cpMax)
-                bMark=TRUE;
+              wchChar=ciCount.lpLine->wpLine[ciCount.nCharInLine];
+
+              if (wchQuote)
+              {
+                if (wchQuote == wchChar)
+                  wchQuote=0;
+                continue;
+              }
+              if (wchChar == L'\'' || wchChar == L'"')
+              {
+                wchQuote=wchChar;
+              }
+              else if (wchChar == L'>')
+              {
+                if (!crTagStart.cpMax)
+                  crTagStart.cpMax=nCountOffset + 1;
+                else
+                {
+                  crXmlHeadClose.cpMin=nCountOffset;
+                  crXmlHeadClose.cpMax=nCountOffset + 1;
+                  bXmlHeadClose=TRUE;
+                }
+                if (nCaretOffset > crTagStart.cpMin && nCaretOffset < nCountOffset + 1)
+                  bMark=TRUE;
+                break;
+              }
+              else if (!crTagStart.cpMax)
+              {
+                if (wchChar == L' ' || wchChar == L'\t')
+                  crTagStart.cpMax=nCountOffset;
+              }
             }
           }
         }
@@ -3819,15 +4278,15 @@ void UpdateTagMark(FOLDWINDOW *lpFoldWindow)
         {
           if (lpFold == lpFoldWindow->pfwd->lpTagMark &&
                 lpFoldWindow->pfwd->hTagMarkFirst &&
-                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkFirst)->crMarkRange.cpMin == lpFold->lpMinPoint->nPointOffset &&
-                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkFirst)->crMarkRange.cpMax == lpFold->lpMinPoint->nPointOffset + lpFold->lpMinPoint->nPointLen &&
+                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkFirst)->crMarkRange.cpMin == crTagStart.cpMin &&
+                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkFirst)->crMarkRange.cpMax == crTagStart.cpMax &&
                 !lpFoldWindow->pfwd->hTagMarkSecond == !bXmlHeadClose &&
                   (!lpFoldWindow->pfwd->hTagMarkSecond ||
                     (((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkSecond)->crMarkRange.cpMin == crXmlHeadClose.cpMin &&
                      ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkSecond)->crMarkRange.cpMax == crXmlHeadClose.cpMax)) &&
                 lpFoldWindow->pfwd->hTagMarkThird &&
-                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkThird)->crMarkRange.cpMin == lpFold->lpMaxPoint->nPointOffset &&
-                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkThird)->crMarkRange.cpMax == lpFold->lpMaxPoint->nPointOffset + nTagEndLen)
+                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkThird)->crMarkRange.cpMin == crTagEnd.cpMin &&
+                  ((AEMARKRANGEITEM *)lpFoldWindow->pfwd->hTagMarkThird)->crMarkRange.cpMax == crTagEnd.cpMax)
           {
             //Highlighted fold unchanged
           }
@@ -3847,8 +4306,8 @@ void UpdateTagMark(FOLDWINDOW *lpFoldWindow)
             mri.dwFontStyle=mri.dwFontStyle;
 
             //Highlight beginning
-            mri.crMarkRange.cpMin=lpFold->lpMinPoint->nPointOffset;
-            mri.crMarkRange.cpMax=lpFold->lpMinPoint->nPointOffset + lpFold->lpMinPoint->nPointLen;
+            mri.crMarkRange.cpMin=crTagStart.cpMin;
+            mri.crMarkRange.cpMax=crTagStart.cpMax;
             lpFoldWindow->pfwd->hTagMarkFirst=(AEHMARKRANGE)SendMessage(lpFoldWindow->hWndEdit, AEM_HLADDMARKRANGE, (WPARAM)NULL, (LPARAM)&mri);
 
             //Highlight XML beginning close ">"
@@ -3860,9 +4319,12 @@ void UpdateTagMark(FOLDWINDOW *lpFoldWindow)
             }
 
             //Highlight ending
-            mri.crMarkRange.cpMin=lpFold->lpMaxPoint->nPointOffset;
-            mri.crMarkRange.cpMax=lpFold->lpMaxPoint->nPointOffset + nTagEndLen;
-            lpFoldWindow->pfwd->hTagMarkThird=(AEHMARKRANGE)SendMessage(lpFoldWindow->hWndEdit, AEM_HLADDMARKRANGE, (WPARAM)NULL, (LPARAM)&mri);
+            if (nTagEndLen)
+            {
+              mri.crMarkRange.cpMin=crTagEnd.cpMin;
+              mri.crMarkRange.cpMax=crTagEnd.cpMax;
+              lpFoldWindow->pfwd->hTagMarkThird=(AEHMARKRANGE)SendMessage(lpFoldWindow->hWndEdit, AEM_HLADDMARKRANGE, (WPARAM)NULL, (LPARAM)&mri);
+            }
 
             bRedraw=TRUE;
           }
@@ -3914,7 +4376,7 @@ BOOL RemoveTagMark(FOLDWINDOW *lpFoldWindow)
   return bResult;
 }
 
-DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
+BOOL CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
 {
   AECHARINDEX ciCount;
   DWORD dwCount;
@@ -3923,12 +4385,12 @@ DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
   if (ft->dwFlags & FIF_MATCHCASE)
   {
     if (ciChar->lpLine->wpLine[ciChar->nCharInLine] != *ft->pText)
-      return 0;
+      return FALSE;
   }
   else
   {
     if (WideCharLower(ciChar->lpLine->wpLine[ciChar->nCharInLine]) != WideCharLower(*ft->pText))
-      return 0;
+      return FALSE;
   }
   ciCount=*ciChar;
   dwCount=0;
@@ -3941,12 +4403,12 @@ DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
       if (ft->dwFlags & FIF_MATCHCASE)
       {
         if (ciCount.lpLine->wpLine[ciCount.nCharInLine] != ft->pText[dwCount])
-          return 0;
+          return FALSE;
       }
       else
       {
         if (WideCharLower(ciCount.lpLine->wpLine[ciCount.nCharInLine]) != WideCharLower(ft->pText[dwCount]))
-          return 0;
+          return FALSE;
       }
 
       CharMatched:
@@ -3957,12 +4419,12 @@ DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
       }
     }
     if (ciCount.lpLine->nLineBreak != AELB_WRAP)
-      return 0;
+      return FALSE;
 
     if (ciCount.lpLine->next)
       AEC_NextLine(&ciCount);
     else
-      return 0;
+      return FALSE;
 
     if (dwCount >= ft->dwTextLen)
       goto Found;
@@ -3971,13 +4433,15 @@ DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
   Found:
   ft->crFound.ciMin=*ciChar;
   ft->crFound.ciMax=ciCount;
-  return dwCount;
+  if (dwCount)
+    return TRUE;
+  return FALSE;
 }
 
-DWORD CALLBACK IsMatchRE(STACKREGROUP *sreg, AECHARRANGE *crFound, const AECHARINDEX *ciChar)
+INT_PTR CALLBACK IsMatchRE(STACKREGROUP *sreg, AECHARRANGE *crFound, const AECHARINDEX *ciChar)
 {
   AECHARINDEX ciStr=*ciChar;
-  DWORD dwCount=0;
+  INT_PTR nMatchLen;
 
   if (!sreg->first) return 0;
 
@@ -3985,11 +4449,12 @@ DWORD CALLBACK IsMatchRE(STACKREGROUP *sreg, AECHARRANGE *crFound, const AECHARI
   {
     crFound->ciMin=sreg->first->ciStrStart;
     crFound->ciMax=sreg->first->ciStrEnd;
-    dwCount=(DWORD)sreg->first->nStrLen;
+    nMatchLen=sreg->first->nStrLen;
   }
-  AE_PatReset(sreg);
+  else nMatchLen=-1;
 
-  return dwCount;
+  AE_PatReset(sreg);
+  return nMatchLen;
 }
 
 BOOL IsEscaped(const AECHARINDEX *ciChar, wchar_t wchEscape)
@@ -4028,7 +4493,7 @@ FOLDINFO* IsFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, AEFINDTEXTW *ft, AECH
       {
         if (lpLevel->pfd->lpFoldInfo->dwFlags != lpFoldInfoHandle->lpFoldInfo->dwFlags)
         {
-          if (!CheckFlags(lpFoldInfoHandle->lpFoldInfo, &lpLevel->crFoundMin, IFE_FOLDSTART))
+          if (!CheckFoldFlags(lpFoldInfoHandle->lpFoldInfo, &lpLevel->crFoundMin, IFE_FOLDSTART))
             continue;
         }
         *dwFoldStop=IFE_FOLDEND;
@@ -4043,11 +4508,25 @@ FOLDINFO* IsFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, AEFINDTEXTW *ft, AECH
 
   //Fold start
   FoldStart:
+  if (ciChar->lpLine->wpLine[ciChar->nCharInLine] == L'>' && lpLevel)
+  {
+    if (lpLevel->pfd->lpFoldInfo->dwFlags & FIF_XMLTAG)
+      lpLevel->dwFlags|=LVLF_NOXMLCHILD;
+  }
   if (lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.nCommonFirstChar == -1 ||
       (wchar_t)lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.nCommonFirstChar == ciChar->lpLine->wpLine[ciChar->nCharInLine])
   {
     for (lpFoldStart=(FOLDSTART *)lpFoldWindow->pfwd->lpSyntaxFile->hFoldStartStack.first; lpFoldStart; lpFoldStart=lpFoldStart->next)
     {
+      if (!FoldAllowed(lpLevel, lpFoldStart->nParentID, lpFoldStart->nRuleID))
+        continue;
+      if (lpFoldStart->nParentID && (lpFoldStart->dwFlags & FIF_XMLCHILD))
+      {
+        //Find FIF_XMLCHILD only once
+        if (lpLevel->dwFlags & (LVLF_XMLCHILD|LVLF_NOXMLCHILD))
+          continue;
+      }
+
       if (lpFoldInfo=IsFoldStart(lpFoldStart, ft, ciChar))
       {
         *dwFoldStop=IFE_FOLDSTART;
@@ -4061,12 +4540,48 @@ FOLDINFO* IsFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, AEFINDTEXTW *ft, AECH
   return NULL;
 }
 
+BOOL FoldAllowed(LEVEL *lpLevel, int nParentID, int nFoldRuleID)
+{
+  int nLevelRuleID;
+
+  if (lpLevel)
+    nLevelRuleID=lpLevel->pfd->lpFoldInfo->nRuleID;
+  else
+    nLevelRuleID=0;
+
+  if (nParentID && nLevelRuleID)
+  {
+    if (nParentID == nLevelRuleID)
+      return TRUE;
+    if (nParentID == -1)
+      return FALSE;
+    if (nParentID == -2 || nParentID == -3)
+    {
+      if (nFoldRuleID == nLevelRuleID)
+        return FALSE;
+      return TRUE;
+    }
+  }
+  if (nParentID > 0 || nParentID == -2)
+    return FALSE;
+  return TRUE;
+}
+
 FOLDINFO* IsFoldStart(FOLDSTART *lpFoldStart, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 {
+  INT_PTR nMatchLen;
   BOOL bMatch;
 
   if (lpFoldStart->dwFlags & FIF_REGEXPSTART)
-    bMatch=IsMatchRE(&lpFoldStart->sregStart, &ft->crFound, ciChar);
+  {
+    nMatchLen=IsMatchRE(&lpFoldStart->sregStart, &ft->crFound, ciChar);
+    if (nMatchLen >= 0)
+    {
+      ft->dwTextLen=nMatchLen;
+      bMatch=TRUE;
+    }
+    else bMatch=FALSE;
+  }
   else
   {
     ft->dwFlags=lpFoldStart->dwFlags;
@@ -4081,7 +4596,7 @@ FOLDINFO* IsFoldStart(FOLDSTART *lpFoldStart, AEFINDTEXTW *ft, AECHARINDEX *ciCh
 
     for (lpFoldInfoHandle=(FOLDINFOHANDLE *)lpFoldStart->hFoldInfoHandleStack.first; lpFoldInfoHandle; lpFoldInfoHandle=lpFoldInfoHandle->next)
     {
-      if (CheckFlags(lpFoldInfoHandle->lpFoldInfo, &ft->crFound, IFE_FOLDSTART))
+      if (CheckFoldFlags(lpFoldInfoHandle->lpFoldInfo, &ft->crFound, IFE_FOLDSTART))
         return lpFoldInfoHandle->lpFoldInfo;
     }
   }
@@ -4090,10 +4605,19 @@ FOLDINFO* IsFoldStart(FOLDSTART *lpFoldStart, AEFINDTEXTW *ft, AECHARINDEX *ciCh
 
 FOLDINFO* IsFoldEnd(FOLDINFO *lpFoldInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 {
+  INT_PTR nMatchLen;
   BOOL bMatch;
 
   if (lpFoldInfo->dwFlags & FIF_REGEXPEND)
-    bMatch=IsMatchRE(&lpFoldInfo->sregEnd, &ft->crFound, ciChar);
+  {
+    nMatchLen=IsMatchRE(&lpFoldInfo->sregEnd, &ft->crFound, ciChar);
+    if (nMatchLen >= 0)
+    {
+      ft->dwTextLen=nMatchLen;
+      bMatch=TRUE;
+    }
+    else bMatch=FALSE;
+  }
   else
   {
     ft->dwFlags=lpFoldInfo->dwFlags;
@@ -4104,7 +4628,7 @@ FOLDINFO* IsFoldEnd(FOLDINFO *lpFoldInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 
   if (bMatch)
   {
-    if (CheckFlags(lpFoldInfo, &ft->crFound, IFE_FOLDEND))
+    if (CheckFoldFlags(lpFoldInfo, &ft->crFound, IFE_FOLDEND))
       return lpFoldInfo;
   }
   return NULL;
@@ -4112,10 +4636,19 @@ FOLDINFO* IsFoldEnd(FOLDINFO *lpFoldInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 
 SKIPINFO* IsSkipStart(SKIPSTART *lpSkipStart, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 {
+  INT_PTR nMatchLen;
   BOOL bMatch;
 
   if (lpSkipStart->dwFlags & FIF_REGEXPSTART)
-    bMatch=IsMatchRE(&lpSkipStart->sregStart, &ft->crFound, ciChar);
+  {
+    nMatchLen=IsMatchRE(&lpSkipStart->sregStart, &ft->crFound, ciChar);
+    if (nMatchLen >= 0)
+    {
+      ft->dwTextLen=nMatchLen;
+      bMatch=TRUE;
+    }
+    else bMatch=FALSE;
+  }
   else
   {
     ft->dwFlags=lpSkipStart->dwFlags;
@@ -4130,7 +4663,7 @@ SKIPINFO* IsSkipStart(SKIPSTART *lpSkipStart, AEFINDTEXTW *ft, AECHARINDEX *ciCh
 
     for (lpSkipInfoHandle=(SKIPINFOHANDLE *)lpSkipStart->hSkipInfoHandleStack.first; lpSkipInfoHandle; lpSkipInfoHandle=lpSkipInfoHandle->next)
     {
-      if (!IsEscaped(ciChar, lpSkipInfoHandle->lpSkipInfo->wchEscape))
+      if (CheckSkipFlags(lpSkipInfoHandle->lpSkipInfo, &ft->crFound, ciChar, IFE_FOLDSTART))
         return lpSkipInfoHandle->lpSkipInfo;
     }
   }
@@ -4139,10 +4672,19 @@ SKIPINFO* IsSkipStart(SKIPSTART *lpSkipStart, AEFINDTEXTW *ft, AECHARINDEX *ciCh
 
 SKIPINFO* IsSkipEnd(SKIPINFO *lpSkipInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 {
+  INT_PTR nMatchLen;
   BOOL bMatch;
 
   if (lpSkipInfo->dwFlags & FIF_REGEXPEND)
-    bMatch=IsMatchRE(&lpSkipInfo->sregEnd, &ft->crFound, ciChar);
+  {
+    nMatchLen=IsMatchRE(&lpSkipInfo->sregEnd, &ft->crFound, ciChar);
+    if (nMatchLen >= 0)
+    {
+      ft->dwTextLen=nMatchLen;
+      bMatch=TRUE;
+    }
+    else bMatch=FALSE;
+  }
   else
   {
     ft->dwFlags=lpSkipInfo->dwFlags;
@@ -4153,7 +4695,7 @@ SKIPINFO* IsSkipEnd(SKIPINFO *lpSkipInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar)
 
   if (bMatch)
   {
-    if (!IsEscaped(ciChar, lpSkipInfo->wchEscape))
+    if (CheckSkipFlags(lpSkipInfo, &ft->crFound, ciChar, IFE_FOLDEND))
       return lpSkipInfo;
   }
   return NULL;
@@ -4163,13 +4705,31 @@ FOLDINFO* FindFold(FOLDWINDOW *lpFoldWindow, const AECHARRANGE *crSearchRange)
 {
   AEFOLD *lpFold;
   FOLDINFO *lpFoldInfo;
+  FOLDINFO *lpFoldInfoNext;
+  FOLDINFO *lpFoldInfoTheme=NULL;
   SKIPINFO *lpSkipInfo=NULL;
   SKIPSTART *lpSkipStart;
   SKIPINFOHANDLE *lpSkipInfoHandle;
   AEFINDTEXTW ft;
+  AEFINDFOLD ff;
   AECHARINDEX ciCount=crSearchRange->ciMin;
+  SYNTAXFILE *lpSyntaxFile=lpFoldWindow->pfwd->lpSyntaxFile;
   DWORD dwFoldMatch=0;
   BOOL bMatch;
+  BOOL bBreak=TRUE;
+
+  if (lpSyntaxFile->hFoldStack.nFoldWithThemeCount)
+  {
+    ff.dwFlags=AEFF_FINDINDEX|AEFF_FOLDSTART|AEFF_RECURSE;
+    ff.dwFindIt=(UINT_PTR)&ciCount;
+    SendMessage(lpFoldWindow->hWndEdit, AEM_HLFINDTHEME, AEHLFT_BYFOLD, (LPARAM)&ff);
+    if (ff.lpParent)
+    {
+      bBreak=FALSE;
+      lpFoldInfoTheme=FoldData(ff.lpParent)->lpFoldInfo;
+      lpSyntaxFile=lpFoldInfoTheme->lpRuleFile;
+    }
+  }
 
   while (ciCount.lpLine)
   {
@@ -4181,11 +4741,17 @@ FOLDINFO* FindFold(FOLDWINDOW *lpFoldWindow, const AECHARRANGE *crSearchRange)
 
       if (!lpSkipInfo)
       {
-        for (lpFoldInfo=(FOLDINFO *)lpFoldWindow->pfwd->lpSyntaxFile->hFoldStack.first; lpFoldInfo; lpFoldInfo=lpFoldInfo->next)
+        for (lpFoldInfo=(FOLDINFO *)lpSyntaxFile->hFoldStack.first; lpFoldInfo; lpFoldInfo=lpFoldInfoNext)
         {
+          lpFoldInfoNext=lpFoldInfo->next;
+
           //Fold start
           if (lpFoldInfo->lpFoldStart->dwFlags & FIF_REGEXPSTART)
-            bMatch=IsMatchRE(&lpFoldInfo->lpFoldStart->sregStart, &ft.crFound, &ciCount);
+          {
+            bMatch=(IsMatchRE(&lpFoldInfo->lpFoldStart->sregStart, &ft.crFound, &ciCount) >= 0);
+            if (!bMatch && FoldAtIndex(lpFoldWindow, &ciCount, IFE_FOLDSTART))
+              return lpFoldInfo;
+          }
           else
           {
             ft.dwFlags=lpFoldInfo->dwFlags;
@@ -4195,33 +4761,52 @@ FOLDINFO* FindFold(FOLDWINDOW *lpFoldWindow, const AECHARRANGE *crSearchRange)
           }
           if (bMatch)
           {
-            if (!CheckFlags(lpFoldInfo, &ft.crFound, IFE_FOLDSTART) != !FoldAtIndex(lpFoldWindow, &ft.crFound.ciMin, IFE_FOLDSTART))
+            if (!CheckFoldFlags(lpFoldInfo, &ft.crFound, IFE_FOLDSTART) != !FoldAtIndex(lpFoldWindow, &ft.crFound.ciMin, IFE_FOLDSTART))
               return lpFoldInfo;
             dwFoldMatch=IFE_FOLDSTART;
           }
 
           //Fold end
-          if (lpFoldInfo->dwFlags & FIF_REGEXPEND)
-            bMatch=IsMatchRE(&lpFoldInfo->sregEnd, &ft.crFound, &ciCount);
-          else
+          for (;;)
           {
-            ft.dwFlags=lpFoldInfo->dwFlags;
-            ft.pText=lpFoldInfo->wpFoldEnd;
-            ft.dwTextLen=lpFoldInfo->nFoldEndLen;
-            bMatch=IsMatch(&ft, &ciCount);
-          }
-          if (bMatch)
-          {
-            if (!CheckFlags(lpFoldInfo, &ft.crFound, IFE_FOLDEND) != !FoldAtIndex(lpFoldWindow, &ft.crFound.ciMax, IFE_FOLDEND))
-              return lpFoldInfo;
-            dwFoldMatch=IFE_FOLDEND;
+            if (lpFoldInfo->dwFlags & FIF_REGEXPEND)
+            {
+              bMatch=(IsMatchRE(&lpFoldInfo->sregEnd, &ft.crFound, &ciCount) >= 0);
+              if (!bMatch && FoldAtIndex(lpFoldWindow, &ciCount, IFE_FOLDEND))
+                return lpFoldInfo;
+            }
+            else
+            {
+              ft.dwFlags=lpFoldInfo->dwFlags;
+              ft.pText=lpFoldInfo->wpFoldEnd;
+              ft.dwTextLen=lpFoldInfo->nFoldEndLen;
+              bMatch=IsMatch(&ft, &ciCount);
+            }
+            if (bMatch)
+            {
+              if (!CheckFoldFlags(lpFoldInfo, &ft.crFound, IFE_FOLDEND) != !FoldAtIndex(lpFoldWindow, &ft.crFound.ciMin, IFE_FOLDEND))
+                return lpFoldInfo;
+              dwFoldMatch=IFE_FOLDEND;
+            }
+
+            if (lpFoldInfoTheme && !lpFoldInfoNext)
+            {
+              if (bBreak)
+              {
+                bBreak=FALSE;
+                break;
+              }
+              lpFoldInfo=lpFoldInfoTheme;
+              bBreak=TRUE;
+            }
+            else break;
           }
         }
 
         //Skip start
         if (!dwFoldMatch)
         {
-          for (lpSkipStart=(SKIPSTART *)lpFoldWindow->pfwd->lpSyntaxFile->hSkipStartStack.first; lpSkipStart; lpSkipStart=lpSkipStart->next)
+          for (lpSkipStart=(SKIPSTART *)lpSyntaxFile->hSkipStartStack.first; lpSkipStart; lpSkipStart=lpSkipStart->next)
           {
             if (lpSkipInfo=IsSkipStart(lpSkipStart, &ft, &ciCount))
               goto NextChar;
@@ -4246,7 +4831,7 @@ FOLDINFO* FindFold(FOLDWINDOW *lpFoldWindow, const AECHARRANGE *crSearchRange)
           }
         }
 
-        if (lpFold=FoldAtIndex(lpFoldWindow, &ciCount, IFE_FOLDSTART|IFE_FOLDEND))
+        if (lpFold=FoldAtIndex(lpFoldWindow, &ciCount, IFE_FOLDSTART|IFE_FOLDEND|IFE_FOLDENDMAX))
           return FoldData(lpFold)->lpFoldInfo;
       }
 
@@ -4261,11 +4846,11 @@ FOLDINFO* FindFold(FOLDWINDOW *lpFoldWindow, const AECHARRANGE *crSearchRange)
   return NULL;
 }
 
-BOOL CheckFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop)
+BOOL CheckFoldFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop)
 {
   AECHARINDEX ciTmp;
   int nChar;
-  BOOL bInList;
+  const wchar_t *wpDelim;
 
   if (dwFoldStop & IFE_FOLDSTART)
   {
@@ -4290,9 +4875,9 @@ BOOL CheckFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop)
         {
           if ((nChar=AEC_CharAtIndex(&ciTmp)) >= 0)
           {
-            bInList=IsInDelimiterList(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
+            wpDelim=AKD_wcschr(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
 
-            if (!bInList == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
+            if (!wpDelim == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
               return FALSE;
           }
         }
@@ -4301,9 +4886,9 @@ BOOL CheckFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop)
       {
         if ((nChar=AEC_CharAtIndex(&crFound->ciMax)) >= 0)
         {
-          bInList=IsInDelimiterList(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
+          wpDelim=AKD_wcschr(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
 
-          if (!bInList == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
+          if (!wpDelim == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
             return FALSE;
         }
       }
@@ -4332,9 +4917,9 @@ BOOL CheckFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop)
         {
           if ((nChar=AEC_CharAtIndex(&ciTmp)) >= 0)
           {
-            bInList=IsInDelimiterList(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
+            wpDelim=AKD_wcschr(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
 
-            if (!bInList == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
+            if (!wpDelim == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
               return FALSE;
           }
         }
@@ -4343,14 +4928,47 @@ BOOL CheckFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop)
       {
         if ((nChar=AEC_CharAtIndex(&crFound->ciMax)) >= 0)
         {
-          bInList=IsInDelimiterList(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
+          wpDelim=AKD_wcschr(lpFoldInfo->wpDelimiters, (wchar_t)nChar);
 
-          if (!bInList == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
+          if (!wpDelim == !(lpFoldInfo->dwFlags & FIF_DENYDELIM))
             return FALSE;
         }
       }
     }
   }
+  return TRUE;
+}
+
+BOOL CheckSkipFlags(SKIPINFO *lpSkipInfo, AECHARRANGE *crFound, AECHARINDEX *ciChar, DWORD dwFoldStop)
+{
+  if (dwFoldStop & IFE_FOLDSTART)
+  {
+    if (lpSkipInfo->dwFlags & FIF_FOLDSTART_ATLINESTART)
+    {
+      if (!IsSpacesFromLeft(&crFound->ciMin))
+        return FALSE;
+    }
+    if (lpSkipInfo->dwFlags & FIF_FOLDSTART_ATLINEEND)
+    {
+      if (!IsSpacesFromRight(&crFound->ciMax))
+        return FALSE;
+    }
+  }
+  else //(dwFoldStop & IFE_FOLDEND)
+  {
+    if (lpSkipInfo->dwFlags & FIF_FOLDEND_ATLINESTART)
+    {
+      if (!IsSpacesFromLeft(&crFound->ciMin))
+        return FALSE;
+    }
+    if (lpSkipInfo->dwFlags & FIF_FOLDEND_ATLINEEND)
+    {
+      if (!IsSpacesFromRight(&crFound->ciMax))
+        return FALSE;
+    }
+  }
+  if (IsEscaped(ciChar, lpSkipInfo->wchEscape))
+    return FALSE;
   return TRUE;
 }
 
@@ -4446,7 +5064,7 @@ DWORD ScrollToPoint(HWND hWnd, POINT *ptPos)
   return (DWORD)SendMessage(hWnd, AEM_SCROLLTOPOINT, 0, (LPARAM)&stp);
 }
 
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc)
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc)
 {
   if (GetWindowRect(hWnd, rc))
   {
@@ -4489,11 +5107,14 @@ void ReadCodeFoldOptions(HANDLE hOptions)
   WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
   WideOption(hOptions, L"FoldListSystemColors", PO_DWORD, (LPBYTE)&bFoldListSystemColors, sizeof(DWORD));
   WideOption(hOptions, L"FoldListSystemFont", PO_DWORD, (LPBYTE)&bFoldListSystemFont, sizeof(DWORD));
+  WideOption(hOptions, L"ShowNodes", PO_DWORD, (LPBYTE)&nShowNodes, sizeof(DWORD));
   WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
   WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
   WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));
   WideOption(hOptions, L"NoPrintCollapsed", PO_DWORD, (LPBYTE)&bNoPrintCollapsed, sizeof(DWORD));
+  WideOption(hOptions, L"HideFoldEnd", PO_DWORD, (LPBYTE)&bHideFoldEnd, sizeof(DWORD));
   WideOption(hOptions, L"FindRootMaxDepth", PO_DWORD, (LPBYTE)&nFindRootMaxDepth, sizeof(DWORD));
+  WideOption(hOptions, L"FindRootFlags", PO_DWORD, (LPBYTE)&dwFindRootFlags, sizeof(DWORD));
   WideOption(hOptions, L"CurrentCollapse", PO_DWORD, (LPBYTE)&dwCurrentCollapse, sizeof(DWORD));
   WideOption(hOptions, L"CurrentGoBegin", PO_DWORD, (LPBYTE)&dwCurrentGoBegin, sizeof(DWORD));
   WideOption(hOptions, L"CurrentGoEnd", PO_DWORD, (LPBYTE)&dwCurrentGoEnd, sizeof(DWORD));
@@ -4527,11 +5148,14 @@ void SaveCodeFoldOptions(HANDLE hOptions, DWORD dwFlags)
     WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
     WideOption(hOptions, L"FoldListSystemColors", PO_DWORD, (LPBYTE)&bFoldListSystemColors, sizeof(DWORD));
     WideOption(hOptions, L"FoldListSystemFont", PO_DWORD, (LPBYTE)&bFoldListSystemFont, sizeof(DWORD));
+    WideOption(hOptions, L"ShowNodes", PO_DWORD, (LPBYTE)&nShowNodes, sizeof(DWORD));
     WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
     WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
     WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));
     WideOption(hOptions, L"NoPrintCollapsed", PO_DWORD, (LPBYTE)&bNoPrintCollapsed, sizeof(DWORD));
+    WideOption(hOptions, L"HideFoldEnd", PO_DWORD, (LPBYTE)&bHideFoldEnd, sizeof(DWORD));
     WideOption(hOptions, L"FindRootMaxDepth", PO_DWORD, (LPBYTE)&nFindRootMaxDepth, sizeof(DWORD));
+    WideOption(hOptions, L"FindRootFlags", PO_DWORD, (LPBYTE)&dwFindRootFlags, sizeof(DWORD));
     WideOption(hOptions, L"CurrentCollapse", PO_DWORD, (LPBYTE)&dwCurrentCollapse, sizeof(DWORD));
     WideOption(hOptions, L"CurrentGoBegin", PO_DWORD, (LPBYTE)&dwCurrentGoBegin, sizeof(DWORD));
     WideOption(hOptions, L"CurrentGoEnd", PO_DWORD, (LPBYTE)&dwCurrentGoEnd, sizeof(DWORD));

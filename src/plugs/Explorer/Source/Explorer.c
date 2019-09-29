@@ -32,6 +32,7 @@
 #define xmemcmp
 #define xstrlenW
 #define xstrcpynW
+#define xstrcmpiW
 #define xatoiW
 #define xitoaW
 #define xuitoaW
@@ -59,6 +60,7 @@
 #define SetDlgItemTextWide
 #define SetWindowLongPtrWide
 #define SetWindowTextWide
+#define SHBrowseForFolderWide
 #define SHGetPathFromIDListWide
 #define TreeView_GetItemWide
 #define TreeView_InsertItemWide
@@ -84,19 +86,21 @@
 #define STRID_SHOWHIDDEN           16
 #define STRID_AUTOFIND             17
 #define STRID_SINGLECLICK          18
-#define STRID_CREATEDIR            19
-#define STRID_CREATEFILE           20
-#define STRID_LOADFIRST            21
-#define STRID_PLUGIN               22
-#define STRID_OK                   23
-#define STRID_CANCEL               24
-#define STRID_DEFAULTCODER         25
-#define STRID_DEFAULTINCLUDE       26
-#define STRID_DEFAULTEXCLUDE       27
+#define STRID_SETSAVELOCATION      19
+#define STRID_CREATEDIR            20
+#define STRID_CREATEFILE           21
+#define STRID_LOADFIRST            22
+#define STRID_PLUGIN               23
+#define STRID_OK                   24
+#define STRID_CANCEL               25
+#define STRID_DEFAULTCODER         26
+#define STRID_DEFAULTINCLUDE       27
+#define STRID_DEFAULTEXCLUDE       28
 
 #define DLLA_EXPLORER_GOTOPATH  1
 #define DLLA_EXPLORER_REFRESH   2
 #define DLLA_EXPLORER_GETDOCK   3
+#define DLLA_EXPLORER_ROOTPATH  4
 
 #define AKDLL_INIT          (WM_USER + 100)
 #define AKDLL_SETUP         (WM_USER + 101)
@@ -111,8 +115,6 @@
 #define OF_SETTINGS       0x2
 #define OF_FILTER         0x4
 
-#define BUFFER_SIZE       1024
-
 //DestroyDock type
 #define DKT_DEFAULT        0x0
 #define DKT_NOUNLOAD       0x1
@@ -124,6 +126,9 @@
 #define FILTER_INCLUDE    1
 #define FILTER_EXCLUDE    2
 
+#ifndef BIF_NEWDIALOGSTYLE
+  #define BIF_NEWDIALOGSTYLE 0x0040
+#endif
 #ifndef SFGAO_STREAM
   #define SFGAO_STREAM 0x00400000
 #endif
@@ -171,6 +176,7 @@ void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
 void DestroyDock(HWND hWndDock, DWORD dwType);
 BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+int CALLBACK BrowseCallbackProc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM lpData);
 BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void ClearTreeView(HWND hWndTreeView, BOOL bRedraw);
@@ -200,10 +206,10 @@ int FilterGroupToString(FILTERGROUP *lpFilterGroup, wchar_t *wszString, int nStr
 void FilterStringToStack(const wchar_t *wpString, HFILTERGROUPSTACK *hStack);
 int FilterStringToGroup(const wchar_t *wpString, FILTERGROUP *lpFilterGroup);
 BOOL FileMaskCmp(const wchar_t *wpMaskStr, const wchar_t *wpFileStr);
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen);
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax);
 BOOL IsDirEmpty(const wchar_t *wpDir);
 BOOL TrimTrailBackSlash(wchar_t *wszDir);
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc);
 
 INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BYTE *lpData, DWORD dwData);
 void ReadOptions(DWORD dwFlags);
@@ -236,6 +242,7 @@ BOOL bInitCommon=FALSE;
 BOOL bInitMain=FALSE;
 DWORD dwSaveFlags=0;
 HWND hWndDockDlg=NULL;
+HWND hWndBrowsePath=NULL;
 HWND hWndBrowseTree=NULL;
 RECT rcExplorerCurrentDialog={0};
 RECT rcExplorerDockRect={0};
@@ -257,6 +264,7 @@ int nFilterType=FILTER_NONE;
 BOOL bShowHidden=FALSE;
 BOOL bAutoFind=TRUE;
 BOOL bSingleClick=FALSE;
+BOOL bSetSaveLocation=FALSE;
 BOOL bRenaming=FALSE;
 BOOL bOnMainStart=FALSE;
 WNDPROCDATA *NewMainProcData=NULL;
@@ -268,7 +276,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Explorer";
 }
 
@@ -316,6 +324,40 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
         }
       }
     }
+    else if (nAction == DLLA_EXPLORER_ROOTPATH)
+    {
+      unsigned char *pPath=NULL;
+
+      if (IsExtCallParamValid(pd->lParam, 2))
+        pPath=(unsigned char *)GetExtCallParam(pd->lParam, 2);
+
+      if (pPath)
+      {
+        if (pd->dwSupport & PDS_STRANSI)
+          MultiByteToWideChar(CP_ACP, 0, (char *)pPath, -1, wszRootDirectory, MAX_PATH);
+        else
+          xstrcpynW(wszRootDirectory, (wchar_t *)pPath, MAX_PATH);
+        if (xatoiW(wszRootDirectory, NULL) == -1)
+        {
+          wszRootDirectory[0]=L'\0';
+          nRootSpecial=CSIDL_DRIVES;
+        }
+        else nRootSpecial=CSIDL_DESKTOP;
+
+        dwSaveFlags|=OF_SETTINGS;
+
+        if (bInitMain)
+        {
+          PostMessage(hWndDockDlg, AKDLL_REFRESH, 0, 0);
+          if (bAutoFind)
+            PostMessage(hWndDockDlg, AKDLL_FINDDOCUMENT, 0, 0);
+
+          //Stay in memory, and show as active
+          pd->nUnload=UD_NONUNLOAD_ACTIVE;
+          return;
+        }
+      }
+    }
     else
     {
       if (bInitMain)
@@ -327,10 +369,10 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
         else if (nAction == DLLA_EXPLORER_GETDOCK)
         {
           HWND *lpWndDock=NULL;
-    
+
           if (IsExtCallParamValid(pd->lParam, 2))
             lpWndDock=(HWND *)GetExtCallParam(pd->lParam, 2);
-    
+
           if (lpWndDock)
             *lpWndDock=hWndDockDlg;
         }
@@ -413,7 +455,6 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   static HWND hWndTitleText;
   static HWND hWndTitleClose;
-  static HWND hWndBrowsePath;
   static HWND hWndFilterType;
   static HWND hWndFilterCombo;
   static HWND hWndFilterItem;
@@ -426,16 +467,16 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static LPCONTEXTMENU2 pExplorerSubMenu2;
   static LPCONTEXTMENU3 pExplorerSubMenu3;
   static BOOL bLabelEditing;
-  static DIALOGRESIZE drs[]={{&hWndTitleText,   DRS_SIZE|DRS_X, 0},
-                             {&hWndTitleClose,  DRS_MOVE|DRS_X, 0},
-                             {&hWndBrowseTree,  DRS_SIZE|DRS_X, 0},
-                             {&hWndBrowseTree,  DRS_SIZE|DRS_Y, 0},
-                             {&hWndBrowsePath,  DRS_SIZE|DRS_X, 0},
-                             {&hWndFilterType,  DRS_MOVE|DRS_Y, 0},
-                             {&hWndFilterCombo, DRS_MOVE|DRS_Y, 0},
-                             {&hWndFilterCombo, DRS_SIZE|DRS_X, 0},
-                             {&hWndFilterItem,  DRS_MOVE|DRS_X, 0},
-                             {&hWndFilterItem,  DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndTitleText,   RDS_SIZE|RDS_X, 0},
+                             {&hWndTitleClose,  RDS_MOVE|RDS_X, 0},
+                             {&hWndBrowseTree,  RDS_SIZE|RDS_X, 0},
+                             {&hWndBrowseTree,  RDS_SIZE|RDS_Y, 0},
+                             {&hWndBrowsePath,  RDS_SIZE|RDS_X, 0},
+                             {&hWndFilterType,  RDS_MOVE|RDS_Y, 0},
+                             {&hWndFilterCombo, RDS_MOVE|RDS_Y, 0},
+                             {&hWndFilterCombo, RDS_SIZE|RDS_X, 0},
+                             {&hWndFilterItem,  RDS_MOVE|RDS_X, 0},
+                             {&hWndFilterItem,  RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -499,7 +540,7 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     FilterComboboxFill(hWndFilterCombo);
     EnableWindow(hWndFilterCombo, nFilterType);
     EnableWindow(hWndFilterItem, nFilterType && GetWindowTextLengthWide(hWndFilterCombo));
-    //After AKD_DIALOGRESIZE control is selected, post deselect message
+    //After AKD_RESIZEDIALOG control is selected, post deselect message
     PostMessage(hWndFilterCombo, CB_SETEDITSEL, 0, (LPARAM)MAKELONG(0, 0));
 
     //Set style
@@ -1192,7 +1233,7 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             SendMessage(hMainWnd, AKD_DLLSAVE, DLLSF_ONEXIT, 0);
           }
           if (!(lParam & DKT_NOUNLOAD))
-            PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
+            SendMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
         }
       }
     }
@@ -1214,10 +1255,10 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], NULL, &rcExplorerCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], NULL, &rcExplorerCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
-      if (dkExplorerDlg) GetWindowPos(hWndTitleText, hDlg, &dkExplorerDlg->rcDragDrop);
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
+      if (dkExplorerDlg) GetWindowSize(hWndTitleText, hDlg, &dkExplorerDlg->rcDragDrop);
   }
 
   return FALSE;
@@ -1226,11 +1267,13 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   static HICON hPluginIcon;
-  static HWND hWndRootDirectory;
+  static HWND hWndRootDirectoryEdit;
+  static HWND hWndRootDirectoryBrowse;
   static HWND hWndRootMyComputer;
   static HWND hWndShowHidden;
   static HWND hWndAutoFind;
   static HWND hWndSingleClick;
+  static HWND hWndSetSaveLocation;
   BOOL bState;
 
   if (uMsg == WM_INITDIALOG)
@@ -1239,42 +1282,76 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     hPluginIcon=LoadIconA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_PLUGIN));
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hPluginIcon);
 
-    hWndRootDirectory=GetDlgItem(hDlg, IDC_SETUP_ROOT_DIRECTORY);
-    hWndRootMyComputer=GetDlgItem(hDlg, IDC_SETUP_ROOT_MYCOMPUTER);
+    hWndRootDirectoryEdit=GetDlgItem(hDlg, IDC_SETUP_ROOTDIRECTORY_EDIT);
+    hWndRootDirectoryBrowse=GetDlgItem(hDlg, IDC_SETUP_ROOTDIRECTORY_BROWSE);
+    hWndRootMyComputer=GetDlgItem(hDlg, IDC_SETUP_ROOTMYCOMPUTER);
     hWndShowHidden=GetDlgItem(hDlg, IDC_SETUP_SHOWHIDDEN);
     hWndAutoFind=GetDlgItem(hDlg, IDC_SETUP_AUTOFIND);
     hWndSingleClick=GetDlgItem(hDlg, IDC_SETUP_SINGLECLICK);
+    hWndSetSaveLocation=GetDlgItem(hDlg, IDC_SETUP_SETSAVELOCATION);
 
     SetWindowTextWide(hDlg, wszPluginTitle);
     SetDlgItemTextWide(hDlg, IDC_SETUP_ROOT_GROUP, GetLangStringW(wLangModule, STRID_ROOTDIRECTORY));
-    SetDlgItemTextWide(hDlg, IDC_SETUP_ROOT_MYCOMPUTER, GetLangStringW(wLangModule, STRID_MYCOMPUTER));
+    SetDlgItemTextWide(hDlg, IDC_SETUP_ROOTMYCOMPUTER, GetLangStringW(wLangModule, STRID_MYCOMPUTER));
     SetDlgItemTextWide(hDlg, IDC_SETUP_SHOWHIDDEN, GetLangStringW(wLangModule, STRID_SHOWHIDDEN));
     SetDlgItemTextWide(hDlg, IDC_SETUP_AUTOFIND, GetLangStringW(wLangModule, STRID_AUTOFIND));
     SetDlgItemTextWide(hDlg, IDC_SETUP_SINGLECLICK, GetLangStringW(wLangModule, STRID_SINGLECLICK));
+    SetDlgItemTextWide(hDlg, IDC_SETUP_SETSAVELOCATION, GetLangStringW(wLangModule, STRID_SETSAVELOCATION));
     SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
-    SendMessage(hWndRootDirectory, EM_LIMITTEXT, (WPARAM)MAX_PATH, 0);
-    SetWindowTextWide(hWndRootDirectory, wszRootDirectory);
+    SendMessage(hWndRootDirectoryEdit, EM_LIMITTEXT, (WPARAM)MAX_PATH, 0);
+    SetWindowTextWide(hWndRootDirectoryEdit, wszRootDirectory);
     if (nRootSpecial) SendMessage(hWndRootMyComputer, BM_SETCHECK, BST_CHECKED, 0);
     if (bShowHidden) SendMessage(hWndShowHidden, BM_SETCHECK, BST_CHECKED, 0);
     if (bAutoFind) SendMessage(hWndAutoFind, BM_SETCHECK, BST_CHECKED, 0);
     if (bSingleClick) SendMessage(hWndSingleClick, BM_SETCHECK, BST_CHECKED, 0);
+    if (bSetSaveLocation) SendMessage(hWndSetSaveLocation, BM_SETCHECK, BST_CHECKED, 0);
 
-    SendMessage(hDlg, WM_COMMAND, IDC_SETUP_ROOT_MYCOMPUTER, 0);
+    SendMessage(hDlg, WM_COMMAND, IDC_SETUP_ROOTMYCOMPUTER, 0);
   }
   else if (uMsg == WM_COMMAND)
   {
-    if (LOWORD(wParam) == IDC_SETUP_ROOT_MYCOMPUTER)
+    if (LOWORD(wParam) == IDC_SETUP_ROOTDIRECTORY_BROWSE)
+    {
+      BROWSEINFOW bi;
+      LPITEMIDLIST pIdList;
+      LPMALLOC pMalloc;
+      wchar_t wszDir[MAX_PATH];
+
+      GetWindowTextWide(hWndRootDirectoryEdit, wszDir, MAX_PATH);
+      bi.hwndOwner=hDlg;
+      bi.pidlRoot=NULL;
+      bi.pszDisplayName=wszDir;
+      bi.lpszTitle=NULL;
+      bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE|BIF_EDITBOX;
+      bi.lpfn=BrowseCallbackProc;
+      bi.lParam=(LPARAM)wszDir;
+      bi.iImage=0;
+
+      if (pIdList=SHBrowseForFolderWide(&bi))
+      {
+        SHGetPathFromIDListWide(pIdList, wszDir);
+
+        if (SHGetMalloc(&pMalloc))
+        {
+          pMalloc->lpVtbl->Free(pMalloc, pIdList);
+          pMalloc->lpVtbl->Release(pMalloc);
+        }
+        SetWindowTextWide(hWndRootDirectoryEdit, wszDir);
+      }
+      return TRUE;
+    }
+    else if (LOWORD(wParam) == IDC_SETUP_ROOTMYCOMPUTER)
     {
       bState=(BOOL)SendMessage(hWndRootMyComputer, BM_GETCHECK, 0, 0);
-      EnableWindow(hWndRootDirectory, !bState);
+      EnableWindow(hWndRootDirectoryEdit, !bState);
     }
     else if (LOWORD(wParam) == IDOK)
     {
       DWORD dwStyle;
 
-      GetWindowTextWide(hWndRootDirectory, wszRootDirectory, MAX_PATH);
+      GetWindowTextWide(hWndRootDirectoryEdit, wszRootDirectory, MAX_PATH);
       if (SendMessage(hWndRootMyComputer, BM_GETCHECK, 0, 0) == BST_CHECKED)
         nRootSpecial=CSIDL_DRIVES;
       else
@@ -1289,6 +1366,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         dwStyle=(DWORD)GetWindowLongPtrWide(hWndBrowseTree, GWL_STYLE);
         SetWindowLongPtrWide(hWndBrowseTree, GWL_STYLE, bSingleClick?(dwStyle | TVS_TRACKSELECT):(dwStyle & ~TVS_TRACKSELECT));
       }
+      bSetSaveLocation=(BOOL)SendMessage(hWndSetSaveLocation, BM_GETCHECK, 0, 0);
 
       dwSaveFlags|=OF_SETTINGS;
 
@@ -1321,6 +1399,22 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     DestroyIcon(hPluginIcon);
   }
   return FALSE;
+}
+
+int CALLBACK BrowseCallbackProc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+  if (uMsg == BFFM_INITIALIZED)
+  {
+    if (bOldWindows)
+    {
+      char szPath[MAX_PATH];
+
+      WideCharToMultiByte(CP_ACP, 0, (wchar_t *)lpData, -1, szPath, MAX_PATH, NULL, NULL);
+      SendMessage(hWnd, BFFM_SETSELECTIONA, TRUE, (LPARAM)szPath);
+    }
+    else SendMessage(hWnd, BFFM_SETSELECTIONW, TRUE, lpData);
+  }
+  return 0;
 }
 
 BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1368,6 +1462,8 @@ BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  static BOOL bFindDoc;
+
   if (uMsg == AKDN_MAIN_ONSTART_IDLE)
   {
     if (bOnMainStart) PostMessage(hWndDockDlg, AKDLL_INIT, 0, 0);
@@ -1377,11 +1473,37 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (((DOCK *)wParam)->hWnd == dkExplorerDlg->hWnd)
       dwSaveFlags|=OF_RECT;
   }
-  else if (uMsg == AKDN_OPENDOCUMENT_FINISH ||
+  else if (uMsg == AKDN_OPENDOCUMENT_START)
+  {
+    NOPENDOCUMENT *nod=(NOPENDOCUMENT *)lParam;
+
+    if (!(*nod->dwFlags & OD_NOUPDATE))
+      bFindDoc=TRUE;
+  }
+  else if (uMsg == AKDN_SAVEDOCUMENT_START)
+  {
+    NSAVEDOCUMENT *nsd=(NSAVEDOCUMENT *)lParam;
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
+
+    if (nsd->dwFlags & SD_UPDATE)
+    {
+      if (xstrcmpiW(lpFrame->wszFile, nsd->wszFile))
+        bFindDoc=TRUE;
+    }
+  }
+  else if (uMsg == AKDN_POSTDOCUMENT_FINISH ||
            (uMsg == AKDN_FRAME_ACTIVATE && !(wParam & FWA_NOVISUPDATE)))
   {
-    if (bAutoFind)
-      PostMessage(hWndDockDlg, AKDLL_FINDDOCUMENT, 0, 0);
+    if (uMsg == AKDN_POSTDOCUMENT_FINISH && !bFindDoc)
+    {
+      //Don't process
+    }
+    else
+    {
+      if (bAutoFind)
+        PostMessage(hWndDockDlg, AKDLL_FINDDOCUMENT, 0, 0);
+      bFindDoc=FALSE;
+    }
   }
   else if (uMsg == AKDN_SIZE_ONSTART)
   {
@@ -1401,6 +1523,18 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       DestroyDock(hWndDockDlg, DKT_ONMAINFINISH);
     }
     return FALSE;
+  }
+  else if (uMsg == WM_COMMAND)
+  {
+    if (bSetSaveLocation)
+    {
+      if ((LOWORD(wParam) == IDM_FILE_SAVE && !SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_FILELEN, (LPARAM)NULL)) ||
+          LOWORD(wParam) == IDM_FILE_SAVEAS)
+      {
+        if (GetWindowTextWide(hWndBrowsePath, wszPath, MAX_PATH))
+          SendMessage(hMainWnd, AKD_SETMAININFO, MIS_OFNDIR, (LPARAM)wszPath);
+      }
+    }
   }
 
   //Call next procedure
@@ -1912,9 +2046,10 @@ void OpenDocument(const wchar_t *wpFile)
 
       pmod->odp.pFile=pmod->szFile;
       pmod->odp.pWorkDir=pmod->szWorkDir;
-      pmod->odp.dwFlags=OD_ADT_BINARY_ERROR|OD_ADT_REG_CODEPAGE;
+      pmod->odp.dwFlags=OD_ADT_BINARYERROR|OD_ADT_REGCODEPAGE;
       pmod->odp.nCodePage=0;
       pmod->odp.bBOM=0;
+      pmod->odp.hDoc=NULL;
 
       //Post message
       pmod->pm.hWnd=hMainWnd;
@@ -1929,9 +2064,10 @@ void OpenDocument(const wchar_t *wpFile)
 
   od.pFile=wpFile;
   od.pWorkDir=NULL;
-  od.dwFlags=OD_ADT_BINARY_ERROR|OD_ADT_REG_CODEPAGE;
+  od.dwFlags=OD_ADT_BINARYERROR|OD_ADT_REGCODEPAGE;
   od.nCodePage=0;
   od.bBOM=0;
+  od.hDoc=NULL;
   SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
 }
 
@@ -2189,19 +2325,22 @@ BOOL FileMaskCmp(const wchar_t *wpMaskStr, const wchar_t *wpFileStr)
   return !*wpMaskStr;
 }
 
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen)
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax)
 {
   const wchar_t *wpCount;
 
   if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
-  if (wszFileDir) wszFileDir[0]=L'\0';
 
-  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
     if (*wpCount == L'\\')
-      return (int)xstrcpynW(wszFileDir, wpFile, min(dwFileDirLen, (DWORD)(wpCount - wpFile) + 1));
+    {
+      --wpCount;
+      break;
+    }
   }
-  return 0;
+  ++wpCount;
+  return (int)xstrcpynW(wszFileDir, wpFile, min(nFileDirMax, wpCount - wpFile + 1));
 }
 
 BOOL IsDirEmpty(const wchar_t *wpDir)
@@ -2244,7 +2383,7 @@ BOOL TrimTrailBackSlash(wchar_t *wszDir)
   return FALSE;
 }
 
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc)
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc)
 {
   if (GetWindowRect(hWnd, rc))
   {
@@ -2278,7 +2417,7 @@ INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BY
 void ReadOptions(DWORD dwFlags)
 {
   HANDLE hOptions;
-  DWORD dwSize;
+  int nSize;
 
   if (hOptions=(HANDLE)SendMessage(hMainWnd, AKD_BEGINOPTIONSW, POB_READ, (LPARAM)wszPluginName))
   {
@@ -2289,27 +2428,24 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"ShowHidden", PO_DWORD, (LPBYTE)&bShowHidden, sizeof(DWORD));
     WideOption(hOptions, L"AutoFind", PO_DWORD, (LPBYTE)&bAutoFind, sizeof(DWORD));
     WideOption(hOptions, L"SingleClick", PO_DWORD, (LPBYTE)&bSingleClick, sizeof(DWORD));
+    WideOption(hOptions, L"SetSaveLocation", PO_DWORD, (LPBYTE)&bSetSaveLocation, sizeof(DWORD));
     WideOption(hOptions, L"FilterOptions", PO_DWORD, (LPBYTE)&nFilterType, sizeof(DWORD));
 
     //Include filter
-    dwSize=(DWORD)WideOption(hOptions, L"FilterInclude", PO_STRING, NULL, 0);
-
-    if (dwSize)
+    if ((nSize=(int)WideOption(hOptions, L"FilterInclude", PO_STRING, NULL, 0)) > 0)
     {
-      if (wszFilterInclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize))
+      if (wszFilterInclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize))
       {
-        WideOption(hOptions, L"FilterInclude", PO_STRING, (LPBYTE)wszFilterInclude, dwSize);
+        WideOption(hOptions, L"FilterInclude", PO_STRING, (LPBYTE)wszFilterInclude, nSize);
       }
     }
 
     //Exclude filter
-    dwSize=(DWORD)WideOption(hOptions, L"FilterExclude", PO_STRING, NULL, 0);
-
-    if (dwSize)
+    if ((nSize=(int)WideOption(hOptions, L"FilterExclude", PO_STRING, NULL, 0)) > 0)
     {
-      if (wszFilterExclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize))
+      if (wszFilterExclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize))
       {
-        WideOption(hOptions, L"FilterExclude", PO_STRING, (LPBYTE)wszFilterExclude, dwSize);
+        WideOption(hOptions, L"FilterExclude", PO_STRING, (LPBYTE)wszFilterExclude, nSize);
       }
     }
 
@@ -2319,10 +2455,10 @@ void ReadOptions(DWORD dwFlags)
   //Default include filter
   if (!wszFilterInclude)
   {
-    dwSize=(DWORD)xprintfW(NULL, L"%s%s", GetLangStringW(wLangModule, STRID_DEFAULTINCLUDE),
-                                          GetLangStringW(wLangModule, STRID_DEFAULTCODER));
+    nSize=(int)xprintfW(NULL, L"%s%s", GetLangStringW(wLangModule, STRID_DEFAULTINCLUDE),
+                                       GetLangStringW(wLangModule, STRID_DEFAULTCODER));
 
-    if (wszFilterInclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize * sizeof(wchar_t)))
+    if (wszFilterInclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize * sizeof(wchar_t)))
     {
       xprintfW(wszFilterInclude, L"%s%s", GetLangStringW(wLangModule, STRID_DEFAULTINCLUDE),
                                           GetLangStringW(wLangModule, STRID_DEFAULTCODER));
@@ -2332,9 +2468,9 @@ void ReadOptions(DWORD dwFlags)
   //Default exclude filter
   if (!wszFilterExclude)
   {
-    dwSize=(DWORD)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTEXCLUDE));
+    nSize=(int)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTEXCLUDE));
 
-    if (wszFilterExclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize * sizeof(wchar_t)))
+    if (wszFilterExclude=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize * sizeof(wchar_t)))
     {
       xprintfW(wszFilterExclude, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTEXCLUDE));
     }
@@ -2360,6 +2496,7 @@ void SaveOptions(DWORD dwFlags)
       WideOption(hOptions, L"ShowHidden", PO_DWORD, (LPBYTE)&bShowHidden, sizeof(DWORD));
       WideOption(hOptions, L"AutoFind", PO_DWORD, (LPBYTE)&bAutoFind, sizeof(DWORD));
       WideOption(hOptions, L"SingleClick", PO_DWORD, (LPBYTE)&bSingleClick, sizeof(DWORD));
+      WideOption(hOptions, L"SetSaveLocation", PO_DWORD, (LPBYTE)&bSetSaveLocation, sizeof(DWORD));
     }
     if (dwFlags & OF_FILTER)
     {
@@ -2457,6 +2594,8 @@ XML (*.manifest;*.vcproj;*.csproj;*.vbproj;*.vdproj;*.wixobj;*.wixout;*.wixlib;*
       return L"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0438\x0020\x043D\x0430\x0445\x043E\x0434\x0438\x0442\x044C\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442\x044B";
     if (nStringID == STRID_SINGLECLICK)
       return L"\x041E\x0434\x0438\x043D\x0430\x0440\x043D\x044B\x0439\x0020\x043A\x043B\x0438\x043A";
+    if (nStringID == STRID_SETSAVELOCATION)
+      return L"\x041F\x0435\x0440\x0435\x0434\x0430\x0442\x044C\x0020\x043F\x0430\x043F\x043A\x0443\x0020\x0434\x043B\x044F\x0020\x0441\x043E\x0445\x0440\x0430\x043D\x0435\x043D\x0438\x044F";
     if (nStringID == STRID_CREATEDIR)
       return L"\x0421\x043E\x0437\x0434\x0430\x0442\x044C\x0020\x043F\x0430\x043F\x043A\x0443:";
     if (nStringID == STRID_CREATEFILE)
@@ -2520,6 +2659,8 @@ XML (*.manifest;*.vcproj;*.csproj;*.vbproj;*.vdproj;*.wixobj;*.wixout;*.wixlib;*
       return L"Auto find documents";
     if (nStringID == STRID_SINGLECLICK)
       return L"Single click";
+    if (nStringID == STRID_SETSAVELOCATION)
+      return L"Set save location";
     if (nStringID == STRID_CREATEDIR)
       return L"Create folder:";
     if (nStringID == STRID_CREATEFILE)

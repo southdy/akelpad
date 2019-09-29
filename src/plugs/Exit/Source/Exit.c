@@ -43,6 +43,8 @@
 #define STRID_OK                        13
 #define STRID_CANCEL                    14
 
+#define DLLA_EXIT_EMULATEESC   1
+
 #define EX_PROMPTEXIT                   0x00000001
 #define EX_ESCEXIT                      0x00000002
 #define EX_ESCMINIMIZE                  0x00000004
@@ -58,12 +60,15 @@
 //Functions prototypes
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL ProcessEsc(DWORD dwSettings);
 
 INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BYTE *lpData, DWORD dwData);
 void ReadOptions(DWORD dwFlags);
 void SaveOptions(DWORD dwFlags);
 const char* GetLangStringA(LANGID wLangID, int nStringID);
 const wchar_t* GetLangStringW(LANGID wLangID, int nStringID);
+BOOL IsExtCallParamValid(LPARAM lParam, int nIndex);
+INT_PTR GetExtCallParam(LPARAM lParam, int nIndex);
 void InitCommon(PLUGINDATA *pd);
 void InitMain();
 void UninitMain();
@@ -92,7 +97,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Exit";
 }
 
@@ -104,6 +109,28 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
     return;
 
   if (!bInitCommon) InitCommon(pd);
+
+  if (pd->lParam)
+  {
+    INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
+
+    if (nAction == DLLA_EXIT_EMULATEESC)
+    {
+      DWORD dwProcessEsc=(DWORD)-1;
+
+      if (IsExtCallParamValid(pd->lParam, 2))
+        dwProcessEsc=(DWORD)GetExtCallParam(pd->lParam, 2);
+
+      if (dwProcessEsc == (DWORD)-1)
+        dwProcessEsc=dwSettings;
+      if (!ProcessEsc(dwProcessEsc))
+        PostMessage(hMainWnd, WM_COMMAND, IDM_FILE_EXIT, 0);
+    }
+
+    //If plugin already loaded, stay in memory and don't change active status
+    if (pd->bInMemory) pd->nUnload=UD_NONUNLOAD_UNCHANGE;
+    return;
+  }
 
   if (bInitMain)
   {
@@ -348,41 +375,8 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
     if (LOWORD(wParam) == IDM_FILE_EXIT && HIWORD(wParam) == 1)
     {
-      if (dwSettings & EX_ESCMINIMIZE)
-      {
-        PostMessage(hMainWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+      if (ProcessEsc(dwSettings))
         return FALSE;
-      }
-      if (dwSettings & EX_ESCIGNORE)
-        return FALSE;
-
-      if (nMDI == WMD_MDI || nMDI == WMD_PMDI)
-      {
-        if (dwSettings & EX_ESCCLOSETAB_ONETABEXIT)
-        {
-          if (SendMessage(hTab, TCM_GETITEMCOUNT, 0, 0) > 1)
-          {
-            PostMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
-            return FALSE;
-          }
-        }
-        else if (dwSettings & EX_ESCCLOSETAB_NOTABEXIT)
-        {
-          if (!SendMessage(hMainWnd, AKD_FRAMENOWINDOWS, 0, 0))
-          {
-            PostMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
-            return FALSE;
-          }
-        }
-        else if (dwSettings & EX_ESCCLOSETAB_NOTABDONTEXIT)
-        {
-          if (!SendMessage(hMainWnd, AKD_FRAMENOWINDOWS, 0, 0))
-          {
-            PostMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
-          }
-          return FALSE;
-        }
-      }
     }
   }
   else if (uMsg == WM_CLOSE)
@@ -404,6 +398,49 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Call next procedure
   return NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
+}
+
+BOOL ProcessEsc(DWORD dwSettings)
+{
+  if (dwSettings & EX_ESCMINIMIZE)
+  {
+    PostMessage(hMainWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+    return TRUE;
+  }
+  if (dwSettings & EX_ESCIGNORE)
+    return TRUE;
+
+  if (nMDI == WMD_MDI || nMDI == WMD_PMDI)
+  {
+    if (dwSettings & EX_ESCCLOSETAB_ONETABEXIT)
+    {
+      if (!SendMessage(hMainWnd, AKD_FRAMENOWINDOWS, 0, 0))
+      {
+        int nFrameCount=(int)SendMessage(hMainWnd, AKD_FRAMESTATS, FWS_COUNTALL, 0);
+
+        SendMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
+        if (nFrameCount > 1)
+          return TRUE;
+      }
+    }
+    else if (dwSettings & EX_ESCCLOSETAB_NOTABEXIT)
+    {
+      if (!SendMessage(hMainWnd, AKD_FRAMENOWINDOWS, 0, 0))
+      {
+        SendMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
+        return TRUE;
+      }
+    }
+    else if (dwSettings & EX_ESCCLOSETAB_NOTABDONTEXIT)
+    {
+      if (!SendMessage(hMainWnd, AKD_FRAMENOWINDOWS, 0, 0))
+      {
+        SendMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
+      }
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 
@@ -522,6 +559,20 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Cancel";
   }
   return L"";
+}
+
+BOOL IsExtCallParamValid(LPARAM lParam, int nIndex)
+{
+  if (*((INT_PTR *)lParam) >= (INT_PTR)((nIndex + 1) * sizeof(INT_PTR)))
+    return TRUE;
+  return FALSE;
+}
+
+INT_PTR GetExtCallParam(LPARAM lParam, int nIndex)
+{
+  if (*((INT_PTR *)lParam) >= (INT_PTR)((nIndex + 1) * sizeof(INT_PTR)))
+    return *(((INT_PTR *)lParam) + nIndex);
+  return 0;
 }
 
 void InitCommon(PLUGINDATA *pd)

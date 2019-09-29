@@ -11,6 +11,7 @@
 #include "Coder.h"
 #include "HighLight.h"
 #include "CodeFold.h"
+#include "AutoComplete.h"
 #include "Resources\Resource.h"
 
 
@@ -19,6 +20,7 @@ STACKHIGHLIGHTWINDOW hHighLightWindowsStack={0};
 DWORD dwIgnoreFontStyle=0;
 BOOL bAutoMarkEnable=TRUE;
 int nAutoMarkType=MARKAUTO_WORDS;
+int nAutoMarkMaxSel=MARKMAX_SELECTION;
 DWORD dwAutoMarkFlags;
 DWORD dwAutoMarkFontStyle;
 DWORD dwAutoMarkTextColor;
@@ -80,16 +82,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1, NULL);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1, NULL);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1, NULL);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1, NULL);
         }
 
         if (dwColorText != (DWORD)-1 || dwColorBk != (DWORD)-1)
@@ -106,6 +108,8 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
                 dwHLFlags|=AEHLF_MATCHCASE;
               if (dwFlags & MARKFLAG_REGEXP)
                 dwHLFlags|=AEHLF_REGEXP;
+              if (dwFlags & MARKFLAG_WHOLEWORD)
+                dwHLFlags|=AEHLF_WHOLEWORD;
 
               if (dwMarkID != MARKID_AUTOASSIGN || !SendMessage(ei.hWndEdit, AEM_GETSEL, (WPARAM)NULL, (LPARAM)NULL))
               {
@@ -122,7 +126,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
               {
                 SendMessage(ei.hWndEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
 
-                if (cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < MARKMAX_WORD)
+                if (cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < nAutoMarkMaxSel)
                 {
                   if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
                   {
@@ -160,16 +164,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1, NULL);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1, NULL);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1, NULL);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1, NULL);
         }
 
         if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)pd->hWndEdit, (LPARAM)&ei))
@@ -186,7 +190,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
 
               SendMessage(ei.hWndEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
 
-              if (cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < MARKMAX_WORD)
+              if (cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < nAutoMarkMaxSel)
               {
                 if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
                 {
@@ -231,16 +235,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1, NULL);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1, NULL);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1, NULL);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1, NULL);
         }
 
         if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)pd->hWndEdit, (LPARAM)&ei))
@@ -274,16 +278,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1, NULL);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1, NULL);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1, NULL);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1, NULL);
         }
 
         if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)pd->hWndEdit, (LPARAM)&ei))
@@ -482,6 +486,8 @@ BOOL CALLBACK HighLightSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   static HWND hWndAutoMarkEnable;
   static HWND hWndAutoMarkSymbols;
   static HWND hWndAutoMarkWords;
+  static HWND hWndAutoMarkMaxSelLabel;
+  static HWND hWndAutoMarkMaxSel;
   static HFONT hFontNormal;
   static HFONT hFontBold;
   static HFONT hFontItalic;
@@ -498,6 +504,8 @@ BOOL CALLBACK HighLightSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     hWndAutoMarkEnable=GetDlgItem(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_ENABLE);
     hWndAutoMarkSymbols=GetDlgItem(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_SYMBOLS);
     hWndAutoMarkWords=GetDlgItem(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_WORDS);
+    hWndAutoMarkMaxSelLabel=GetDlgItem(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_MAXSEL_LABEL);
+    hWndAutoMarkMaxSel=GetDlgItem(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_MAXSEL);
 
     SetDlgItemTextWide(hDlg, IDC_HIGHLIGHT_SETUP_GLOBAL_FONTSTYLE_GROUP, GetLangStringW(wLangModule, STRID_IGNORE_FONTSTYLE_GROUP));
     SetDlgItemTextWide(hDlg, IDC_HIGHLIGHT_SETUP_GLOBAL_FONTSTYLE_NORMAL, GetLangStringW(wLangModule, STRID_NORMAL));
@@ -507,6 +515,9 @@ BOOL CALLBACK HighLightSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     SetDlgItemTextWide(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_ENABLE, GetLangStringW(wLangModule, STRID_ENABLE));
     SetDlgItemTextWide(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_SYMBOLS, GetLangStringW(wLangModule, STRID_SYMBOLS));
     SetDlgItemTextWide(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_WORDS, GetLangStringW(wLangModule, STRID_WORDS));
+    SetDlgItemTextWide(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_MAXSEL_LABEL, GetLangStringW(wLangModule, STRID_MAXSEL));
+
+    SetDlgItemInt(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_MAXSEL, nAutoMarkMaxSel, FALSE);
 
     if (dwIgnoreFontStyle & AEHLO_IGNOREFONTNORMAL)
       SendMessage(hWndGlobalFontStyleNormal, BM_SETCHECK, BST_CHECKED, 0);
@@ -571,6 +582,8 @@ BOOL CALLBACK HighLightSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
       bState=(BOOL)SendMessage(hWndAutoMarkEnable, BM_GETCHECK, 0, 0);
       EnableWindow(hWndAutoMarkSymbols, bState);
       EnableWindow(hWndAutoMarkWords, bState);
+      EnableWindow(hWndAutoMarkMaxSelLabel, bState);
+      EnableWindow(hWndAutoMarkMaxSel, bState);
     }
   }
   else if (uMsg == WM_NOTIFY)
@@ -599,6 +612,7 @@ BOOL CALLBACK HighLightSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
         nAutoMarkType=MARKAUTO_SYMBOLS;
       else if (SendMessage(hWndAutoMarkWords, BM_GETCHECK, 0, 0) == BST_CHECKED)
         nAutoMarkType=MARKAUTO_WORDS;
+      nAutoMarkMaxSel=GetDlgItemInt(hDlg, IDC_HIGHLIGHT_SETUP_AUTOMARK_MAXSEL, NULL, FALSE);
 
       if (pshn->lParam)
       {
@@ -633,13 +647,10 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
   if (uMsg == AKDN_OPENDOCUMENT_START)
   {
     NOPENDOCUMENT *nod=(NOPENDOCUMENT *)lParam;
-    EDITINFO ei;
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
 
-    if (SendMessage(hMainWnd, AKD_GETEDITINFO, wParam, (LPARAM)&ei))
-    {
-      if (StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(nod->wszFile, -1)) != StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(ei.wszFile, -1)))
-        bUpdateTheme=TRUE;
-    }
+    if (StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(nod->wszFile, -1)) != StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(lpFrame->ei.wszFile, -1)))
+      bUpdateTheme=TRUE;
 
     //WM_PAINT can be send in AEM_STREAMIN of OpenDocument in Edit.c, so fill wszOpenFile.
     xstrcpynW(wszOpenFile, nod->wszFile, MAX_PATH);
@@ -647,15 +658,12 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
   else if (uMsg == AKDN_SAVEDOCUMENT_START)
   {
     NSAVEDOCUMENT *nsd=(NSAVEDOCUMENT *)lParam;
-    EDITINFO ei;
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
 
     if (nsd->dwFlags & SD_UPDATE)
     {
-      if (SendMessage(hMainWnd, AKD_GETEDITINFO, wParam, (LPARAM)&ei))
-      {
-        if (StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(nsd->wszFile, -1)) != StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(ei.wszFile, -1)))
-          bUpdateTheme=TRUE;
-      }
+      if (StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(nsd->wszFile, -1)) != StackGetSyntaxFileByFile(&hSyntaxFilesStack, GetFileName(lpFrame->ei.wszFile, -1)))
+        bUpdateTheme=TRUE;
     }
   }
   else if (uMsg == AKDN_OPENDOCUMENT_FINISH)
@@ -664,8 +672,10 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
   }
   else if (uMsg == AKDN_SAVEDOCUMENT_FINISH)
   {
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
+
     if (bUpdateTheme)
-      UpdateEditAndClones((HWND)wParam, UE_DRAWRECT);
+      UpdateEditAndClones(lpFrame->ei.hWndEdit, UE_DRAWRECT);
   }
   else if (uMsg == AKDN_EDIT_ONCLOSE)
   {
@@ -703,77 +713,80 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
         DWORD *lpdwAutoMarkTextColor;
         DWORD *lpdwAutoMarkBkColor;
 
-        if (lpSyntaxFile=StackGetSyntaxFileByWindow(&hSyntaxFilesStack, aensc->hdr.hwndFrom, NULL, NULL))
+        if (!(aensc->dwType & AESCT_WRAP))
         {
-          StackRequestSyntaxFile(lpSyntaxFile);
-
-          lpdwAutoMarkFlags=&lpSyntaxFile->dwAutoMarkFlags;
-          lpdwAutoMarkFontStyle=&lpSyntaxFile->dwAutoMarkFontStyle;
-          lpdwAutoMarkTextColor=&lpSyntaxFile->dwAutoMarkTextColor;
-          lpdwAutoMarkBkColor=&lpSyntaxFile->dwAutoMarkBkColor;
-        }
-        else
-        {
-          //Document without syntax theme
-          lpdwAutoMarkFlags=&dwAutoMarkFlags;
-          lpdwAutoMarkFontStyle=&dwAutoMarkFontStyle;
-          lpdwAutoMarkTextColor=&dwAutoMarkTextColor;
-          lpdwAutoMarkBkColor=&dwAutoMarkBkColor;
-        }
-
-        if (bAutoMarkEnable &&
-            (*lpdwAutoMarkFontStyle != AEHLS_NONE ||
-             *lpdwAutoMarkTextColor != (DWORD)-1 ||
-             *lpdwAutoMarkBkColor != (DWORD)-1))
-        {
-          HIGHLIGHTWINDOW *lpHighlightWindow;
-          EDITINFO ei;
-          CHARRANGE64 cr;
-
-          if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)aensc->hdr.hwndFrom, (LPARAM)&ei))
+          if (lpSyntaxFile=StackGetSyntaxFileByWindow(&hSyntaxFilesStack, aensc->hdr.hwndFrom, NULL, NULL))
           {
-            if (lpHighlightWindow=StackGetHighLightWindow(&hHighLightWindowsStack, ei.hWndMaster?ei.hWndMaster:ei.hWndEdit, ei.hDocMaster?ei.hDocMaster:ei.hDocEdit))
+            StackRequestSyntaxFile(lpSyntaxFile);
+
+            lpdwAutoMarkFlags=&lpSyntaxFile->dwAutoMarkFlags;
+            lpdwAutoMarkFontStyle=&lpSyntaxFile->dwAutoMarkFontStyle;
+            lpdwAutoMarkTextColor=&lpSyntaxFile->dwAutoMarkTextColor;
+            lpdwAutoMarkBkColor=&lpSyntaxFile->dwAutoMarkBkColor;
+          }
+          else
+          {
+            //Document without syntax theme
+            lpdwAutoMarkFlags=&dwAutoMarkFlags;
+            lpdwAutoMarkFontStyle=&dwAutoMarkFontStyle;
+            lpdwAutoMarkTextColor=&dwAutoMarkTextColor;
+            lpdwAutoMarkBkColor=&dwAutoMarkBkColor;
+          }
+
+          if (bAutoMarkEnable &&
+              (*lpdwAutoMarkFontStyle != AEHLS_NONE ||
+               *lpdwAutoMarkTextColor != (DWORD)-1 ||
+               *lpdwAutoMarkBkColor != (DWORD)-1))
+          {
+            HIGHLIGHTWINDOW *lpHighlightWindow;
+            EDITINFO ei;
+            CHARRANGE64 cr;
+
+            if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)aensc->hdr.hwndFrom, (LPARAM)&ei))
             {
-              SendMessage(ei.hWndEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
-
-              if (!bFindingMark && cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < MARKMAX_WORD &&
-                   (nAutoMarkType == MARKAUTO_SYMBOLS ||
-                     (nAutoMarkType == MARKAUTO_WORDS &&
-                      SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->crSel.ciMin) &&
-                      !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->crSel.ciMin) &&
-                      SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->crSel.ciMax) &&
-                      !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->crSel.ciMax))))
+              if (lpHighlightWindow=StackGetHighLightWindow(&hHighLightWindowsStack, ei.hWndMaster?ei.hWndMaster:ei.hWndEdit, ei.hDocMaster?ei.hDocMaster:ei.hDocEdit))
               {
-                wchar_t *wpMarkText;
-                INT_PTR nMarkTextLen=0;
-                BOOL bUpdate=FALSE;
+                SendMessage(ei.hWndEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
 
-                if (UnmarkSelection(lpHighlightWindow, MARKID_SELECTION, (DWORD)-1, (DWORD)-1))
-                  bUpdate=TRUE;
-
-                if (!SendMessage(ei.hWndEdit, AEM_GETLINENUMBER, AEGL_UNWRAPSELMULTILINE, 0))
+                if (!bFindingMark && cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < nAutoMarkMaxSel &&
+                     (nAutoMarkType == MARKAUTO_SYMBOLS ||
+                       (nAutoMarkType == MARKAUTO_WORDS &&
+                        SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->crSel.ciMin) &&
+                        !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->crSel.ciMin) &&
+                        SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->crSel.ciMax) &&
+                        !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->crSel.ciMax))))
                 {
-                  if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
+                  wchar_t *wpMarkText;
+                  INT_PTR nMarkTextLen=0;
+                  BOOL bUpdate=FALSE;
+
+                  if (UnmarkSelection(lpHighlightWindow, MARKID_SELECTION, (DWORD)-1, (DWORD)-1))
+                    bUpdate=TRUE;
+
+                  if (!SendMessage(ei.hWndEdit, AEM_GETLINENUMBER, AEGL_UNWRAPSELMULTILINE, 0))
                   {
-                    if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, *lpdwAutoMarkTextColor, *lpdwAutoMarkBkColor, *lpdwAutoMarkFlags, *lpdwAutoMarkFontStyle, MARKID_SELECTION))
-                      bUpdate=TRUE;
-                    SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpMarkText);
+                    if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
+                    {
+                      if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, *lpdwAutoMarkTextColor, *lpdwAutoMarkBkColor, *lpdwAutoMarkFlags, *lpdwAutoMarkFontStyle, MARKID_SELECTION))
+                        bUpdate=TRUE;
+                      SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpMarkText);
+                    }
+                  }
+
+                  //Update edit
+                  if (bUpdate)
+                  {
+                    UpdateEditAndClones(ei.hWndEdit, UE_DRAWRECT);
+                    //UpdateEditAll(UE_DRAWRECT);
                   }
                 }
-
-                //Update edit
-                if (bUpdate)
+                else
                 {
-                  UpdateEditAndClones(ei.hWndEdit, UE_DRAWRECT);
-                  //UpdateEditAll(UE_DRAWRECT);
-                }
-              }
-              else
-              {
-                if (UnmarkSelection(lpHighlightWindow, MARKID_SELECTION, (DWORD)-1, (DWORD)-1))
-                {
-                  UpdateEditAndClones(ei.hWndEdit, UE_DRAWRECT);
-                  //UpdateEditAll(UE_DRAWRECT);
+                  if (UnmarkSelection(lpHighlightWindow, MARKID_SELECTION, (DWORD)-1, (DWORD)-1))
+                  {
+                    UpdateEditAndClones(ei.hWndEdit, UE_DRAWRECT);
+                    //UpdateEditAll(UE_DRAWRECT);
+                  }
                 }
               }
             }
@@ -825,6 +838,7 @@ BOOL CALLBACK HighLightEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
         {
           lpHighlightWindow->hWndEdit=hWnd;
           lpHighlightWindow->hDocEdit=hDocEdit;
+          lpHighlightWindow->lpSyntaxFile=lpSyntaxFile;
           lpHighlightWindow->lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_BYEDITDOCUMENT, (LPARAM)hDocEdit);
         }
       }
@@ -834,7 +848,7 @@ BOOL CALLBACK HighLightEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
         if (!lpSyntaxFile->hThemeHighLight)
           CreateEditTheme(lpSyntaxFile, hWnd);
 
-        if (lpSyntaxFile->hThemeHighLight != (HANDLE)SendMessage(hWnd, AEM_HLGETTHEMEW, 0, (LPARAM)NULL))
+        if (lpSyntaxFile->hThemeHighLight != (HANDLE)SendMessage(hWnd, AEM_HLFINDTHEME, AEHLFT_CURRENT, 0))
         {
           if (lpHighlightWindow)
           {
@@ -1476,42 +1490,96 @@ void GetPosFromChar(HWND hWnd, int nCharIndex, POINT *pt, TEXTMETRICA *tm)
 }
 */
 
-WORDINFO* StackInsertWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack, int nWordLen)
+WORDINFO* StackInsertWord(STACKWORD *hStack, STACKWORDALPHA *hAlphaStack, STACKWORDORDER *hOrderStack, const wchar_t *wpWord, int nWordLen)
 {
-  WORDINFO *lpElement1;
-  WORDINFO *lpElement2=NULL;
+  WORDINFO *lpElement;
+  WORDINFO *lpElementNew=NULL;
+  WORDALPHA *lpWordAlpha=NULL;
   WORDORDER *lpWordOrder=NULL;
 
   if ((DWORD)nWordLen < sizeof(hStack->lpWordLens) / sizeof(INT_PTR))
   {
     if (hStack->lpWordLens[nWordLen])
     {
-      lpElement1=(WORDINFO *)hStack->lpWordLens[nWordLen];
+      lpElement=(WORDINFO *)hStack->lpWordLens[nWordLen];
     }
     else
     {
-      lpElement1=(WORDINFO *)hStack->first;
+      lpElement=(WORDINFO *)hStack->first;
 
-      while (lpElement1)
+      while (lpElement)
       {
-        if (lpElement1->nWordLen >= nWordLen)
+        if (lpElement->nWordLen >= nWordLen)
           break;
 
-        lpElement1=lpElement1->next;
+        lpElement=lpElement->next;
       }
     }
-    StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpElement1, (stack **)&lpElement2, sizeof(WORDINFO));
+    StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpElement, (stack **)&lpElementNew, sizeof(WORDINFO));
 
-    if (lpElement2)
+    if (lpElementNew)
     {
-      hStack->lpWordLens[nWordLen]=(INT_PTR)lpElement2;
+      hStack->lpWordLens[nWordLen]=(INT_PTR)lpElementNew;
 
+      if (bAddHighLightWords)
+      {
+        //Add to the alphabetically sorted stack
+        if (lpWordAlpha=StackInsertWordAlpha(hAlphaStack, wpWord))
+        {
+          lpWordAlpha->wpWord=wpWord;
+          lpWordAlpha->nWordLen=nWordLen;
+          lpWordAlpha->lpWordInfo=lpElementNew;
+        }
+      }
       //Remember initial order
       if (!StackInsertIndex((stack **)&hOrderStack->first, (stack **)&hOrderStack->last, (stack **)&lpWordOrder, -1, sizeof(WORDORDER)))
-        lpWordOrder->lpWordInfo=lpElement2;
+        lpWordOrder->lpWordInfo=lpElementNew;
     }
   }
-  return lpElement2;
+  return lpElementNew;
+}
+
+WORDALPHA* StackInsertWordAlpha(STACKWORDALPHA *hStack, const wchar_t *wpWord)
+{
+  WORDALPHA *lpElement=(WORDALPHA *)hStack->first;
+  WORDALPHA *lpElementNew=NULL;
+  wchar_t wchFirstChar=CompleteFirstChar(*wpWord);
+
+  if (wchFirstChar < FIRST_NONLATIN)
+  {
+    if (hStack->lpSorted[wchFirstChar])
+      lpElement=(WORDALPHA *)hStack->lpSorted[wchFirstChar];
+    else
+      lpElement=(WORDALPHA *)hStack->first;
+  }
+  else lpElement=(WORDALPHA *)hStack->lpSorted[FIRST_NONLATIN];
+
+  while (lpElement)
+  {
+    if (lpElement->wchFirstChar >= wchFirstChar)
+    {
+      if (CompleteStrCmp(0, lpElement->wpWord, wpWord) >= 0)
+        break;
+    }
+    lpElement=lpElement->next;
+  }
+  StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpElement, (stack **)&lpElementNew, sizeof(WORDALPHA));
+
+  if (lpElementNew)
+  {
+    if (wchFirstChar < FIRST_NONLATIN)
+    {
+      if (!hStack->lpSorted[wchFirstChar] || (INT_PTR)lpElement == hStack->lpSorted[wchFirstChar])
+        hStack->lpSorted[wchFirstChar]=(INT_PTR)lpElementNew;
+    }
+    else
+    {
+      if (!hStack->lpSorted[FIRST_NONLATIN] || (INT_PTR)lpElement == hStack->lpSorted[FIRST_NONLATIN])
+        hStack->lpSorted[FIRST_NONLATIN]=(INT_PTR)lpElementNew;
+    }
+    lpElementNew->wchFirstChar=wchFirstChar;
+  }
+  return lpElementNew;
 }
 
 WORDINFO* StackGetWord(STACKWORD *hStack, wchar_t *wpWord, int nWordLen)
@@ -1542,7 +1610,7 @@ WORDINFO* StackGetWord(STACKWORD *hStack, wchar_t *wpWord, int nWordLen)
   return NULL;
 }
 
-void StackFreeWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack)
+void StackFreeWord(STACKWORD *hStack, STACKWORDALPHA *hAlphaStack, STACKWORDORDER *hOrderStack)
 {
   WORDINFO *lpElement=(WORDINFO *)hStack->first;
 
@@ -1555,7 +1623,10 @@ void StackFreeWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack)
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
   xmemset(hStack->lpWordLens, 0, sizeof(hStack->lpWordLens));
 
-  StackClear((stack **)&hOrderStack->first, (stack **)&hOrderStack->last);
+  if (hAlphaStack)
+    StackClear((stack **)&hAlphaStack->first, (stack **)&hAlphaStack->last);
+  if (hOrderStack)
+    StackClear((stack **)&hOrderStack->first, (stack **)&hOrderStack->last);
 }
 
 QUOTEINFO* StackInsertQuote(STACKQUOTE *hStack, int nQuoteStartLen)
@@ -1627,9 +1698,11 @@ void StackDeleteHighLightWindow(STACKHIGHLIGHTWINDOW *hStack, HIGHLIGHTWINDOW *l
   if (nMDI == WMD_PMDI && !lpUser)
   {
     //In WMD_PMDI mode to work with non-active frame we should activate it first.
-    lpFrameToRestore=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEACTIVATE, FWA_NOVISUPDATE, (LPARAM)lpHighlightWindow->lpFrame);
+    lpFrameToRestore=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFIND, FWF_CURRENT, (LPARAM)NULL);
     if (lpFrameToRestore == lpHighlightWindow->lpFrame)
       lpFrameToRestore=NULL;
+    else
+      SendMessage(hMainWnd, AKD_FRAMEACTIVATE, FWA_NOVISUPDATE|FWA_NOUPDATEORDER, (LPARAM)lpHighlightWindow->lpFrame);
   }
 
   UnmarkSelection(lpHighlightWindow, 0, (DWORD)-1, (DWORD)-1);
@@ -1642,7 +1715,7 @@ void StackDeleteHighLightWindow(STACKHIGHLIGHTWINDOW *hStack, HIGHLIGHTWINDOW *l
   {
     if (lpFrameToRestore)
     {
-      SendMessage(hMainWnd, AKD_FRAMEACTIVATE, FWA_NOVISUPDATE, (LPARAM)lpFrameToRestore);
+      SendMessage(hMainWnd, AKD_FRAMEACTIVATE, FWA_NOVISUPDATE|FWA_NOUPDATEORDER, (LPARAM)lpFrameToRestore);
       lpFrameToRestore=NULL;
     }
   }
@@ -1831,11 +1904,14 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
   MARKTEXT *lpMarkText;
   MARKTEXT *lpNextMarkText;
   AEMARKTEXTITEMW *lpMarkItem=NULL;
+  STACKDELIM *lpDelimiterStack=NULL;
   AECHARINDEX ciCount;
   BOOL bMatched;
 
   if (!lpHighlightWindow->hMarkTextsStack.first)
     return FALSE;
+  if (lpHighlightWindow->lpSyntaxFile)
+    lpDelimiterStack=&lpHighlightWindow->lpSyntaxFile->hDelimiterStack;
 
   SendMessage(lpHighlightWindow->hWndEdit, AEM_EXGETSEL, (WPARAM)&crSel.ciMin, (LPARAM)&crSel.ciMax);
   if (bFindUp)
@@ -1854,17 +1930,8 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
 
       if (lpMarkText->dwMarkID != MARKID_SELECTION)
       {
-        if (lpMarkItem->dwFlags & AEHLF_REGEXP)
-        {
-          bMatched=IsMatchRE(lpMarkItem->lpREGroupStack, &ft.crFound, &crSel.ciMin);
-        }
-        else
-        {
-          ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?FIF_MATCHCASE:0;
-          ft.pText=lpMarkItem->pMarkText;
-          ft.dwTextLen=lpMarkItem->nMarkTextLen;
-          bMatched=IsMatch(&ft, &crSel.ciMin);
-        }
+        bMatched=IsMatchMark(lpMarkItem, lpDelimiterStack, lpHighlightWindow->hWndEdit, &ft, &crSel.ciMin);
+
         if (bMatched && !AEC_IndexCompare(&ft.crFound.ciMax, &crSel.ciMax))
         {
           dwColorText=lpMarkItem->crText;
@@ -1891,16 +1958,8 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
   {
     if (lpSingleMarkText)
     {
-      if (lpMarkItem->dwFlags & AEHLF_REGEXP)
-      {
-        if (IsMatchRE(lpMarkItem->lpREGroupStack, &ft.crFound, &ciCount))
-          goto Find;
-      }
-      else
-      {
-        if (IsMatch(&ft, &ciCount))
-          goto Find;
-      }
+      if (IsMatchMark(lpMarkItem, lpDelimiterStack, lpHighlightWindow->hWndEdit, &ft, &ciCount))
+        goto Find;
     }
     else
     {
@@ -1915,19 +1974,8 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
               (dwColorText == (DWORD)-1 || lpMarkItem->crText == dwColorText) &&
               (dwColorBk == (DWORD)-1 || lpMarkItem->crBk == dwColorBk))
           {
-            if (lpMarkItem->dwFlags & AEHLF_REGEXP)
-            {
-              if (IsMatchRE(lpMarkItem->lpREGroupStack, &ft.crFound, &ciCount))
-                goto Find;
-            }
-            else
-            {
-              ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?FIF_MATCHCASE:0;
-              ft.pText=lpMarkItem->pMarkText;
-              ft.dwTextLen=lpMarkItem->nMarkTextLen;
-              if (IsMatch(&ft, &ciCount))
-                goto Find;
-            }
+            if (IsMatchMark(lpMarkItem, lpDelimiterStack, lpHighlightWindow->hWndEdit, &ft, &ciCount))
+              goto Find;
           }
         }
       }
@@ -1942,6 +1990,27 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
   SendMessage(lpHighlightWindow->hWndEdit, AEM_EXSETSEL, (WPARAM)&ft.crFound.ciMin, (LPARAM)&ft.crFound.ciMax);
   bFindingMark=FALSE;
   return TRUE;
+}
+
+BOOL IsMatchMark(AEMARKTEXTITEMW *lpMarkItem, STACKDELIM *lpDelimiterStack, HWND hWnd, AEFINDTEXTW *ft, const AECHARINDEX *ciChar)
+{
+  BOOL bMatched;
+
+  if (lpMarkItem->dwFlags & AEHLF_REGEXP)
+    return (IsMatchRE(lpMarkItem->lpREGroupStack, &ft->crFound, ciChar) >= 0);
+  if (lpMarkItem->dwFlags & AEHLF_WHOLEWORD)
+    if (!IsDelimiterFromLeft(lpDelimiterStack, hWnd, ciChar))
+      return FALSE;
+  ft->dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?FIF_MATCHCASE:0;
+  ft->pText=lpMarkItem->pMarkText;
+  ft->dwTextLen=lpMarkItem->nMarkTextLen;
+  if (bMatched=IsMatch(ft, ciChar))
+  {
+    if (lpMarkItem->dwFlags & AEHLF_WHOLEWORD)
+      if (!IsDelimiterFromRight(lpDelimiterStack, hWnd, &ft->crFound.ciMax))
+        return FALSE;
+  }
+  return bMatched;
 }
 
 void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd)
@@ -1967,6 +2036,7 @@ void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd)
         di.crText=lpElement->dwColor1;
         di.crBk=lpElement->dwColor2;
         di.dwFontStyle=lpElement->dwFontStyle;
+        di.nParentID=lpElement->nParentID;
         SendMessage(hWnd, AEM_HLADDDELIMITERW, (WPARAM)lpSyntaxFile->hThemeHighLight, (LPARAM)&di);
 
         lpElement=lpElement->next;
@@ -1985,6 +2055,7 @@ void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd)
         wi.crText=lpElement->dwColor1;
         wi.crBk=lpElement->dwColor2;
         wi.dwFontStyle=lpElement->dwFontStyle;
+        wi.nParentID=lpElement->nParentID;
         SendMessage(hWnd, AEM_HLADDWORDW, (WPARAM)lpSyntaxFile->hThemeHighLight, (LPARAM)&wi);
 
         lpElement=lpElement->prev;
@@ -2008,9 +2079,11 @@ void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd)
         qi.pQuoteExclude=lpElement->wpQuoteExclude;
         qi.nQuoteExcludeLen=lpElement->nQuoteExcludeLen;
         qi.dwFlags=lpElement->dwFlags;
+        qi.dwFontStyle=lpElement->dwFontStyle;
         qi.crText=lpElement->dwColor1;
         qi.crBk=lpElement->dwColor2;
-        qi.dwFontStyle=lpElement->dwFontStyle;
+        qi.nParentID=lpElement->nParentID;
+        qi.nRuleID=lpElement->nRuleID;
 
         if (qi.nQuoteIncludeLen)
           qi.dwFlags|=AEHLF_QUOTEINCLUDE;
@@ -2147,6 +2220,20 @@ void RestoreFontAndColors(HIGHLIGHTWINDOW *lpHighlightWindow)
     SetFrameInfo(lpHighlightWindow->lpFrame, FIS_LOCKINHERIT, dwLockInherit);
 }
 
+LOGFONTW* LogFontAtoW(const LOGFONTA *lfA, LOGFONTW *lfW)
+{
+  xmemcpy(lfW, lfA, offsetof(LOGFONTW, lfFaceName));
+  MultiByteToWideChar(CP_ACP, 0, lfA->lfFaceName, -1, lfW->lfFaceName, LF_FACESIZE);
+  return lfW;
+}
+
+LOGFONTA* LogFontWtoA(const LOGFONTW *lfW, LOGFONTA *lfA)
+{
+  xmemcpy(lfA, lfW, offsetof(LOGFONTW, lfFaceName));
+  WideCharToMultiByte(CP_ACP, 0, lfW->lfFaceName, -1, lfA->lfFaceName, LF_FACESIZE, NULL, NULL);
+  return lfA;
+}
+
 DWORD GetColorsToRestore(HIGHLIGHTWINDOW *lpHighlightWindow, AECOLORS *aecHighlight)
 {
   AECOLORS aecCurrent;
@@ -2214,7 +2301,7 @@ void UnassignTheme(HWND hWnd)
   HANDLE hThemeHighLight;
   wchar_t wszThemeName[MAX_PATH];
 
-  if (hThemeHighLight=(HANDLE)SendMessage(hWnd, AEM_HLGETTHEMEW, 0, (LPARAM)NULL))
+  if (hThemeHighLight=(HANDLE)SendMessage(hWnd, AEM_HLFINDTHEME, AEHLFT_CURRENT, 0))
   {
     if (SendMessage(hWnd, AEM_HLGETTHEMENAMEW, (WPARAM)hThemeHighLight, (LPARAM)wszThemeName))
     {
@@ -2226,21 +2313,50 @@ void UnassignTheme(HWND hWnd)
   }
 }
 
-COLORREF GetColorFromStrAnsi(char *pColor)
+COLORREF GetColorFromStrAnsi(const char *pColor, const char **pNext)
 {
+  wchar_t wszColor[6];
+  const wchar_t *wpNext=wszColor;
   COLORREF crColor;
 
-  if ((crColor=(COLORREF)hex2decA(pColor, 6)) != (COLORREF)-1)
-    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  MultiByteToWideChar(CP_ACP, 0, (char *)pColor, 6, wszColor, 6);
+  crColor=GetColorFromStr(wszColor, &wpNext);
+  if (pNext) *pNext=pColor + (wpNext - wszColor);
   return crColor;
 }
 
-COLORREF GetColorFromStr(wchar_t *wpColor)
+COLORREF GetColorFromStr(const wchar_t *wpColor, const wchar_t **wpNext)
 {
   COLORREF crColor;
 
-  if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (COLORREF)-1)
+  if ((crColor=(COLORREF)hex2decW(wpColor, 6, NULL)) != (DWORD)-1)
+  {
+    //RRGGBB
+    if (wpNext) *wpNext=wpColor + 6;
     crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  }
+  else
+  {
+    //RGB->RRGGBB
+    wchar_t wszRBG[6];
+    wchar_t *wpRBG=wszRBG;
+    wchar_t *wpMaxRBG=wszRBG + 6;
+
+    while (wpRBG < wpMaxRBG)
+    {
+      if ((*wpColor >= '0' && *wpColor <= '9') ||
+          (*wpColor >= 'a' && *wpColor <= 'f') ||
+          (*wpColor >= 'A' && *wpColor <= 'F'))
+      {
+        *wpRBG++=*wpColor;
+        *wpRBG++=*wpColor++;
+      }
+      else return (COLORREF)-1;
+    }
+    if (wpNext) *wpNext=wpColor;
+    if ((crColor=(COLORREF)hex2decW(wszRBG, 6, NULL)) != (COLORREF)-1)
+      crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  }
   return crColor;
 }
 
@@ -2266,6 +2382,7 @@ void ReadHighLightOptions(HANDLE hOptions)
   WideOption(hOptions, L"IgnoreFontStyle", PO_DWORD, (LPBYTE)&dwIgnoreFontStyle, sizeof(DWORD));
   WideOption(hOptions, L"AutoMarkEnable", PO_DWORD, (LPBYTE)&bAutoMarkEnable, sizeof(DWORD));
   WideOption(hOptions, L"AutoMarkType", PO_DWORD, (LPBYTE)&nAutoMarkType, sizeof(DWORD));
+  WideOption(hOptions, L"AutoMarkMaxSel", PO_DWORD, (LPBYTE)&nAutoMarkMaxSel, sizeof(DWORD));
 }
 
 void SaveHighLightOptions(HANDLE hOptions, DWORD dwFlags)
@@ -2275,6 +2392,7 @@ void SaveHighLightOptions(HANDLE hOptions, DWORD dwFlags)
     WideOption(hOptions, L"IgnoreFontStyle", PO_DWORD, (LPBYTE)&dwIgnoreFontStyle, sizeof(DWORD));
     WideOption(hOptions, L"AutoMarkEnable", PO_DWORD, (LPBYTE)&bAutoMarkEnable, sizeof(DWORD));
     WideOption(hOptions, L"AutoMarkType", PO_DWORD, (LPBYTE)&nAutoMarkType, sizeof(DWORD));
+    WideOption(hOptions, L"AutoMarkMaxSel", PO_DWORD, (LPBYTE)&nAutoMarkMaxSel, sizeof(DWORD));
   }
 }
 

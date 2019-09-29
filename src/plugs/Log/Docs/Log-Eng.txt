@@ -1,8 +1,8 @@
 *****************************************************************
-***                  Log AkelPad plugin v4.2                  ***
+***                  Log AkelPad plugin v5.4                  ***
 *****************************************************************
 
-2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2012-2019 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -29,7 +29,7 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
     1
       Execute application and capture output.
     "PROGRAM"
-      File for execution.
+      File for execution. Can be "", if need to change "REPATTERN" and "RETAGS".
     "WORKDIR"
       Working directory.
     "REPATTERN"
@@ -79,12 +79,14 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
   Example (batch file execution for compilation):
     Call("Log::Output", 1, `"%d\Build.cmd" /S`, "%d", "^\s*(.*)[(:](\d+)([,:](\d+))?[):]", "/FILE=\1 /GOTOLINE=\2:\4", -2, -2, 4)
 
-Call("Log::Output", 2, *WINDOW)
+Call("Log::Output", 2, *WINDOW, *DOCK)
   Parameters:
     2
       Get text output window handle. Use with Scripts plugin.
     *WINDOW
       Pointer to a variable, that receives text output window handle.
+    *DOCK
+      Pointer to a variable, that receives pointer to a DOCK structure.
   Example:
     WScript.Echo(GetOutputWindow());
 
@@ -102,7 +104,7 @@ Call("Log::Output", 2, *WINDOW)
       return hWnd;
     }
 
-Call("Log::Output", 3, *EXECSTATE, *PLUGINTHREAD, *PROCESSHANDLE, *PROCESSID)
+Call("Log::Output", 3, *EXECSTATE, *PLUGINTHREAD, *PROCESSHANDLE, *PROCESSID, *EXITCODE)
   Parameters:
     3
       Get information about the current executed application. Use with Scripts plugin.
@@ -119,6 +121,8 @@ Call("Log::Output", 3, *EXECSTATE, *PLUGINTHREAD, *PROCESSHANDLE, *PROCESSID)
       Pointer to a variable, that receives process handle of the executed application. Can be NULL.
     *PROCESSID
       Pointer to a variable, that receives process id of the executed application. Can be NULL.
+    *EXITCODE
+      Pointer to a variable, that receives exit code of the executed application. Can be NULL.
   Example:
     WScript.Echo(GetExecState());
 
@@ -147,6 +151,7 @@ Call("Log::Output", 4, "TEXT", TEXTLEN, APPEND, CODEPAGE, "ALIAS")
     APPEND (one of the following):
       0 Replace all text in the output panel.
       1 Add text in the output panel (by default).
+      2 Add text in the output panel in new line.
     CODEPAGE
       ANSI text codepage. By default zero - ANSI system codepage is used. Not used if text in Unicode.
     "ALIAS"

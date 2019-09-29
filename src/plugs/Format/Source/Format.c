@@ -65,7 +65,13 @@
 #define STRID_OK             9
 #define STRID_CANCEL         10
 
-#define DLLA_FORMAT_MATCHCASE   1
+#define DLLA_FORMAT_MATCHCASE     1
+#define DLLA_FORMAT_MATCHLOCALE   2
+#define DLLA_FORMAT_CASEANDLOCALE 3
+
+//Format flags
+#define FMTF_MATCHCASE       0x1
+#define FMTF_LOCALE          0x2
 
 //LinesOrder action
 #define LO_SORTSTRASC        1
@@ -108,6 +114,7 @@ wchar_t* StackToTextBuffer(HSTACK *hStack);
 LINEITEMSTACK* StackInsertLine(HSTACK *hStack, wchar_t *wpLine, int nLineLen, int nIndex);
 void StackLinesFree(HSTACK *hStack);
 void StackFree(HSTACK *hStack);
+int PluginStrCmp(const wchar_t *wpString1, const wchar_t *wpString2);
 int CompareLineStr(const void *elem1, const void *elem2);
 int CompareLineInt(const void *elem1, const void *elem2);
 int CompareLineDupl(const void *elem1, const void *elem2);
@@ -138,7 +145,7 @@ BOOL bAkelEdit;
 LANGID wLangModule;
 BOOL bInitCommon=FALSE;
 HSTACK hLinesStack={0};
-BOOL bGlobalMatchCase;
+DWORD dwGlobalFlags;
 BOOL bGlobalEncrypt;
 int nGlobalOrder;
 
@@ -148,7 +155,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Format";
 }
 
@@ -166,9 +173,9 @@ void __declspec(dllexport) LineSortStrAsc(PLUGINDATA *pd)
   {
     INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
 
-    if (nAction == DLLA_FORMAT_MATCHCASE)
+    if (nAction >= DLLA_FORMAT_MATCHCASE && nAction <= DLLA_FORMAT_CASEANDLOCALE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=(DWORD)nAction;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_SORTSTRASC);
@@ -187,9 +194,9 @@ void __declspec(dllexport) LineSortStrDesc(PLUGINDATA *pd)
   {
     INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
 
-    if (nAction == DLLA_FORMAT_MATCHCASE)
+    if (nAction >= DLLA_FORMAT_MATCHCASE && nAction <= DLLA_FORMAT_CASEANDLOCALE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=(DWORD)nAction;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_SORTSTRDESC);
@@ -208,9 +215,9 @@ void __declspec(dllexport) LineSortIntAsc(PLUGINDATA *pd)
   {
     INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
 
-    if (nAction == DLLA_FORMAT_MATCHCASE)
+    if (nAction >= DLLA_FORMAT_MATCHCASE && nAction <= DLLA_FORMAT_CASEANDLOCALE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=(DWORD)nAction;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_SORTINTASC);
@@ -229,9 +236,9 @@ void __declspec(dllexport) LineSortIntDesc(PLUGINDATA *pd)
   {
     INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
 
-    if (nAction == DLLA_FORMAT_MATCHCASE)
+    if (nAction >= DLLA_FORMAT_MATCHCASE && nAction <= DLLA_FORMAT_CASEANDLOCALE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=(DWORD)nAction;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_SORTINTDESC);
@@ -252,7 +259,7 @@ void __declspec(dllexport) LineGetUnique(PLUGINDATA *pd)
 
     if (nAction == DLLA_FORMAT_MATCHCASE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=FMTF_MATCHCASE;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_GETUNIQUE);
@@ -273,7 +280,7 @@ void __declspec(dllexport) LineGetDuplicates(PLUGINDATA *pd)
 
     if (nAction == DLLA_FORMAT_MATCHCASE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=FMTF_MATCHCASE;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_GETDUPLICATES);
@@ -294,7 +301,7 @@ void __declspec(dllexport) LineRemoveDuplicates(PLUGINDATA *pd)
 
     if (nAction == DLLA_FORMAT_MATCHCASE)
     {
-      bGlobalMatchCase=TRUE;
+      dwGlobalFlags=FMTF_MATCHCASE;
     }
   }
   LinesOrder(hWndEdit, &hLinesStack, LO_REMOVEDUPLICATES);
@@ -371,8 +378,8 @@ void __declspec(dllexport) LinkExtract(PLUGINDATA *pd)
   CHARRANGE64 cr;
   wchar_t *wszSelText;
   wchar_t *wpTextCount;
-  wchar_t *wpStrEnd;
-  wchar_t *wpStrBegin;
+  const wchar_t *wpStrBegin;
+  const wchar_t *wpStrEnd;
   wchar_t wchQuote;
   BOOL bEgual=FALSE;
 
@@ -394,7 +401,8 @@ void __declspec(dllexport) LinkExtract(PLUGINDATA *pd)
 
   if (wszSelText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)hWndEdit, (LPARAM)NULL))
   {
-    wpTextCount=wpStrEnd=wszSelText;
+    wpTextCount=wszSelText;
+    wpStrEnd=(const wchar_t *)wszSelText;
 
     while (xstrstrW(wpStrEnd, -1, L" href", -1, FALSE, &wpStrBegin, &wpStrEnd))
     {
@@ -797,24 +805,44 @@ void StackFree(HSTACK *hStack)
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
 }
 
+int PluginStrCmp(const wchar_t *wpString1, const wchar_t *wpString2)
+{
+  if (dwGlobalFlags & FMTF_LOCALE)
+  {
+    if (bOldWindows)
+    {
+      char *pString1=AllocAnsi(wpString1);
+      char *pString2=AllocAnsi(wpString2);
+      int nResult;
+
+      if (dwGlobalFlags & FMTF_MATCHCASE)
+        nResult=lstrcmpA(pString1, pString2);
+      nResult=lstrcmpiA(pString1, pString2);
+      FreeAnsi(pString1);
+      FreeAnsi(pString2);
+      return nResult;
+    }
+    if (dwGlobalFlags & FMTF_MATCHCASE)
+      return lstrcmpW(wpString1, wpString2);
+    return lstrcmpiW(wpString1, wpString2);
+  }
+  else
+  {
+    if (dwGlobalFlags & FMTF_MATCHCASE)
+      return xstrcmpW(wpString1, wpString2);
+    return xstrcmpiW(wpString1, wpString2);
+  }
+}
+
 int CompareLineStr(const void *elem1, const void *elem2)
 {
   LINEITEMARRAY *lpItem1=(LINEITEMARRAY *)elem1;
   LINEITEMARRAY *lpItem2=(LINEITEMARRAY *)elem2;
   int nResult;
 
-  if (bGlobalMatchCase)
-  {
-    nResult=xstrcmpW(lpItem1->wpLineStr, lpItem2->wpLineStr);
-    if (!nResult && (lpItem1->wpLine != lpItem1->wpLineStr || lpItem2->wpLine != lpItem2->wpLineStr))
-      nResult=xstrcmpW(lpItem1->wpLine, lpItem2->wpLine);
-  }
-  else
-  {
-    nResult=xstrcmpiW(lpItem1->wpLineStr, lpItem2->wpLineStr);
-    if (!nResult && (lpItem1->wpLine != lpItem1->wpLineStr || lpItem2->wpLine != lpItem2->wpLineStr))
-      nResult=xstrcmpiW(lpItem1->wpLine, lpItem2->wpLine);
-  }
+  nResult=PluginStrCmp(lpItem1->wpLineStr, lpItem2->wpLineStr);
+  if (!nResult && (lpItem1->wpLine != lpItem1->wpLineStr || lpItem2->wpLine != lpItem2->wpLineStr))
+    nResult=PluginStrCmp(lpItem1->wpLine, lpItem2->wpLine);
   return nResult;
 }
 
@@ -848,10 +876,7 @@ int CompareLineInt(const void *elem1, const void *elem2)
   if (nResult) return nResult;
 
   //Numbers are equal. Compare all string.
-  if (bGlobalMatchCase)
-    return xstrcmpW(lpItem1->wpLine, lpItem2->wpLine);
-  else
-    return xstrcmpiW(lpItem1->wpLine, lpItem2->wpLine);
+  return PluginStrCmp(lpItem1->wpLine, lpItem2->wpLine);
 }
 
 int CompareLineDupl(const void *elem1, const void *elem2)
@@ -862,7 +887,7 @@ int CompareLineDupl(const void *elem1, const void *elem2)
 
   if (lpItem1->nLineStrLen == lpItem2->nLineStrLen)
   {
-    if (bGlobalMatchCase)
+    if (dwGlobalFlags & FMTF_MATCHCASE)
       nResult=xstrcmpnW(lpItem1->wpLineStr, lpItem2->wpLineStr, lpItem1->nLineStrLen);
     else
       nResult=xstrcmpinW(lpItem1->wpLineStr, lpItem2->wpLineStr, lpItem1->nLineStrLen);
@@ -1139,10 +1164,10 @@ BOOL SetupCryptoClient()
   HCRYPTKEY hKey=0;
 
   // Attempt to acquire a handle to the default key container.
-  if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
+  if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, 0))
   {
     // Some sort of error occured, create default key container.
-    if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+    if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
     {
       // Error creating key container!
       return FALSE;
@@ -1211,7 +1236,7 @@ BOOL EncryptString(unsigned char *lpData, DWORD *dwDataLen, unsigned char *lpKey
   BOOL bResult=FALSE;
 
   // Get handle to default provider.
-  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
+  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, 0))
   {
     // Create hash object.
     if (CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
@@ -1245,7 +1270,7 @@ BOOL DecryptString(unsigned char *lpData, DWORD *dwDataLen, unsigned char *lpKey
   BOOL bResult=FALSE;
 
   // Get handle to default provider.
-  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
+  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, 0))
   {
     // Create hash object.
     if (CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
@@ -1381,7 +1406,7 @@ void InitCommon(PLUGINDATA *pd)
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
 
-  bGlobalMatchCase=FALSE;
+  dwGlobalFlags=0;
 }
 
 //Entry point

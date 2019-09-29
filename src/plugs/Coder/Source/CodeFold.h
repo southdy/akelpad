@@ -11,35 +11,43 @@
 #define STRID_INVIEW                 205
 #define STRID_LISTEXPAND             206
 #define STRID_LISTCOLLAPSE           207
-#define STRID_STATISTICS             208
-#define STRID_STATISTICS_MSG         209
-#define STRID_SETUP                  210
-#define STRID_NONE                   211
-#define STRID_SHOWDOCK_GROUP         212
-#define STRID_AUTO                   213
-#define STRID_ALWAYS                 214
-#define STRID_FOLDLIMIT              215
-#define STRID_FOLLOWCARET_GROUP      216
-#define STRID_ANYWHERE               217
-#define STRID_ROOT                   218
-#define STRID_LISTSYSTEMCOLORS       219
-#define STRID_LISTSYSTEMFONT         220
-#define STRID_DRAWNODE               221
-#define STRID_ROUND                  222
-#define STRID_SQUARE                 223
-#define STRID_TAGMARK                224
-#define STRID_COLLAPSEONOPEN         225
-#define STRID_NOPRINTCOLLAPSED       226
-#define STRID_FINDROOT               227
-#define STRID_HOTKEY                 228
-#define STRID_DEPTH                  229
-#define STRID_HOTKEYCURRENT          230
-#define STRID_HOTKEYALL              231
-#define STRID_COLLAPSE               232
-#define STRID_NEXTLEVEL              233
-#define STRID_PREVLEVEL              234
+#define STRID_LISTCOPY               208
+#define STRID_STATISTICS             209
+#define STRID_STATISTICS_MSG         210
+#define STRID_GORULE                 211
+#define STRID_SETUP                  212
+#define STRID_NONE                   213
+#define STRID_SHOWDOCK_GROUP         214
+#define STRID_AUTO                   215
+#define STRID_ALWAYS                 216
+#define STRID_ASLIST                 217
+#define STRID_FOLDLIMIT              218
+#define STRID_FOLLOWCARET_GROUP      219
+#define STRID_ANYWHERE               220
+#define STRID_ROOT                   221
+#define STRID_LISTSYSTEMCOLORS       222
+#define STRID_LISTSYSTEMFONT         223
+#define STRID_SHOWNODES_GROUP        224
+#define STRID_DRAWNODE               225
+#define STRID_ROUND                  226
+#define STRID_SQUARE                 227
+#define STRID_TAGMARK                228
+#define STRID_COLLAPSEONOPEN         229
+#define STRID_NOPRINTCOLLAPSED       230
+#define STRID_HIDEFOLDEND            231
+#define STRID_FINDROOT               232
+#define STRID_HOTKEY                 233
+#define STRID_DEPTH                  234
+#define STRID_MATCHCASE              235
+#define STRID_WHOLEWORD              236
+#define STRID_HOTKEYCURRENT          237
+#define STRID_HOTKEYALL              238
+#define STRID_COLLAPSE               239
+#define STRID_NEXTLEVEL              240
+#define STRID_PREVLEVEL              241
 
 #define DLLA_CODEFOLD_SHOWDOCK   1
+#define DLLA_CODEFOLD_GORULE     2
 #define DLLA_CODEFOLD_ADDWINDOW  50
 #define DLLA_CODEFOLD_DELWINDOW  51
 #define DLLA_CODEFOLD_GETWINDOW  52
@@ -63,6 +71,15 @@
 #define CFSD_AUTO     1
 #define CFSD_ALWAYS   2
 
+//AKDN_OPENDOCUMENT* or AKDN_SAVEDOCUMENT*
+#define OSM_OPEN      0x1
+#define OSM_SAVE      0x2
+
+//Show nodes panel setting
+#define CFSN_NONE     0
+#define CFSN_AUTO     1
+#define CFSN_ASLIST   2
+
 //Sizes
 #define BOARD_WIDTH      10
 #define BOARD_EDGE       4
@@ -83,19 +100,18 @@
 #define FCO_ANYWHERE        1
 #define FCO_ONLYROOT        2
 
-//SetActiveEdit flags
-#define SAE_NOFOLD          0x01
-#define SAE_NOLIST          0x02
-#define SAE_RESETFOLD       0x04
-#define SAE_RESETLIST       0x08
-#define SAE_IGNOREMAXFOLDS  0x10
+//LEVEL flags
+#define LVLF_MULTILINE      0x1
+#define LVLF_XMLCHILD       0x2
+#define LVLF_NOXMLCHILD     0x4
 
 //IsFold input flags
 #define IFF_CHECKFIRSTFOLDSTART 0x10
 
 //IsFold return value
-#define IFE_FOLDSTART           0x1
-#define IFE_FOLDEND             0x2
+#define IFE_FOLDSTART        0x1
+#define IFE_FOLDEND          0x2
+#define IFE_FOLDENDMAX       0x4
 
 //StackGetFoldByLine flags
 #define GL_DEEPESTLEVEL  0x1
@@ -123,9 +139,11 @@
 #define FIF_NOLISTFOLD              0x00040000  //Don't show fold in list.
 #define FIF_REGEXPSTART             0x00100000  //Regular expressions of fixed length in fold start or skip start.
 #define FIF_REGEXPEND               0x00200000  //Regular expressions of fixed length in fold end or skip end.
-#define FIF_XMLNAMED_ONETAG         0x10000000  //
-#define FIF_XMLNONAME_ONETAG        0x20000000  //
-#define FIF_XMLNONAME_TWOTAG        0x40000000  //
+#define FIF_XMLNAMED_ONETAG         0x08000000
+#define FIF_XMLNAMED_TWOTAG         0x10000000
+#define FIF_XMLNONAME_ONETAG        0x20000000
+#define FIF_XMLNONAME_TWOTAG        0x40000000
+#define FIF_XMLCHILD                0x80000000
 
 
 //// Structures
@@ -168,6 +186,8 @@ typedef struct _FOLDSTART {
   int nFoldStartLen;
   int nFoldStartPointLen;
   STACKREGROUP sregStart;
+  int nParentID;
+  int nRuleID;
 
   //Stack with the same wpFoldStart.
   HSTACK hFoldInfoHandleStack;
@@ -186,7 +206,13 @@ typedef struct _FOLDINFO {
   DWORD dwFontStyle;
   DWORD dwColor1;
   DWORD dwColor2;
+  int nParentID;
+  int nRuleID;
+  wchar_t *wpRuleFile;
+  SYNTAXFILE *lpRuleFile;
+  SYNTAXFILE *lpPrevFile;
   STACKREGROUP sregEnd;
+  CHARRANGE64 crSyntaxFileLine;
 } FOLDINFO;
 
 typedef struct _FOLDINFOHANDLE {
@@ -200,6 +226,7 @@ typedef struct {
   FOLDINFO *lpFoldInfo;
   HTREEITEM hItem;
   wchar_t *wpName;
+  int nNameOffsetFromPoint;
 } FOLDDATA;
 
 //For FillLevelsStack
@@ -212,7 +239,7 @@ typedef struct _LEVEL {
   AEPOINT pointMax;
   AECHARRANGE crFoundMin;
   AECHARRANGE crFoundMax;
-  BOOL bMultiLine;
+  DWORD dwFlags;          //See LVLF_* defines.
 } LEVEL;
 
 typedef struct {
@@ -240,6 +267,9 @@ typedef struct _FOLDWINDOW {
   HWND hWndEdit;
   AEHDOC hDocEdit;
   RECT rcBoard;
+  int nHideMinLineOffset;
+  int nHideMaxLineOffset;
+  int nHideMaxLineOffsetOld;
   AECHARRANGE crTextChange;
   AEFOLD *lpTextChangeMinParent;
   AEFOLD *lpTextChangeMaxParent;
@@ -311,22 +341,26 @@ FOLDWINDOW* StackGetFoldWindowByUserEdit(STACKFOLDWINDOW *hStack, HWND hWndEdit)
 void StackDeleteFoldWindow(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow);
 void StackFreeFoldWindows(STACKFOLDWINDOW *hStack);
 FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, HWND hWnd, AECHARRANGE *crRange);
-void CreateFold(LEVEL *lpLevel, HWND hWnd, BOOL bCollapse);
-void CreateAllFolds(STACKLEVEL *hLevelStack, HWND hWnd);
+void CreateFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, HWND hWnd, BOOL bCollapse);
+void CreateAllFolds(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, HWND hWnd);
 LEVEL* StackInsertLevel(STACKLEVEL *hLevelStack, AECHARINDEX *ciChar);
 void StackDeleteLevel(STACKLEVEL *hLevelStack, LEVEL *lpLevel);
 void StackFreeLevels(STACKLEVEL *hLevelStack);
+SYNTAXFILE* GetSyntaxFileByFold(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold);
 AEFOLD* FoldNextDepth(AEFOLD *lpFold, int *nCurDepth, int nMaxDepth);
 AEFOLD* FoldGet(FOLDWINDOW *lpFoldWindow, DWORD dwFlags, UINT_PTR dwFindIt, AEFOLD **lpPrevSubling);
 AEFOLD* FoldAtIndex(FOLDWINDOW *lpFoldWindow, AECHARINDEX *ciChar, DWORD dwFoldStop);
 AEFOLD* GetCaretFold(FOLDWINDOW *lpFoldWindow, AEFOLD **lpPrevSubling);
 BOOL IsFoldNameFromLeft(FOLDDATA *lpFoldData);
-BOOL GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciInput, AECHARRANGE *crNameRange);
+int GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciMinPoint, AECHARRANGE *crNameRange);
 void FoldInView(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold, int nMenuAction);
 BOOL FoldSelect(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold);
 void FoldSwitchCollapse(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold, DWORD dwFlags);
+void GoRule(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold);
 void DeleteFoldData(FOLDDATA *lpFoldData);
 void FreeFolds(FOLDWINDOW *lpFoldWindow, BOOL bUpdate);
+void RestoreHideLineEnd(FOLDWINDOW *lpFoldWindow);
+INT_PTR IndexOffset(FOLDWINDOW *lpFoldWindow, AECHARINDEX *ciChar, INT_PTR nOffset);
 INT_PTR EndOfPoint(FOLDWINDOW *lpFoldWindow, const AEPOINT *lpPoint, AECHARINDEX *ciChar);
 void ClearTreeView(HWND hWndTreeView, BOOL bRedraw);
 void FillTreeView(HWND hWndTreeView, FOLDWINDOW *lpFoldWindow, const wchar_t *wpFilter);
@@ -336,21 +370,23 @@ BOOL SetCaretTreeView(HWND hWndTreeView, FOLDWINDOW *lpFoldWindow);
 FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags);
 void UpdateTagMark(FOLDWINDOW *lpFoldWindow);
 BOOL RemoveTagMark(FOLDWINDOW *lpFoldWindow);
-DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar);
-DWORD CALLBACK IsMatchRE(STACKREGROUP *sreg, AECHARRANGE *crFound, const AECHARINDEX *ciChar);
+BOOL CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar);
+INT_PTR CALLBACK IsMatchRE(STACKREGROUP *sreg, AECHARRANGE *crFound, const AECHARINDEX *ciChar);
 BOOL IsEscaped(const AECHARINDEX *ciChar, wchar_t wchEscape);
 FOLDINFO* IsFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, AEFINDTEXTW *ft, AECHARINDEX *ciChar, DWORD *dwFoldStop);
+BOOL FoldAllowed(LEVEL *lpLevel, int nParentID, int nFoldRuleID);
 FOLDINFO* IsFoldStart(FOLDSTART *lpFoldStart, AEFINDTEXTW *ft, AECHARINDEX *ciChar);
 FOLDINFO* IsFoldEnd(FOLDINFO *lpFoldInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar);
 SKIPINFO* IsSkipStart(SKIPSTART *lpSkipStart, AEFINDTEXTW *ft, AECHARINDEX *ciChar);
 SKIPINFO* IsSkipEnd(SKIPINFO *lpSkipInfo, AEFINDTEXTW *ft, AECHARINDEX *ciChar);
 FOLDINFO* FindFold(FOLDWINDOW *lpFoldWindow, const AECHARRANGE *crSearchRange);
-BOOL CheckFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop);
+BOOL CheckFoldFlags(FOLDINFO *lpFoldInfo, AECHARRANGE *crFound, DWORD dwFoldStop);
+BOOL CheckSkipFlags(SKIPINFO *lpSkipInfo, AECHARRANGE *crFound, AECHARINDEX *ciChar, DWORD dwFoldStop);
 BOOL IsSpacesFromLeft(const AECHARINDEX *ciChar);
 BOOL IsSpacesFromRight(const AECHARINDEX *ciChar);
 void SetEditRect(AEHDOC hDocEdit, HWND hWndEdit, int nNewWidth, int nOldWidth);
 DWORD ScrollToPoint(HWND hWnd, POINT *ptPos);
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc);
 LRESULT SendToDoc(AEHDOC hDocEdit, HWND hWndEdit, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void ReadCodeFoldOptions(HANDLE hOptions);
 void SaveCodeFoldOptions(HANDLE hOptions, DWORD dwFlags);
@@ -365,5 +401,6 @@ extern FOLDWINDOW *lpCurrentFoldWindow;
 extern HWND hWndCodeFoldList;
 extern DWORD dwFoldListTextColor;
 extern DWORD dwFoldListBkColor;
+extern HBRUSH hFoldFilterBkBrush;
 
 #endif

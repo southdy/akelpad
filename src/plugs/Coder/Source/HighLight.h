@@ -11,8 +11,9 @@
 #define STRID_AUTOMARK_GROUP         105
 #define STRID_SYMBOLS                106
 #define STRID_WORDS                  107
-#define STRID_TEXTCOLOR              108
-#define STRID_BGCOLOR                109
+#define STRID_MAXSEL                 108
+#define STRID_TEXTCOLOR              109
+#define STRID_BGCOLOR                110
 
 #define DLLA_HIGHLIGHT_MARK                2
 #define DLLA_HIGHLIGHT_UNMARK              3
@@ -36,10 +37,11 @@
 #define MARKAUTO_SYMBOLS 1
 #define MARKAUTO_WORDS   2
 
-#define MARKMAX_WORD   1024
+#define MARKMAX_SELECTION  1024
 
 #define MARKFLAG_MATCHCASE 0x1
 #define MARKFLAG_REGEXP    0x2
+#define MARKFLAG_WHOLEWORD 0x4
 
 //// Structures
 
@@ -52,6 +54,7 @@ typedef struct _WORDINFO {
   DWORD dwFontStyle;
   DWORD dwColor1;
   DWORD dwColor2;
+  int nParentID;
 } WORDINFO;
 
 typedef struct _WORDORDER {
@@ -59,6 +62,15 @@ typedef struct _WORDORDER {
   struct _WORDORDER *prev;
   WORDINFO *lpWordInfo;
 } WORDORDER;
+
+typedef struct _WORDALPHA {
+  struct _WORDALPHA *next;
+  struct _WORDALPHA *prev;
+  wchar_t wchFirstChar;
+  const wchar_t *wpWord;
+  int nWordLen;
+  WORDINFO *lpWordInfo;
+} WORDALPHA;
 
 typedef struct _QUOTEINFO {
   struct _QUOTEINFO *next;
@@ -76,6 +88,8 @@ typedef struct _QUOTEINFO {
   DWORD dwFontStyle;
   DWORD dwColor1;
   DWORD dwColor2;
+  int nParentID;
+  int nRuleID;
 } QUOTEINFO;
 
 typedef struct _MARKTEXT {
@@ -93,6 +107,7 @@ typedef struct {
 typedef struct _HIGHLIGHTWINDOW {
   struct _HIGHLIGHTWINDOW *next;
   struct _HIGHLIGHTWINDOW *prev;
+  SYNTAXFILE *lpSyntaxFile;
   FRAMEDATA *lpFrame;
   HWND hWndEdit;
   AEHDOC hDocEdit;
@@ -127,9 +142,10 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 BOOL CALLBACK HighLightEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
 void PaintRichEditA(SYNTAXFILE *lpSyntaxFile, HWND hWnd, RECT *rcUpdateRect);
 void PaintRichEditW(SYNTAXFILE *lpSyntaxFile, HWND hWnd, RECT *rcUpdateRect);
-WORDINFO* StackInsertWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack, int nWordLen);
+WORDINFO* StackInsertWord(STACKWORD *hStack, STACKWORDALPHA *hAlphaStack, STACKWORDORDER *hOrderStack, const wchar_t *wpWord, int nWordLen);
+WORDALPHA* StackInsertWordAlpha(STACKWORDALPHA *hStack, const wchar_t *wpWord);
 WORDINFO* StackGetWord(STACKWORD *hStack, wchar_t *wpWord, int nWordLen);
-void StackFreeWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack);
+void StackFreeWord(STACKWORD *hStack, STACKWORDALPHA *hAlphaStack, STACKWORDORDER *hOrderStack);
 QUOTEINFO* StackInsertQuote(STACKQUOTE *hStack, int nQuoteStartLen);
 void StackFreeQuote(STACKQUOTE *hStack);
 HIGHLIGHTWINDOW* StackInsertHighLightWindow(STACKHIGHLIGHTWINDOW *hStack);
@@ -146,15 +162,18 @@ BOOL StackFreeMark(HIGHLIGHTWINDOW *lpHighlightWindow);
 BOOL MarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, const wchar_t *wpText, int nTextLen, DWORD dwColorText, DWORD dwColorBk, DWORD dwFlags, DWORD dwFontStyle, DWORD dwMarkID);
 BOOL UnmarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorText, DWORD dwColorBk);
 BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorText, DWORD dwColorBk, BOOL bFindUp);
+BOOL IsMatchMark(AEMARKTEXTITEMW *lpMarkItem, STACKDELIM *lpDelimiterStack, HWND hWnd, AEFINDTEXTW *ft, const AECHARINDEX *ciChar);
 void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd);
 void GetFontAndColors(SYNTAXFILE *lpSyntaxFile, HIGHLIGHTWINDOW *lpHighlightWindow);
 void RestoreFontAndColors(HIGHLIGHTWINDOW *lpHighlightWindow);
+LOGFONTW* LogFontAtoW(const LOGFONTA *lfA, LOGFONTW *lfW);
+LOGFONTA* LogFontWtoA(const LOGFONTW *lfW, LOGFONTA *lfA);
 DWORD GetColorsToRestore(HIGHLIGHTWINDOW *lpHighlightWindow, AECOLORS *aecHighlight);
 void UnassignTheme(HWND hWnd);
 void UpdateHighLight(HWND hWnd);
 void UpdateHighLightAll();
-COLORREF GetColorFromStrAnsi(char *pColor);
-COLORREF GetColorFromStr(wchar_t *wpColor);
+COLORREF GetColorFromStrAnsi(const char *pColor, const char **pNext);
+COLORREF GetColorFromStr(const wchar_t *wpColor, const wchar_t **wpNext);
 int GetStrFromColor(COLORREF crColor, wchar_t *wszColor);
 BOOL SetFrameInfo(FRAMEDATA *lpFrame, int nType, UINT_PTR dwData);
 void ReadHighLightOptions(HANDLE hOptions);

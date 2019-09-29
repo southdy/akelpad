@@ -9,10 +9,13 @@
 
 /*
 //Include string functions
+#define WideCharLower
 #define xmemcpy
 #define xmemset
 #define xstrlenW
 #define xstrcpynW
+#define xstrcmpiW
+#define xstrcmpinW
 #define xatoiW
 #define xitoaW
 #define xuitoaW
@@ -22,6 +25,7 @@
 
 //Include wide functions
 #define DialogBoxWide
+#define GetClassNameWide
 #define GetWindowLongPtrWide
 #define PropertySheetWide
 #define SetDlgItemTextWide
@@ -55,6 +59,8 @@
 #define STRID_PLUGIN            23
 #define STRID_OK                24
 #define STRID_CANCEL            25
+
+#define DLLA_AUTOSCROLL_TIME     1
 
 #define DLLA_SCROLL_HSCROLL      1
 #define DLLA_SCROLL_VSCROLL      2
@@ -183,7 +189,7 @@ WNDPROCDATA *NewMainProcData=NULL;
 WNDPROCDATA *NewFrameProcData=NULL;
 
 //Global variables
-char szClassName[MAX_PATH];
+wchar_t wszClassName[MAX_PATH];
 wchar_t wszPluginName[MAX_PATH];
 wchar_t wszPluginTitle[MAX_PATH];
 HINSTANCE hInstanceDLL;
@@ -231,7 +237,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Scroll";
 }
 
@@ -244,9 +250,90 @@ void __declspec(dllexport) AutoScroll(PLUGINDATA *pd)
 
   if (!bInitCommon) InitCommon(pd);
 
+  if (pd->lParam)
+  {
+    INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
+
+    if (pd->bAkelEdit)
+    {
+      if (nAction == DLLA_AUTOSCROLL_TIME)
+      {
+        unsigned char *pStepTime=NULL;
+        unsigned char *pStepWidth=NULL;
+        wchar_t wszStepTime[32];
+        wchar_t wszStepWidth[32];
+        wchar_t *wpStepTime=wszStepTime;
+        wchar_t *wpStepWidth=wszStepWidth;
+        int *lpnStepTime=NULL;
+        int *lpnStepWidth=NULL;
+
+        if (IsExtCallParamValid(pd->lParam, 2))
+          pStepTime=(unsigned char *)GetExtCallParam(pd->lParam, 2);
+        if (IsExtCallParamValid(pd->lParam, 3))
+          pStepWidth=(unsigned char *)GetExtCallParam(pd->lParam, 3);
+        if (IsExtCallParamValid(pd->lParam, 4))
+          lpnStepTime=(int *)GetExtCallParam(pd->lParam, 4);
+        if (IsExtCallParamValid(pd->lParam, 5))
+          lpnStepWidth=(int *)GetExtCallParam(pd->lParam, 5);
+
+        if (pStepTime)
+        {
+          if (pd->dwSupport & PDS_STRANSI)
+            MultiByteToWideChar(CP_ACP, 0, (char *)pStepTime, -1, wszStepTime, MAX_PATH);
+          else
+            wpStepTime=(wchar_t *)pStepTime;
+          if (*wpStepTime == L'+')
+            nAutoScrollStepTime+=(int)xatoiW(wpStepTime + 1, NULL);
+          else if (*wpStepTime == L'-')
+            nAutoScrollStepTime-=(int)xatoiW(wpStepTime + 1, NULL);
+          else
+            nAutoScrollStepTime=(int)xatoiW(wpStepTime, NULL);
+          nAutoScrollStepTime=max(nAutoScrollStepTime, 0);
+        }
+        if (pStepWidth)
+        {
+          if (pd->dwSupport & PDS_STRANSI)
+            MultiByteToWideChar(CP_ACP, 0, (char *)pStepWidth, -1, wszStepWidth, MAX_PATH);
+          else
+            wpStepWidth=(wchar_t *)pStepWidth;
+          if (*wpStepWidth == L'+')
+            nAutoScrollStepWidth+=(int)xatoiW(wpStepWidth + 1, NULL);
+          else if (*wpStepWidth == L'-')
+            nAutoScrollStepWidth-=(int)xatoiW(wpStepWidth + 1, NULL);
+          else
+            nAutoScrollStepWidth=(int)xatoiW(wpStepWidth, NULL);
+          nAutoScrollStepWidth=max(nAutoScrollStepWidth, 0);
+        }
+        if (lpnStepTime)
+          *lpnStepTime=nAutoScrollStepTime;
+        if (lpnStepWidth)
+          *lpnStepWidth=nAutoScrollStepWidth;
+
+        if (pStepTime || pStepWidth)
+        {
+          UninitAutoScroll();
+          if (nAutoScrollStepTime && nAutoScrollStepWidth)
+            InitAutoScroll();
+          dwSaveFlags|=OF_AUTOSCROLL;
+        }
+      }
+    }
+
+    if (bInitAutoScroll)
+    {
+      //Stay in memory, and show as active
+      pd->nUnload=UD_NONUNLOAD_ACTIVE;
+    }
+    else
+    {
+      //If any function still loaded, stay in memory and show as non-active
+      if (nInitMain) pd->nUnload=UD_NONUNLOAD_NONACTIVE;
+    }
+    return;
+  }
+
   if (bInitAutoScroll)
   {
-    UninitMain();
     UninitAutoScroll();
 
     //If any function still loaded, stay in memory and show as non-active
@@ -254,7 +341,6 @@ void __declspec(dllexport) AutoScroll(PLUGINDATA *pd)
   }
   else
   {
-    InitMain();
     InitAutoScroll();
 
     //Stay in memory, and show as active
@@ -715,8 +801,8 @@ void SettingsSheet(int nStartPage)
   POINT ptSmallIcon;
 
   //Create image list
-  ptSmallIcon.x=GetSystemMetrics(SM_CXSMICON);
-  ptSmallIcon.y=GetSystemMetrics(SM_CYSMICON);
+  ptSmallIcon.x=16 /*GetSystemMetrics(SM_CXSMICON)*/;
+  ptSmallIcon.y=16 /*GetSystemMetrics(SM_CYSMICON)*/;
 
   if (hImageList=ImageList_Create(ptSmallIcon.x, ptSmallIcon.y, ILC_COLOR32|ILC_MASK, 0, 0))
   {
@@ -1291,14 +1377,21 @@ void GetMsgProcCommon(int code, WPARAM wParam, LPARAM lParam)
     {
       HWND hWndPoint;
       POINT ptPos;
+      POINT ptClient;
 
       GetCursorPos(&ptPos);
 
-      if ((hWndPoint=WindowFromPoint(ptPos)))
+      if (hWndPoint=WindowFromPoint(ptPos))
       {
-        if (GetClassNameA(hWndPoint, szClassName, MAX_PATH))
+        if (hWndPoint == hMainWnd)
         {
-          if (!lstrcmpiA(szClassName, "SysTabControl32"))
+          ptClient=ptPos;
+          ScreenToClient(hMainWnd, &ptClient);
+          hWndPoint=ChildWindowFromPoint(hMainWnd, ptClient);
+        }
+        if (hWndPoint && GetClassNameWide(hWndPoint, wszClassName, MAX_PATH))
+        {
+          if (!xstrcmpiW(wszClassName, L"SysTabControl32"))
           {
             if (dwAutoFocus & AF_SWITCHTAB)
             {
@@ -1352,15 +1445,13 @@ void GetMsgProcCommon(int code, WPARAM wParam, LPARAM lParam)
               }
             }
           }
-          else if (!lstrcmpiA(szClassName, "AkelEditA") ||
-                   !lstrcmpiA(szClassName, "AkelEditW") ||
-                   !lstrcmpiA(szClassName, AES_RICHEDIT20A) ||
-                   !lstrcmpiA(szClassName, AES_RICHEDIT20W_ANSI) ||
-                   !lstrcmpiA(szClassName, "SysListView32") ||
-                   !lstrcmpiA(szClassName, "SysTreeView32") ||
-                   !lstrcmpiA(szClassName, "ListBox") ||
-                   !lstrcmpiA(szClassName, "ComboBox") ||
-                   !lstrcmpiA(szClassName, "Edit"))
+          else if (!xstrcmpinW(L"AkelEdit", wszClassName, (UINT_PTR)-1) ||
+                   !xstrcmpinW(L"RichEdit20", wszClassName, (UINT_PTR)-1) ||
+                   !xstrcmpiW(wszClassName, L"SysListView32") ||
+                   !xstrcmpiW(wszClassName, L"SysTreeView32") ||
+                   !xstrcmpiW(wszClassName, L"ListBox") ||
+                   !xstrcmpiW(wszClassName, L"ComboBox") ||
+                   !xstrcmpiW(wszClassName, L"Edit"))
           {
             UINT uMsg=msg->message;
             DWORD dwChars=0;
@@ -1673,7 +1764,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     if (nStringID == STRID_MOVESCROLLBAR)
       return L"\x041F\x0440\x043E\x043A\x0440\x0443\x0442\x043A\x0430\x0020\x043F\x043E\x043B\x0437\x0443\x043D\x043A\x043E\x043C";
     if (nStringID == STRID_MOVEWITHSHIFT)
-      return L"\x041F\x0440\x043E\x043A\x0440\x0443\x0442\x043A\x0430\x0020\x0441\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0435\x0439 Shift";
+      return L"\x0413\x043E\x0440\x0438\x0437\x043E\x043D\x0442\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x043F\x0440\x043E\x043A\x0440\x0443\x0442\x043A\x0430\x0020\x0441\x0020\x0053\x0068\x0069\x0066\x0074\x0027\x043E\x043C";
     if (nStringID == STRID_SWITCHTAB)
       return L"\x041F\x0435\x0440\x0435\x043A\x043B\x044E\x0447\x0435\x043D\x0438\x0435\x0020\x043C\x0435\x0436\x0434\x0443\x0020\x0432\x043A\x043B\x0430\x0434\x043A\x0430\x043C\x0438";
     if (nStringID == STRID_WITHSPIN)
@@ -1726,7 +1817,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     if (nStringID == STRID_MOVESCROLLBAR)
       return L"Scrolling with slider";
     if (nStringID == STRID_MOVEWITHSHIFT)
-      return L"Scrolling with Shift key";
+      return L"Horizontal scroll with Shift";
     if (nStringID == STRID_SWITCHTAB)
       return L"Switching between tabs";
     if (nStringID == STRID_WITHSPIN)
@@ -1824,7 +1915,8 @@ void InitAutoScroll()
 
   hWndAutoScroll=GetCurEdit();
   hDocAutoScroll=GetCurDoc();
-  SetScrollTimer();
+  if (nAutoScrollStepTime && nAutoScrollStepWidth)
+    SetScrollTimer();
 }
 
 void UninitAutoScroll()
@@ -1977,7 +2069,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
   {
     if (bInitAutoScroll)
     {
-      UninitMain();
       UninitAutoScroll();
     }
     if (bInitSyncHorz)

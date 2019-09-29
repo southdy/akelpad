@@ -13,7 +13,9 @@
 //Include string functions
 #define xmemcpy
 #define xmemset
+#define xstrlenA
 #define xstrlenW
+#define xstrcpynA
 #define xstrcpynW
 #define xatoiW
 #define xitoaW
@@ -56,8 +58,6 @@
 #define OF_ALL         (OF_CAPTURE |\
                         OF_PASTESERIAL)
 
-#define BUFFER_SIZE      1024
-
 //DestroyDock type
 #define DKT_DEFAULT        0x0
 #define DKT_NOUNLOAD       0x1
@@ -83,11 +83,11 @@ void CopySelection(HWND hWnd);
 void SaveClipboard(UINT uFormat, wchar_t **wpData, char **pData);
 void FreeClipboard(wchar_t **wpData, char **pData);
 void SetClipboardFormat(UINT uFormat);
-void WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwTimeout);
+BOOL WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwTimeout);
 BYTE GetHotkeyMod(DWORD dwHotkey);
 BOOL EscapeStringToEscapeData(wchar_t *wpInput, wchar_t *wszOutput);
 void EscapeDataToEscapeString(wchar_t *wpInput, wchar_t *wszOutput);
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc);
 void ShowStandardEditMenu(HWND hWnd, HMENU hMenu, BOOL bMouse);
 
 INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BYTE *lpData, DWORD dwData);
@@ -160,7 +160,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Clipboard";
 }
 
@@ -353,10 +353,10 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndTitleText;
   static HWND hWndTitleClose;
   static HMENU hMenuLabel;
-  static DIALOGRESIZE drs[]={{&hWndTitleText,    DRS_SIZE|DRS_X, 0},
-                             {&hWndTitleClose,   DRS_MOVE|DRS_X, 0},
-                             {&hWndCaptureEdit,  DRS_SIZE|DRS_X, 0},
-                             {&hWndCaptureEdit,  DRS_SIZE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndTitleText,    RDS_SIZE|RDS_X, 0},
+                             {&hWndTitleClose,   RDS_MOVE|RDS_X, 0},
+                             {&hWndCaptureEdit,  RDS_SIZE|RDS_X, 0},
+                             {&hWndCaptureEdit,  RDS_SIZE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -467,17 +467,17 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           pfCapture->bRunning=FALSE;
           SendMessage(hMainWnd, WM_COMMAND, 0, 0);
         }
-        else PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
+        else SendMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
       }
     }
   }
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], NULL, &rcCaptureCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], NULL, &rcCaptureCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
-      if (dkCaptureDlg) GetWindowPos(hWndTitleText, hDlg, &dkCaptureDlg->rcDragDrop);
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
+      if (dkCaptureDlg) GetWindowSize(hWndTitleText, hDlg, &dkCaptureDlg->rcDragDrop);
   }
 
   return FALSE;
@@ -651,93 +651,90 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           if (AttachThreadInput(dwThreadCurrent, dwTargetForeground, TRUE))
           {
-            WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
-
-            if (hWndTargetFocus=GetFocus())
+            if (WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, 5000))
             {
-              //Get clipboard text
+              if (hWndTargetFocus=GetFocus())
               {
-                HGLOBAL hData;
-                LPVOID pData;
-                int nDataLen;
-
-                if (OpenClipboard(NULL))
+                //Get clipboard text
                 {
-                  if (hData=GetClipboardData(CF_TEXT))
+                  HGLOBAL hData;
+                  LPVOID pData;
+                  INT_PTR nDataLen;
+  
+                  if (OpenClipboard(NULL))
                   {
-                    if (pData=GlobalLock(hData))
+                    if (hData=GetClipboardData(CF_TEXT))
                     {
-                      nDataLen=lstrlenA((char *)pData) + 1;
-
-                      if (szSerial=(char *)GlobalAlloc(GPTR, nDataLen))
+                      if (pData=GlobalLock(hData))
                       {
-                        lstrcpynA(szSerial, (char *)pData, nDataLen);
+                        nDataLen=xstrlenA((char *)pData) + 1;
+                        if (szSerial=(char *)GlobalAlloc(GPTR, nDataLen))
+                          xstrcpynA(szSerial, (char *)pData, nDataLen);
+                        GlobalUnlock(hData);
                       }
-                      GlobalUnlock(hData);
                     }
+                    CloseClipboard();
                   }
-                  CloseClipboard();
                 }
-              }
-
-              //Post serial
-              if (szSerial)
-              {
-                pSerial=szSerial;
-
-                while (*pSerial && *pSerial != '\n')
+  
+                //Post serial
+                if (szSerial)
                 {
-                  if (nInsertType != IT_DELIM_ASIS)
+                  pSerial=szSerial;
+  
+                  while (*pSerial && *pSerial != '\n')
                   {
-                    if (*pSerial == '-' || *pSerial == ' ' || *pSerial == '\t')
+                    if (nInsertType != IT_DELIM_ASIS)
                     {
-                      if (nInsertType == IT_DELIM_ASTAB)
+                      if (*pSerial == '-' || *pSerial == ' ' || *pSerial == '\t')
                       {
-                        if (GetFocus() == hWndTargetFocus)
+                        if (nInsertType == IT_DELIM_ASTAB)
                         {
-                          if (bEmulatePress)
+                          if (GetFocus() == hWndTargetFocus)
                           {
-                            WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
-                            keybd_event(VK_TAB, 0, KEYEVENTF_EXTENDEDKEY, 0);
-                            keybd_event(VK_TAB, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
-                            WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
+                            if (bEmulatePress)
+                            {
+                              //WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
+                              keybd_event(VK_TAB, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                              keybd_event(VK_TAB, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                              //WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
+                            }
+                            else SendMessage(hWndTargetFocus, WM_CHAR, '\t', 1);
                           }
-                          else SendMessage(hWndTargetFocus, WM_CHAR, '\t', 1);
                         }
+                        while (*++pSerial == '-' || *pSerial == ' ' || *pSerial == '\t');
+                        hWndTargetFocus=GetFocus();
+                        continue;
                       }
-                      while (*++pSerial == '-' || *pSerial == ' ' || *pSerial == '\t');
-                      hWndTargetFocus=GetFocus();
-                      continue;
                     }
+  
+                    if (bEmulatePress)
+                    {
+                      //WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
+                      wVk=VkKeyScan(*pSerial);
+                      if (HIBYTE(wVk) & 1)
+                        keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                      if (HIBYTE(wVk) & 2)
+                        keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                      if (HIBYTE(wVk) & 4)
+                        keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                      keybd_event(LOBYTE(wVk), 0, 0, 0);
+                      keybd_event(LOBYTE(wVk), 0, KEYEVENTF_KEYUP, 0);
+                      if (HIBYTE(wVk) & 4)
+                        keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                      if (HIBYTE(wVk) & 2)
+                        keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                      if (HIBYTE(wVk) & 1)
+                        keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                      //WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
+                    }
+                    else SendMessage(hWndTargetFocus, WM_CHAR, *pSerial, 1);
+  
+                    ++pSerial;
                   }
-
-                  if (bEmulatePress)
-                  {
-                    wVk=VkKeyScan(*pSerial);
-
-                    WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
-                    if (HIBYTE(wVk) & 1)
-                      keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY, 0);
-                    if (HIBYTE(wVk) & 2)
-                      keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY, 0);
-                    if (HIBYTE(wVk) & 4)
-                      keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
-                    keybd_event(LOBYTE(wVk), 0, 0, 0);
-                    keybd_event(LOBYTE(wVk), 0, KEYEVENTF_KEYUP, 0);
-                    if (HIBYTE(wVk) & 4)
-                      keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
-                    if (HIBYTE(wVk) & 2)
-                      keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
-                    if (HIBYTE(wVk) & 1)
-                      keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
-                    WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
-                  }
-                  else SendMessage(hWndTargetFocus, WM_CHAR, *pSerial, 1);
-
-                  ++pSerial;
+                  GlobalFree((HGLOBAL)szSerial);
+                  szSerial=NULL;
                 }
-                GlobalFree((HGLOBAL)szSerial);
-                szSerial=NULL;
               }
             }
             AttachThreadInput(dwThreadCurrent, dwTargetForeground, FALSE);
@@ -902,33 +899,29 @@ void SaveClipboard(UINT uFormat, wchar_t **wpData, char **pData)
 {
   HGLOBAL hDataSource;
   LPVOID pDataSource;
-  int nLen;
+  INT_PTR nLen;
 
   if (OpenClipboard(NULL))
   {
     if (!IsClipboardFormatAvailable(uFormat))
     {
+      if (*wpData)
+      {
+        GlobalFree((HGLOBAL)*wpData);
+        *wpData=NULL;
+      }
+      if (*pData)
+      {
+        GlobalFree((HGLOBAL)*pData);
+        *pData=NULL;
+      }
       if (hDataSource=GetClipboardData(CF_UNICODETEXT))
       {
         if (pDataSource=GlobalLock(hDataSource))
         {
-          nLen=lstrlenW((wchar_t *)pDataSource + 1) * sizeof(wchar_t);
-
-          if (*wpData)
-          {
-            GlobalFree((HGLOBAL)*wpData);
-            *wpData=NULL;
-          }
-          if (*pData)
-          {
-            GlobalFree((HGLOBAL)*pData);
-            *pData=NULL;
-          }
-
-          if (*wpData=(wchar_t *)GlobalAlloc(GMEM_FIXED, nLen))
-          {
-            xmemcpy(*wpData, pDataSource, nLen);
-          }
+          nLen=xstrlenW((wchar_t *)pDataSource) + 1;
+          if (*wpData=(wchar_t *)GlobalAlloc(GMEM_FIXED, nLen * sizeof(wchar_t)))
+            xstrcpynW(*wpData, pDataSource, nLen);
           GlobalUnlock(hDataSource);
         }
       }
@@ -936,23 +929,9 @@ void SaveClipboard(UINT uFormat, wchar_t **wpData, char **pData)
       {
         if (pDataSource=GlobalLock(hDataSource))
         {
-          nLen=lstrlenA((char *)pDataSource) + 1;
-
-          if (*wpData)
-          {
-            GlobalFree((HGLOBAL)*wpData);
-            *wpData=NULL;
-          }
-          if (*pData)
-          {
-            GlobalFree((HGLOBAL)*pData);
-            *pData=NULL;
-          }
-
+          nLen=xstrlenA((char *)pDataSource) + 1;
           if (*pData=(char *)GlobalAlloc(GMEM_FIXED, nLen))
-          {
-            xmemcpy(*pData, pDataSource, nLen);
-          }
+            xstrcpynA(*pData, pDataSource, nLen);
           GlobalUnlock(hDataSource);
         }
       }
@@ -988,7 +967,7 @@ void SetClipboardFormat(UINT uFormat)
   }
 }
 
-void WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwTimeout)
+BOOL WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwTimeout)
 {
   DWORD dwStart=GetTickCount();
   BYTE lpKeyState[256];
@@ -1012,7 +991,9 @@ void WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwT
         }
       }
     }
+    return TRUE;
   }
+  return FALSE;
 }
 
 BYTE GetHotkeyMod(DWORD dwHotkey)
@@ -1071,7 +1052,7 @@ void EscapeDataToEscapeString(wchar_t *wpInput, wchar_t *wszOutput)
   *b='\0';
 }
 
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc)
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc)
 {
   if (GetWindowRect(hWnd, rc))
   {
@@ -1180,7 +1161,7 @@ void SaveOptions(DWORD dwFlags)
     }
     if (dwFlags & OF_CAPTURE_SETTINGS)
     {
-      WideOption(hOptions, L"Separator", PO_BINARY, (LPBYTE)wszCaptureSeparator, (lstrlenW(wszCaptureSeparator) + 1) * sizeof(wchar_t));
+      WideOption(hOptions, L"Separator", PO_BINARY, (LPBYTE)wszCaptureSeparator, ((int)xstrlenW(wszCaptureSeparator) + 1) * sizeof(wchar_t));
     }
     if (dwFlags & OF_PASTESERIAL_SETTINGS)
     {

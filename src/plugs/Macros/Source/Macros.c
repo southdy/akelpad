@@ -24,8 +24,8 @@
 #define WideCharUpper
 #define xmemset
 #define xmemcpy
-#define xarraysizeA
-#define xarraysizeW
+#define xarrlenA
+#define xarrlenW
 #define xstrlenA
 #define xstrlenW
 #define xstrcpyW
@@ -67,6 +67,7 @@
 #define ListView_InsertColumnWide
 #define ListView_InsertItemWide
 #define ListView_SetItemWide
+#define OpenEventWide
 #define SetDlgItemTextWide
 #define SetWindowLongPtrWide
 #define SetWindowTextWide
@@ -111,8 +112,6 @@
 #define OF_RECT        0x2
 #define OF_VIEWRECT    0x4
 
-#define BUFFER_SIZE             1024
-
 #define LVI_MACRO_FILE          0
 #define LVI_MACRO_HOTKEY        1
 
@@ -128,17 +127,18 @@
 #define CE_CTRLENDFINISH  3
 
 //Macro state and MacroPlay return value
-#define MS_IDLE           0x000
-#define MS_PLAYING        0x001
-#define MS_NOEDIT         0x002
-#define MS_READONLY       0x004
-#define MS_WAITTIMEOUT    0x008
-#define MS_TOOLBARSTOP    0x010
-#define MS_REPEATLIMIT    0x020
-#define MS_EOFRICHED      0x040
-#define MS_SEARCHENDED    0x080
-#define MS_FRAMENOWINDOWS 0x100
-#define MS_PROGRAMEXIT    0x200
+#define MS_IDLE           0x0000
+#define MS_PLAYING        0x0001
+#define MS_NOEDIT         0x0002
+#define MS_READONLY       0x0004
+#define MS_WAITTIMEOUT    0x0008
+#define MS_TOOLBARSTOP    0x0010
+#define MS_REPEATLIMIT    0x0020
+#define MS_EOFRICHED      0x0040
+#define MS_SEARCHENDED    0x0080
+#define MS_FRAMENOWINDOWS 0x0100
+#define MS_PROGRAMEXIT    0x0200
+#define MS_INITIALIZING   0x1000
 
 //Exec macro flags
 #define EMF_SCRIPTSNOSYNC 0x1
@@ -215,7 +215,7 @@ int MoveListViewItem(HWND hWnd, int nOldIndex, int nNewIndex);
 BOOL IsCaretAtLastLine();
 BOOL IsCaretAtLastEmptyLine();
 void PosWindowToCorner(HWND hWndOwner, HWND hWndChild);
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
+int GetBaseName(const wchar_t *wpFile, int nFileLen, wchar_t *wszBaseName, int nBaseNameMax);
 
 INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BYTE *lpData, DWORD dwData);
 void ReadOptions(DWORD dwFlags);
@@ -245,6 +245,7 @@ char szMutexInitName[]="AkelPad::Macros::MutexInit";
 char szMutexExecName[]="AkelPad::Macros::MutexExec";
 char szMacrosDir[MAX_PATH];
 wchar_t wszMacrosDir[MAX_PATH];
+wchar_t wszScriptsExecMutex[MAX_PATH];
 wchar_t wszBuffer[BUFFER_SIZE];
 wchar_t wszLastMacro[MAX_PATH]=L"";
 STACKKEY hRecordStack={0};
@@ -252,9 +253,9 @@ STACKKEY hLastMacroStack={0};
 HWND hWndMainDlg=NULL;
 HWND hWndStopDlg=NULL;
 HWND hWndMacrosList=NULL;
-RECT rcMainMinMaxDialog={253, 325, 0, 0};
+RECT rcMainMinMaxDialog={253, 352, 0, 0};
 RECT rcMainCurrentDialog={0};
-RECT rcViewMainMinMaxDialog={253, 325, 0, 0};
+RECT rcViewMainMinMaxDialog={253, 352, 0, 0};
 RECT rcViewMainCurrentDialog={0};
 int nColumnWidth1=160;
 int nColumnWidth2=109;
@@ -283,7 +284,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Macros";
 }
 
@@ -504,22 +505,22 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HICON hPlayIcon;
   static int nSelItem=-1;
   static BOOL bListChanged=FALSE;
-  static DIALOGRESIZE drs[]={{&hWndMacrosList,   DRS_SIZE|DRS_X, 0},
-                             {&hWndMacrosList,   DRS_SIZE|DRS_Y, 0},
-                             {&hWndPlayButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndPlayX,        DRS_MOVE|DRS_X, 0},
-                             {&hWndRepeat,       DRS_MOVE|DRS_X, 0},
-                             {&hWndRepeatSpin,   DRS_MOVE|DRS_X, 0},
-                             {&hWndActionsGroup, DRS_MOVE|DRS_X, 0},
-                             {&hWndRecordButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndName,         DRS_MOVE|DRS_X, 0},
-                             {&hWndSaveButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndDeleteButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndHotkey,       DRS_MOVE|DRS_X, 0},
-                             {&hWndAssignButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndViewButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndCloseButton,  DRS_MOVE|DRS_X, 0},
-                             {&hWndCloseButton,  DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndMacrosList,   RDS_SIZE|RDS_X, 0},
+                             {&hWndMacrosList,   RDS_SIZE|RDS_Y, 0},
+                             {&hWndPlayButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndPlayX,        RDS_MOVE|RDS_X, 0},
+                             {&hWndRepeat,       RDS_MOVE|RDS_X, 0},
+                             {&hWndRepeatSpin,   RDS_MOVE|RDS_X, 0},
+                             {&hWndActionsGroup, RDS_MOVE|RDS_X, 0},
+                             {&hWndRecordButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndName,         RDS_MOVE|RDS_X, 0},
+                             {&hWndSaveButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndDeleteButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndHotkey,       RDS_MOVE|RDS_X, 0},
+                             {&hWndAssignButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndViewButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndCloseButton,  RDS_MOVE|RDS_X, 0},
+                             {&hWndCloseButton,  RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -569,7 +570,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessage(hWndRepeatSpin, UDM_SETRANGE, 0, MAKELONG(999, 0));
     SetDlgItemInt(hDlg, IDC_REPEAT, 1, FALSE);
     SendMessage(hWndName, EM_LIMITTEXT, MAX_PATH, 0);
-    SendMessage(hWndMacrosList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES);
+    SendMessage(hWndMacrosList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES|LVS_EX_INFOTIP, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES|LVS_EX_INFOTIP);
     SendMessage(hMainWnd, AKD_SETHOTKEYINPUT, (WPARAM)hWndHotkey, 0);
 
     //Columns
@@ -919,9 +920,9 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, DRM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, RDM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
       dwSaveFlags|=OF_RECT;
   }
 
@@ -1004,12 +1005,12 @@ BOOL CALLBACK ViewDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndExportButton;
   static HWND hWndKeyactList;
   static HWND hWndCloseButton;
-  static DIALOGRESIZE drs[]={{&hWndSendKeysEdit, DRS_SIZE|DRS_X, 0},
-                             {&hWndExportButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndKeyactList,   DRS_SIZE|DRS_X, 0},
-                             {&hWndKeyactList,   DRS_SIZE|DRS_Y, 0},
-                             {&hWndCloseButton,  DRS_MOVE|DRS_X, 0},
-                             {&hWndCloseButton,  DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndSendKeysEdit, RDS_SIZE|RDS_X, 0},
+                             {&hWndExportButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndKeyactList,   RDS_SIZE|RDS_X, 0},
+                             {&hWndKeyactList,   RDS_SIZE|RDS_Y, 0},
+                             {&hWndCloseButton,  RDS_MOVE|RDS_X, 0},
+                             {&hWndCloseButton,  RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -1030,7 +1031,7 @@ BOOL CALLBACK ViewDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetDlgItemTextWide(hDlg, IDC_EXPORT, GetLangStringW(wLangModule, STRID_EXPORT));
     SetDlgItemTextWide(hDlg, IDC_CLOSE, GetLangStringW(wLangModule, STRID_CLOSE));
 
-    SendMessage(hWndKeyactList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES);
+    SendMessage(hWndKeyactList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES|LVS_EX_INFOTIP, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES|LVS_EX_INFOTIP);
 
     //Columns
     lvc.mask=LVCF_TEXT|LVCF_WIDTH|LVCF_SUBITEM;
@@ -1148,9 +1149,9 @@ BOOL CALLBACK ViewDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], &rcViewMainMinMaxDialog, &rcViewMainCurrentDialog, DRM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], &rcViewMainMinMaxDialog, &rcViewMainCurrentDialog, RDM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
       dwSaveFlags|=OF_VIEWRECT;
   }
 
@@ -1223,7 +1224,7 @@ void FillMacroList(HWND hWnd)
   {
     do
     {
-      GetBaseName(wfd.cFileName, wszBaseName, MAX_PATH);
+      GetBaseName(wfd.cFileName, -1, wszBaseName, MAX_PATH);
 
       //Find hotkey
       {
@@ -1551,9 +1552,12 @@ LRESULT CALLBACK GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
 
 BOOL CALLBACK HotkeyProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 {
-  wchar_t *wpName=(wchar_t *)lpParameter;
+  if (!(dwMacroState & MS_PLAYING))
+  {
+    wchar_t *wpName=(wchar_t *)lpParameter;
 
-  ExecMacro(wpName, 1, 0);
+    ExecMacro(wpName, 1, 0);
+  }
   return TRUE;
 }
 
@@ -1566,6 +1570,8 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
   wchar_t wszMacro[MAX_PATH];
   int nRepeat;
   DWORD dwFlags;
+
+  dwMacroState=MS_INITIALIZING;
 
   //Copy to thread memory
   xstrcpynW(wszMacro, em->wpMacro, MAX_PATH);
@@ -1607,6 +1613,7 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
     SetEvent(hExecMutex);
     CloseHandle(hExecMutex);
   }
+  dwMacroState&=~MS_INITIALIZING;
 
   //Change icon from stop end to play end
   if (hToolBarIconPlayToEnd)
@@ -1695,7 +1702,7 @@ void StackHotkeyPress(STACKKEY *hStack, BOOL bToEnd, DWORD dwFlags)
     //Scripts plugin synchronization
     if (!(dwFlags & EMF_SCRIPTSNOSYNC))
     {
-      while (hScriptsExecMutex=OpenEventA(EVENT_ALL_ACCESS, FALSE, "AkelPad::Scripts::MutexExec"))
+      while (hScriptsExecMutex=OpenEventWide(EVENT_ALL_ACCESS, FALSE, wszScriptsExecMutex))
       {
         WaitForSingleObject(hScriptsExecMutex, INFINITE);
 
@@ -2118,29 +2125,23 @@ void PosWindowToCorner(HWND hWndOwner, HWND hWndChild)
   SetWindowPos(hWndChild, NULL, rcOwner.right - (rcChild.right - rcChild.left), rcOwner.top, 0, 0, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOSIZE);
 }
 
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen)
+int GetBaseName(const wchar_t *wpFile, int nFileLen, wchar_t *wszBaseName, int nBaseNameMax)
 {
-  int nFileLen=lstrlenW(wpFile);
-  int nEndOffset=-1;
-  int i;
+  const wchar_t *wpCount;
+  const wchar_t *wpExt=NULL;
 
-  for (i=nFileLen - 1; i >= 0; --i)
+  if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
+
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
-    if (wpFile[i] == '\\')
+    if (*wpCount == L'\\')
       break;
-
-    if (nEndOffset == -1)
-    {
-      if (wpFile[i] == '.')
-        nEndOffset=i;
-    }
+    if (!wpExt && *wpCount == L'.')
+      wpExt=wpCount;
   }
-  ++i;
-  if (nEndOffset == -1) nEndOffset=nFileLen;
-  nBaseNameMaxLen=min(nEndOffset - i + 1, nBaseNameMaxLen);
-  xstrcpynW(wszBaseName, wpFile + i, nBaseNameMaxLen);
-
-  return nBaseNameMaxLen;
+  ++wpCount;
+  if (!wpExt) wpExt=wpFile + nFileLen;
+  return (int)xstrcpynW(wszBaseName, wpCount, min(nBaseNameMax, wpExt - wpCount + 1));
 }
 
 
@@ -2184,7 +2185,7 @@ void ReadOptions(DWORD dwFlags)
       {
         do
         {
-          GetBaseName(wfd.cFileName, wszBaseName, MAX_PATH);
+          GetBaseName(wfd.cFileName, -1, wszBaseName, MAX_PATH);
 
           //Read and register hotkey
           {
@@ -2394,6 +2395,7 @@ void InitCommon(PLUGINDATA *pd)
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
   xprintfW(wszMacrosDir, L"%s\\AkelFiles\\Plugs\\Macros", pd->wszAkelDir);
+  xprintfW(wszScriptsExecMutex, L"AkelPad::Scripts::MutexExec::%d", GetCurrentProcessId());
   ReadOptions(0);
 
   dwMainProcessId=GetCurrentProcessId();

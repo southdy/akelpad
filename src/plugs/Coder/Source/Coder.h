@@ -42,10 +42,9 @@
 #define STRID_DELETEPROMPT          78
 #define STRID_VARMISSING            79
 #define STRID_REGEXP_COMPILEERROR   80
-#define STRID_REGEXP_FIXEDLENGTH    81
-#define STRID_UNKNOWNSECTION        82
-#define STRID_UNKNOWNSYNTAXFILE     83
-#define STRID_UNKNOWNVARTHEME       84
+#define STRID_UNKNOWNSECTION        81
+#define STRID_UNKNOWNSYNTAXFILE     82
+#define STRID_UNKNOWNVARTHEME       83
 
 #define DLLA_CODER_SETEXTENSION     1
 #define DLLA_CODER_CLEARCACHE       2
@@ -59,6 +58,7 @@
 #define DLLA_CODER_GETALIAS         18
 #define DLLA_CODER_GETVARTHEME      20
 #define DLLA_CODER_GETVARIABLE      22
+#define DLLA_CODER_FILLVARLIST      23
 #define DLLA_CODER_GETVARTHEMEDATA  24
 
 #define OF_CLEAR                    0x001
@@ -138,7 +138,11 @@
                              CODER_AUTOCOMPLETE)
 
 //Variable flags
-#define VARF_LOWPRIORITY  0x1
+#define VARF_LOWPRIORITY   0x001 //Global variable has low priority.
+                                 //Next flags for DLLA_CODER_FILLVARLIST:
+#define VARF_EXTSTRING     0x100 //Copy string pointer to (const wchar_t *)CODERTHEMEITEM.nVarValue.
+#define VARF_EXTINTCOLOR   0x200 //Copy color integer to (COLORREF)CODERTHEMEITEM.nVarValue or -1 if not color.
+#define VARF_EXTLPINTCOLOR 0x400 //Copy color integer to (COLORREF *)CODERTHEMEITEM.nVarValue or -1 if not color.
 
 //UpdateEdit flags
 #define UE_ERASE        0x01
@@ -213,6 +217,7 @@ typedef struct _DELIMITERINFO {
   DWORD dwColor1;
   DWORD dwColor2;
   DWORD dwFontStyle;
+  int nParentID;
 } DELIMITERINFO;
 
 typedef struct {
@@ -237,6 +242,11 @@ typedef struct _MANUALSET {
 } MANUALSET;
 
 typedef struct {
+  MANUALSET *first;
+  MANUALSET *last;
+} STACKMANUALSET;
+
+typedef struct {
   INT_PTR first; //WORDINFO *
   INT_PTR last;  //WORDINFO *
   INT_PTR lpWordLens[MAX_PATH];
@@ -246,6 +256,12 @@ typedef struct {
   INT_PTR first; //WORDORDER *
   INT_PTR last;  //WORDORDER *
 } STACKWORDORDER;
+
+typedef struct {
+  INT_PTR first; //WORDALPHA *
+  INT_PTR last;  //WORDALPHA *
+  INT_PTR lpSorted[FIRST_NONLATIN + 1];
+} STACKWORDALPHA;
 
 typedef struct {
   INT_PTR first;
@@ -262,7 +278,14 @@ typedef struct {
   INT_PTR last;
   int nCommonFirstChar;
   BOOL bVisible;
+  int nFoldWithThemeCount;
 } STACKFOLD;
+
+typedef struct {
+  const wchar_t *wpVarName;
+  INT_PTR nVarValue;
+  DWORD dwVarFlags;         //See VARF_* defines.
+} CODERTHEMEITEM;
 
 typedef struct _VARINFO {
   struct _VARINFO *next;
@@ -271,7 +294,7 @@ typedef struct _VARINFO {
   int nVarNameLen;
   wchar_t *wpVarValue;
   int nVarValueLen;
-  DWORD dwVarFlags;       //See VARF_* defines.
+  DWORD dwVarFlags;         //See VARF_* defines.
 } VARINFO;
 
 typedef struct {
@@ -299,7 +322,9 @@ typedef struct _TITLEINFO {
   struct _TITLEINFO *prev;
   wchar_t *wpTitle;
   int nTitleLen;
+  DWORD dwTitleFlags;     //See TF_* defines
   BOOL bExactTitle;
+  STACKREGROUP *sregTitle;
 } TITLEINFO;
 
 typedef struct {
@@ -308,10 +333,15 @@ typedef struct {
 } STACKTITLE;
 
 typedef struct _STACKBLOCK {
-  INT_PTR first;
-  INT_PTR last;
+  INT_PTR first; //BLOCKINFO *
+  INT_PTR last;  //BLOCKINFO *
   INT_PTR lpSorted[FIRST_NONLATIN + 1];
 } STACKBLOCK;
+
+typedef struct {
+  INT_PTR first; //BLOCKORDER *
+  INT_PTR last;  //BLOCKORDER *
+} STACKBLOCKORDER;
 
 typedef struct _SYNTAXFILE {
   struct _SYNTAXFILE *next;
@@ -319,6 +349,7 @@ typedef struct _SYNTAXFILE {
   STACKWILDCARD hWildcardStack;
   STACKDELIM hDelimiterStack;
   STACKWORD hWordStack;
+  STACKWORDALPHA hWordAlphaStack;
   STACKWORDORDER hWordOrderStack;
   STACKQUOTE hQuoteStack;
   STACKSKIP hSkipStack;
@@ -328,9 +359,10 @@ typedef struct _SYNTAXFILE {
   STACKTITLE hTitleStack;
   STACKBLOCK hBlockStack;
   STACKBLOCK hExactBlockStack;
+  STACKBLOCKORDER hBlockOrderStack;
   wchar_t wszSyntaxFileName[MAX_PATH];
   VARTHEME *lpVarThemeLink;
-  HANDLE hThemeHighLight;
+  AEHTHEME hThemeHighLight;
   //HighLight
   DWORD dwFontFlags;
   LOGFONTW lfFont;
@@ -387,6 +419,11 @@ typedef struct _SYNTAXFILE {
   BOOL bCache;
 } SYNTAXFILE;
 
+typedef struct {
+  SYNTAXFILE *first;
+  SYNTAXFILE *last;
+} STACKSYNTAXFILE;
+
 
 //// Functions prototypes
 
@@ -409,30 +446,32 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
 LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewUserEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
-SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile);
+SYNTAXFILE* StackLoadSyntaxFile(STACKSYNTAXFILE *hStack, SYNTAXFILE *lpSyntaxFile);
 void StackRequestSyntaxFile(SYNTAXFILE *lpSyntaxFile);
-SYNTAXFILE* StackAddSyntaxFile(HSTACK *hStack, const wchar_t *wpFile);
-SYNTAXFILE* StackPushSortSyntaxFile(HSTACK *hStack, const wchar_t *wpFile, int nUpDown);
-SYNTAXFILE* StackGetSyntaxFileByFile(HSTACK *hStack, const wchar_t *wpFile);
-SYNTAXFILE* StackGetSyntaxFileByName(HSTACK *hStack, const wchar_t *wpSyntaxFileName);
-SYNTAXFILE* StackGetSyntaxFileByTheme(HSTACK *hStack, HANDLE hTheme);
-SYNTAXFILE* StackGetSyntaxFileByIndex(HSTACK *hStack, int nIndex);
-SYNTAXFILE* StackGetSyntaxFileByWindow(HSTACK *hStack, HWND hWnd, AEHDOC hDoc, const wchar_t **wppAlias);
-void StackFreeSyntaxFiles(HSTACK *hStack);
+SYNTAXFILE* StackAddSyntaxFile(STACKSYNTAXFILE *hStack, const wchar_t *wpFile);
+SYNTAXFILE* StackPushSortSyntaxFile(STACKSYNTAXFILE *hStack, const wchar_t *wpFile, int nUpDown);
+SYNTAXFILE* StackGetSyntaxFileByFile(STACKSYNTAXFILE *hStack, const wchar_t *wpFile);
+SYNTAXFILE* StackGetSyntaxFileByName(STACKSYNTAXFILE *hStack, const wchar_t *wpSyntaxFileName);
+SYNTAXFILE* StackGetSyntaxFileByTheme(STACKSYNTAXFILE *hStack, HANDLE hTheme);
+SYNTAXFILE* StackGetSyntaxFileByIndex(STACKSYNTAXFILE *hStack, int nIndex);
+SYNTAXFILE* StackGetSyntaxFileByWindow(STACKSYNTAXFILE *hStack, HWND hWnd, AEHDOC hDoc, const wchar_t **wppAlias);
+void StackUnsetLink(STACKSYNTAXFILE *hStack, VARTHEME *lpVarTheme);
+void StackFreeSyntaxFiles(STACKSYNTAXFILE *hStack);
 WILDCARDINFO* StackInsertWildcard(STACKWILDCARD *hStack, int nWildcardLen);
 WILDCARDINFO* StackGetWildcard(STACKWILDCARD *hStack, const wchar_t *wpFile);
 void StackFreeWildcard(STACKWILDCARD *hStack);
 DELIMITERINFO* StackInsertDelimiter(STACKDELIM *hStack, int nDelimiterLen);
 DELIMITERINFO* StackGetDelimiter(STACKDELIM *hStack, wchar_t wchDelimiter);
 void StackFreeDelimiter(STACKDELIM *hStack);
-BOOL IsInDelimiterList(const wchar_t *s, wchar_t c);
+wchar_t* AKD_wcschr(const wchar_t *s, wchar_t c);
+BOOL IsInDelimiterList(const wchar_t *wpList, int nListLen, wchar_t c);
 BOOL IsDelimiter(STACKDELIM *hDelimiterStack, HWND hWnd, int nChar);
 BOOL IsDelimiterFromLeft(STACKDELIM *hDelimiterStack, HWND hWnd, const AECHARINDEX *ciChar);
 BOOL IsDelimiterFromRight(STACKDELIM *hDelimiterStack, HWND hWnd, const AECHARINDEX *ciChar);
-MANUALSET* StackInsertManual(HSTACK *hStack);
-MANUALSET* StackGetManual(HSTACK *hStack, HWND hWndMaster, AEHDOC hDocMaster);
-MANUALSET* StackGetManualByUserParent(HSTACK *hStack, HWND hWndParent);
-void StackDeleteManual(HSTACK *hStack, MANUALSET *lpManual, DWORD dwDllFunction);
+MANUALSET* StackInsertManual(STACKMANUALSET *hStack);
+MANUALSET* StackGetManual(STACKMANUALSET *hStack, HWND hWndMaster, AEHDOC hDocMaster);
+MANUALSET* StackGetManualByUserParent(STACKMANUALSET *hStack, HWND hWndParent);
+void StackDeleteManual(STACKMANUALSET *hStack, MANUALSET *lpManual, DWORD dwDllFunction);
 
 VARTHEME* StackInsertVarTheme(STACKVARTHEME *hStack, int nIndex);
 VARTHEME* StackGetVarThemeByName(STACKVARTHEME *hStack, const wchar_t *wpVarThemeName);
@@ -447,7 +486,7 @@ VARTHEME* RequestVarTheme(STACKVARTHEME *hStack, const wchar_t *wpVarThemeName);
 void GetVarThemeGlobals(VARTHEME *lpVarTheme);
 int FillVarThemeList(HWND hWnd, VARTHEME *lpVarTheme);
 LPARAM ListViewItemParam(HWND hWnd, int nItem);
-VARINFO* StackInsertVar(STACKVAR *hStack, const wchar_t *wpVarName, int nVarNameLen, const wchar_t *wpVarValue, int nVarValueLen);
+VARINFO* StackInsertVar(STACKVAR *hStack, const wchar_t *wpVarName, int nVarNameLen, const wchar_t *wpVarValue, int nVarValueLen, BOOL bUnescape);
 VARINFO* StackGetVarByName(STACKVAR *hStack, const wchar_t *wpVarName, int nVarNameLen);
 VARINFO* StackGetVarByIndex(STACKVAR *hStack, int nIndex);
 void StackDeleteVar(STACKVAR *hStack, VARINFO *lpElement);
@@ -455,10 +494,10 @@ void StackFreeVars(STACKVAR *hStack);
 int ParseStringToVars(STACKVAR *lpVarStack, const wchar_t *wpText);
 DWORD ParseVarsToString(STACKVAR *lpVarStack, wchar_t **wpText);
 
-int GetWord(wchar_t *wpText, wchar_t *wszWord, int nWordLenMax, wchar_t **wpNextWord, BOOL *bQuote, STACKVAR *lpVarStack);
+int GetWord(const wchar_t *wpText, wchar_t *wszWord, int nWordMax, const wchar_t **wppNextWord, BOOL *lpbQuote, STACKVAR *lpVarStack);
 INT_PTR ExpandVars(const wchar_t *wpString, INT_PTR nStringLen, wchar_t *wszBuffer, INT_PTR nBufferSize, STACKVAR *lpVarStack);
-BOOL NextLine(wchar_t **wpText);
-BOOL SkipComment(wchar_t **wpText);
+BOOL NextLine(const wchar_t **wpText);
+BOOL SkipComment(const wchar_t **wpText);
 BOOL FileMaskCmp(const wchar_t *wpMaskStr, const wchar_t *wpFileStr);
 const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen);
 int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
@@ -501,6 +540,7 @@ extern wchar_t wszBuffer[BUFFER_SIZE];
 extern wchar_t wszMessage[MAX_PATH];
 extern wchar_t wszPluginName[MAX_PATH];
 extern wchar_t wszPluginTitle[MAX_PATH];
+extern wchar_t wszCoderDir[MAX_PATH];
 extern HINSTANCE hInstanceDLL;
 extern HWND hMainWnd;
 extern HWND hWndEdit;
@@ -519,8 +559,8 @@ extern int nInitCodeFold;
 extern BOOL bInitAutoComplete;
 extern BOOL bUseCache;
 extern BOOL bSaveCache;
-extern HSTACK hSyntaxFilesStack;
-extern HSTACK hManualStack;
+extern STACKSYNTAXFILE hSyntaxFilesStack;
+extern STACKMANUALSET hManualStack;
 extern STACKVARTHEME hVarThemesStack;
 extern SYNTAXFILE *lpLoadSyntaxFile;
 extern VARTHEME *lpVarThemeActive;
@@ -541,7 +581,7 @@ COMM #008000\r\
 VAR #800000\r\
 DEL1 #CC3333\r\
 DEL2 0\r\
-TYPE #3333CC\r\
+TYPE #000080\r\
 OP #3333CC\r\
 TAG #3333CC\r\
 ATTR #339933\r\
@@ -602,11 +642,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor 0\r\
 AutoComplete_ListBasicBkColor 0\r\
 AutoComplete_ListSelTextColor 0\r\
@@ -633,7 +673,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor 0\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_DEFAULT_VARTHEME (TXT_DEFAULT_VARTHEME_BASIC TXT_DEFAULT_VARTHEME_HIGHLIGHT TXT_DEFAULT_VARTHEME_CODEFOLD TXT_DEFAULT_VARTHEME_AUTOCOMPLETE TXT_DEFAULT_VARTHEME_LINEBOARD TXT_DEFAULT_VARTHEME_SPECIALCHAR)
+#define TXT_DEFAULT_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor 0\r\
+Sessions_ListBkColor 0\r"
+
+#define TXT_DEFAULT_VARTHEME (TXT_DEFAULT_VARTHEME_BASIC TXT_DEFAULT_VARTHEME_HIGHLIGHT TXT_DEFAULT_VARTHEME_CODEFOLD TXT_DEFAULT_VARTHEME_AUTOCOMPLETE TXT_DEFAULT_VARTHEME_LINEBOARD TXT_DEFAULT_VARTHEME_SPECIALCHAR TXT_DEFAULT_VARTHEME_SESSIONS)
 
 //Active4D variable theme
 #define TXT_ACTIVE4D_VARTHEME_BASIC \
@@ -703,11 +747,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #000000\r\
 AutoComplete_ListBasicBkColor #FFFFFF\r\
 AutoComplete_ListSelTextColor #000000\r\
@@ -734,7 +778,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #838383\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_ACTIVE4D_VARTHEME (TXT_ACTIVE4D_VARTHEME_BASIC TXT_ACTIVE4D_VARTHEME_HIGHLIGHT TXT_ACTIVE4D_VARTHEME_CODEFOLD TXT_ACTIVE4D_VARTHEME_AUTOCOMPLETE TXT_ACTIVE4D_VARTHEME_LINEBOARD TXT_ACTIVE4D_VARTHEME_SPECIALCHAR)
+#define TXT_ACTIVE4D_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #000000\r\
+Sessions_ListBkColor #FFFFFF\r"
+
+#define TXT_ACTIVE4D_VARTHEME (TXT_ACTIVE4D_VARTHEME_BASIC TXT_ACTIVE4D_VARTHEME_HIGHLIGHT TXT_ACTIVE4D_VARTHEME_CODEFOLD TXT_ACTIVE4D_VARTHEME_AUTOCOMPLETE TXT_ACTIVE4D_VARTHEME_LINEBOARD TXT_ACTIVE4D_VARTHEME_SPECIALCHAR TXT_ACTIVE4D_VARTHEME_SESSIONS)
 
 //Bespin variable theme
 #define TXT_BESPIN_VARTHEME_BASIC \
@@ -804,11 +852,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #E8E2DD\r\
 AutoComplete_ListBasicBkColor #2B211C\r\
 AutoComplete_ListSelTextColor #FFFFFF\r\
@@ -835,7 +883,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #9B9B9B\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_BESPIN_VARTHEME (TXT_BESPIN_VARTHEME_BASIC TXT_BESPIN_VARTHEME_HIGHLIGHT TXT_BESPIN_VARTHEME_CODEFOLD TXT_BESPIN_VARTHEME_AUTOCOMPLETE TXT_BESPIN_VARTHEME_LINEBOARD TXT_BESPIN_VARTHEME_SPECIALCHAR)
+#define TXT_BESPIN_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #E8E2DD\r\
+Sessions_ListBkColor #2B211C\r"
+
+#define TXT_BESPIN_VARTHEME (TXT_BESPIN_VARTHEME_BASIC TXT_BESPIN_VARTHEME_HIGHLIGHT TXT_BESPIN_VARTHEME_CODEFOLD TXT_BESPIN_VARTHEME_AUTOCOMPLETE TXT_BESPIN_VARTHEME_LINEBOARD TXT_BESPIN_VARTHEME_SPECIALCHAR TXT_BESPIN_VARTHEME_SESSIONS)
 
 //Cobalt variable theme
 #define TXT_COBALT_VARTHEME_BASIC \
@@ -905,11 +957,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #FFFFFF\r\
 AutoComplete_ListBasicBkColor #002240\r\
 AutoComplete_ListSelTextColor #FFFFFF\r\
@@ -936,7 +988,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #95A3B0\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_COBALT_VARTHEME (TXT_COBALT_VARTHEME_BASIC TXT_COBALT_VARTHEME_HIGHLIGHT TXT_COBALT_VARTHEME_CODEFOLD TXT_COBALT_VARTHEME_AUTOCOMPLETE TXT_COBALT_VARTHEME_LINEBOARD TXT_COBALT_VARTHEME_SPECIALCHAR)
+#define TXT_COBALT_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #FFFFFF\r\
+Sessions_ListBkColor #002240\r"
+
+#define TXT_COBALT_VARTHEME (TXT_COBALT_VARTHEME_BASIC TXT_COBALT_VARTHEME_HIGHLIGHT TXT_COBALT_VARTHEME_CODEFOLD TXT_COBALT_VARTHEME_AUTOCOMPLETE TXT_COBALT_VARTHEME_LINEBOARD TXT_COBALT_VARTHEME_SPECIALCHAR TXT_COBALT_VARTHEME_SESSIONS)
 
 //Dawn variable theme
 #define TXT_DAWN_VARTHEME_BASIC \
@@ -1006,11 +1062,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #080808\r\
 AutoComplete_ListBasicBkColor #F9F9F9\r\
 AutoComplete_ListSelTextColor #080808\r\
@@ -1037,7 +1093,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #999999\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_DAWN_VARTHEME (TXT_DAWN_VARTHEME_BASIC TXT_DAWN_VARTHEME_HIGHLIGHT TXT_DAWN_VARTHEME_CODEFOLD TXT_DAWN_VARTHEME_AUTOCOMPLETE TXT_DAWN_VARTHEME_LINEBOARD TXT_DAWN_VARTHEME_SPECIALCHAR)
+#define TXT_DAWN_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #080808\r\
+Sessions_ListBkColor #F9F9F9\r"
+
+#define TXT_DAWN_VARTHEME (TXT_DAWN_VARTHEME_BASIC TXT_DAWN_VARTHEME_HIGHLIGHT TXT_DAWN_VARTHEME_CODEFOLD TXT_DAWN_VARTHEME_AUTOCOMPLETE TXT_DAWN_VARTHEME_LINEBOARD TXT_DAWN_VARTHEME_SPECIALCHAR TXT_DAWN_VARTHEME_SESSIONS)
 
 //Earth variable theme
 #define TXT_EARTH_VARTHEME_BASIC \
@@ -1107,11 +1167,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #000000\r\
 AutoComplete_ListBasicBkColor #FFFFFF\r\
 AutoComplete_ListSelTextColor #000000\r\
@@ -1138,7 +1198,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #9A9A9A\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_EARTH_VARTHEME (TXT_EARTH_VARTHEME_BASIC TXT_EARTH_VARTHEME_HIGHLIGHT TXT_EARTH_VARTHEME_CODEFOLD TXT_EARTH_VARTHEME_AUTOCOMPLETE TXT_EARTH_VARTHEME_LINEBOARD TXT_EARTH_VARTHEME_SPECIALCHAR)
+#define TXT_EARTH_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #000000\r\
+Sessions_ListBkColor #FFFFFF\r"
+
+#define TXT_EARTH_VARTHEME (TXT_EARTH_VARTHEME_BASIC TXT_EARTH_VARTHEME_HIGHLIGHT TXT_EARTH_VARTHEME_CODEFOLD TXT_EARTH_VARTHEME_AUTOCOMPLETE TXT_EARTH_VARTHEME_LINEBOARD TXT_EARTH_VARTHEME_SPECIALCHAR TXT_EARTH_VARTHEME_SESSIONS)
 
 //iPlastic variable theme
 #define TXT_IPLASTIC_VARTHEME_BASIC \
@@ -1208,11 +1272,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #000000\r\
 AutoComplete_ListBasicBkColor #EEEEEE\r\
 AutoComplete_ListSelTextColor #000000\r\
@@ -1239,7 +1303,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #999999\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_IPLASTIC_VARTHEME (TXT_IPLASTIC_VARTHEME_BASIC TXT_IPLASTIC_VARTHEME_HIGHLIGHT TXT_IPLASTIC_VARTHEME_CODEFOLD TXT_IPLASTIC_VARTHEME_AUTOCOMPLETE TXT_IPLASTIC_VARTHEME_LINEBOARD TXT_IPLASTIC_VARTHEME_SPECIALCHAR)
+#define TXT_IPLASTIC_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #000000\r\
+Sessions_ListBkColor #EEEEEE\r"
+
+#define TXT_IPLASTIC_VARTHEME (TXT_IPLASTIC_VARTHEME_BASIC TXT_IPLASTIC_VARTHEME_HIGHLIGHT TXT_IPLASTIC_VARTHEME_CODEFOLD TXT_IPLASTIC_VARTHEME_AUTOCOMPLETE TXT_IPLASTIC_VARTHEME_LINEBOARD TXT_IPLASTIC_VARTHEME_SPECIALCHAR TXT_IPLASTIC_VARTHEME_SESSIONS)
 
 //Lazy variable theme
 #define TXT_LAZY_VARTHEME_BASIC \
@@ -1309,11 +1377,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #000000\r\
 AutoComplete_ListBasicBkColor #FFFFFF\r\
 AutoComplete_ListSelTextColor #000000\r\
@@ -1340,7 +1408,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #BBBBBB\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_LAZY_VARTHEME (TXT_LAZY_VARTHEME_BASIC TXT_LAZY_VARTHEME_HIGHLIGHT TXT_LAZY_VARTHEME_CODEFOLD TXT_LAZY_VARTHEME_AUTOCOMPLETE TXT_LAZY_VARTHEME_LINEBOARD TXT_LAZY_VARTHEME_SPECIALCHAR)
+#define TXT_LAZY_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #000000\r\
+Sessions_ListBkColor #FFFFFF\r"
+
+#define TXT_LAZY_VARTHEME (TXT_LAZY_VARTHEME_BASIC TXT_LAZY_VARTHEME_HIGHLIGHT TXT_LAZY_VARTHEME_CODEFOLD TXT_LAZY_VARTHEME_AUTOCOMPLETE TXT_LAZY_VARTHEME_LINEBOARD TXT_LAZY_VARTHEME_SPECIALCHAR TXT_LAZY_VARTHEME_SESSIONS)
 
 //Mac Classic variable theme
 #define TXT_MACCLASSIC_VARTHEME_BASIC \
@@ -1410,11 +1482,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #000000\r\
 AutoComplete_ListBasicBkColor #FFFFFF\r\
 AutoComplete_ListSelTextColor #000000\r\
@@ -1441,7 +1513,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #A2A2A2\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_MACCLASSIC_VARTHEME (TXT_MACCLASSIC_VARTHEME_BASIC TXT_MACCLASSIC_VARTHEME_HIGHLIGHT TXT_MACCLASSIC_VARTHEME_CODEFOLD TXT_MACCLASSIC_VARTHEME_AUTOCOMPLETE TXT_MACCLASSIC_VARTHEME_LINEBOARD TXT_MACCLASSIC_VARTHEME_SPECIALCHAR)
+#define TXT_MACCLASSIC_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #000000\r\
+Sessions_ListBkColor #FFFFFF\r"
+
+#define TXT_MACCLASSIC_VARTHEME (TXT_MACCLASSIC_VARTHEME_BASIC TXT_MACCLASSIC_VARTHEME_HIGHLIGHT TXT_MACCLASSIC_VARTHEME_CODEFOLD TXT_MACCLASSIC_VARTHEME_AUTOCOMPLETE TXT_MACCLASSIC_VARTHEME_LINEBOARD TXT_MACCLASSIC_VARTHEME_SPECIALCHAR TXT_MACCLASSIC_VARTHEME_SESSIONS)
 
 //Monokai variable theme
 #define TXT_MONOKAI_VARTHEME_BASIC \
@@ -1511,11 +1587,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #F8F8F2\r\
 AutoComplete_ListBasicBkColor #272822\r\
 AutoComplete_ListSelTextColor #F8F8F2\r\
@@ -1542,7 +1618,116 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #747474\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_MONOKAI_VARTHEME (TXT_MONOKAI_VARTHEME_BASIC TXT_MONOKAI_VARTHEME_HIGHLIGHT TXT_MONOKAI_VARTHEME_CODEFOLD TXT_MONOKAI_VARTHEME_AUTOCOMPLETE TXT_MONOKAI_VARTHEME_LINEBOARD TXT_MONOKAI_VARTHEME_SPECIALCHAR)
+#define TXT_MONOKAI_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #F8F8F2\r\
+Sessions_ListBkColor #272822\r"
+
+#define TXT_MONOKAI_VARTHEME (TXT_MONOKAI_VARTHEME_BASIC TXT_MONOKAI_VARTHEME_HIGHLIGHT TXT_MONOKAI_VARTHEME_CODEFOLD TXT_MONOKAI_VARTHEME_AUTOCOMPLETE TXT_MONOKAI_VARTHEME_LINEBOARD TXT_MONOKAI_VARTHEME_SPECIALCHAR TXT_MONOKAI_VARTHEME_SESSIONS)
+
+//Obsidian variable theme
+#define TXT_OBSIDIAN_VARTHEME_BASIC \
+L"STR #EC7600\r\
+COMM #7D8C93\r\
+VAR #8C8CB4\r\
+DEL1 #E8E2B7\r\
+DEL2 #E8E2B7\r\
+TYPE #D75028\r\
+OP #93C763\r\
+TAG #8CBBAD\r\
+ATTR #678CB1\r\
+IF #A082BD\r\
+AREA #99A38A\r\
+NUM #FFCD22\r"
+
+#define TXT_OBSIDIAN_VARTHEME_HIGHLIGHT \
+L"HighLight_FontStyle 0\r\
+HighLight_FontSize 0\r\
+HighLight_FaceName \"\"\r\
+HighLight_BasicTextColor #E0E2E4\r\
+HighLight_BasicBkColor #293134\r\
+HighLight_SelTextColor #FFFFFF\r\
+HighLight_SelBkColor #4B595C\r\
+HighLight_LineTextColor #E0E2E4\r\
+HighLight_LineBkColor #2E383B\r\
+HighLight_LineBorderColor #424C50\r\
+HighLight_AltTextColor #E0E2E4\r\
+HighLight_AltBkColor #2A3336\r\
+HighLight_AltBorderColor #262D2F\r\
+HighLight_ColumnColor #7F878B\r\
+HighLight_MarkerColor #467984\r\
+HighLight_CaretColor #FFD155\r\
+HighLight_UrlColor #66C6FF\r\
+HighLight_ActiveUrlColor #A8DEFF\r\
+HighLight_VisitUrlColor #A8DEFF\r\
+HighLight_BkImageFile \"\"\r\
+HighLight_BkImageAlpha 128\r\
+HighLight_AutoMarkFlags 1\r\
+HighLight_AutoMarkFontStyle 0\r\
+HighLight_AutoMarkTextColor #FFFFFF\r\
+HighLight_AutoMarkBkColor #963A46\r"
+
+#define TXT_OBSIDIAN_VARTHEME_CODEFOLD \
+L"CodeFold_PanelFirstBkColor #2E373A\r\
+CodeFold_PanelSecondBkColor #2E373A\r\
+CodeFold_PanelNormalFoldColor #106678\r\
+CodeFold_PanelActiveFoldColor #A1C2C9\r\
+CodeFold_PanelNormalNodeOpenBkColor #2E373A\r\
+CodeFold_PanelNormalNodeCloseBkColor #106678\r\
+CodeFold_PanelActiveNodeOpenBkColor #2E373A\r\
+CodeFold_PanelActiveNodeCloseBkColor #A1C2C9\r\
+CodeFold_PanelNormalNodeOpenSignColor #106678\r\
+CodeFold_PanelNormalNodeCloseSignColor #76A7B1\r\
+CodeFold_PanelActiveNodeOpenSignColor #A1C2C9\r\
+CodeFold_PanelActiveNodeCloseSignColor #2E373A\r\
+CodeFold_ListTextColor #E0E2E4\r\
+CodeFold_ListBkColor #293134\r\
+CodeFold_TagMarkFlags 0\r\
+CodeFold_TagMarkFontStyle 1\r\
+CodeFold_TagMarkTextColor #E0E2E4\r\
+CodeFold_TagMarkBkColor #37625E\r"
+
+#define TXT_OBSIDIAN_VARTHEME_AUTOCOMPLETE \
+L"AutoComplete_ListFontStyle 0\r\
+AutoComplete_ListFontSize 0\r\
+AutoComplete_ListFaceName \"\"\r\
+AutoComplete_ListLineGap 0\r\
+AutoComplete_ListBlockIcon \"\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
+AutoComplete_ListHlBaseIcon \"\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
+AutoComplete_ListDocWordIcon \"\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
+AutoComplete_ListBasicTextColor #E0E2E4\r\
+AutoComplete_ListBasicBkColor #293134\r\
+AutoComplete_ListSelTextColor #FFFFFF\r\
+AutoComplete_ListSelBkColor #4B595C\r\
+AutoComplete_Indent \"  \"\r"
+
+#define TXT_OBSIDIAN_VARTHEME_LINEBOARD \
+L"LineBoard_TextColor #C0C9CB\r\
+LineBoard_BkColor #4E595E\r\
+LineBoard_BorderColor #4E595E\r\
+LineBoard_BookmarkTextColor #222222\r\
+LineBoard_BookmarkBkColor #D3D155\r\
+LineBoard_BookmarkBorderColor #EDECBA\r\
+LineBoard_LineUnsavedColor #FFB13E\r\
+LineBoard_LineSavedColor #AEDB5B\r\
+LineBoard_RulerScaleColor #9FABAF\r\
+LineBoard_RulerCaretColor #FF3515\r"
+
+#define TXT_OBSIDIAN_VARTHEME_SPECIALCHAR \
+L"SpecialChar_BasicFontStyle 0\r\
+SpecialChar_BasicTextColor #4E595E\r\
+SpecialChar_BasicBkColor 0\r\
+SpecialChar_SelFontStyle 0\r\
+SpecialChar_SelTextColor #737C80\r\
+SpecialChar_SelBkColor 0\r"
+
+#define TXT_OBSIDIAN_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #E0E2E4\r\
+Sessions_ListBkColor #293134\r"
+
+#define TXT_OBSIDIAN_VARTHEME (TXT_OBSIDIAN_VARTHEME_BASIC TXT_OBSIDIAN_VARTHEME_HIGHLIGHT TXT_OBSIDIAN_VARTHEME_CODEFOLD TXT_OBSIDIAN_VARTHEME_AUTOCOMPLETE TXT_OBSIDIAN_VARTHEME_LINEBOARD TXT_OBSIDIAN_VARTHEME_SPECIALCHAR TXT_OBSIDIAN_VARTHEME_SESSIONS)
 
 //Solarized Light variable theme
 #define TXT_SOLARIZEDLIGHT_VARTHEME_BASIC \
@@ -1612,11 +1797,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #586E75\r\
 AutoComplete_ListBasicBkColor #FDF6E3\r\
 AutoComplete_ListSelTextColor #586E75\r\
@@ -1643,7 +1828,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #BBBBBB\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_SOLARIZEDLIGHT_VARTHEME (TXT_SOLARIZEDLIGHT_VARTHEME_BASIC TXT_SOLARIZEDLIGHT_VARTHEME_HIGHLIGHT TXT_SOLARIZEDLIGHT_VARTHEME_CODEFOLD TXT_SOLARIZEDLIGHT_VARTHEME_AUTOCOMPLETE TXT_SOLARIZEDLIGHT_VARTHEME_LINEBOARD TXT_SOLARIZEDLIGHT_VARTHEME_SPECIALCHAR)
+#define TXT_SOLARIZEDLIGHT_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #586E75\r\
+Sessions_ListBkColor #FDF6E3\r"
+
+#define TXT_SOLARIZEDLIGHT_VARTHEME (TXT_SOLARIZEDLIGHT_VARTHEME_BASIC TXT_SOLARIZEDLIGHT_VARTHEME_HIGHLIGHT TXT_SOLARIZEDLIGHT_VARTHEME_CODEFOLD TXT_SOLARIZEDLIGHT_VARTHEME_AUTOCOMPLETE TXT_SOLARIZEDLIGHT_VARTHEME_LINEBOARD TXT_SOLARIZEDLIGHT_VARTHEME_SPECIALCHAR TXT_SOLARIZEDLIGHT_VARTHEME_SESSIONS)
 
 //Solarized Dark variable theme
 #define TXT_SOLARIZEDDARK_VARTHEME_BASIC \
@@ -1713,11 +1902,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #839496\r\
 AutoComplete_ListBasicBkColor #002B36\r\
 AutoComplete_ListSelTextColor #FFFFFF\r\
@@ -1744,7 +1933,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #A8A8A8\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_SOLARIZEDDARK_VARTHEME (TXT_SOLARIZEDDARK_VARTHEME_BASIC TXT_SOLARIZEDDARK_VARTHEME_HIGHLIGHT TXT_SOLARIZEDDARK_VARTHEME_CODEFOLD TXT_SOLARIZEDDARK_VARTHEME_AUTOCOMPLETE TXT_SOLARIZEDDARK_VARTHEME_LINEBOARD TXT_SOLARIZEDDARK_VARTHEME_SPECIALCHAR)
+#define TXT_SOLARIZEDDARK_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #839496\r\
+Sessions_ListBkColor #002B36\r"
+
+#define TXT_SOLARIZEDDARK_VARTHEME (TXT_SOLARIZEDDARK_VARTHEME_BASIC TXT_SOLARIZEDDARK_VARTHEME_HIGHLIGHT TXT_SOLARIZEDDARK_VARTHEME_CODEFOLD TXT_SOLARIZEDDARK_VARTHEME_AUTOCOMPLETE TXT_SOLARIZEDDARK_VARTHEME_LINEBOARD TXT_SOLARIZEDDARK_VARTHEME_SPECIALCHAR TXT_SOLARIZEDDARK_VARTHEME_SESSIONS)
 
 //SpaceCadet variable theme
 #define TXT_SPACECADET_VARTHEME_BASIC \
@@ -1814,11 +2007,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #DDE6CF\r\
 AutoComplete_ListBasicBkColor #0D0D0D\r\
 AutoComplete_ListSelTextColor #DDE6CF\r\
@@ -1845,7 +2038,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #585858\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_SPACECADET_VARTHEME (TXT_SPACECADET_VARTHEME_BASIC TXT_SPACECADET_VARTHEME_HIGHLIGHT TXT_SPACECADET_VARTHEME_CODEFOLD TXT_SPACECADET_VARTHEME_AUTOCOMPLETE TXT_SPACECADET_VARTHEME_LINEBOARD TXT_SPACECADET_VARTHEME_SPECIALCHAR)
+#define TXT_SPACECADET_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #DDE6CF\r\
+Sessions_ListBkColor #0D0D0D\r"
+
+#define TXT_SPACECADET_VARTHEME (TXT_SPACECADET_VARTHEME_BASIC TXT_SPACECADET_VARTHEME_HIGHLIGHT TXT_SPACECADET_VARTHEME_CODEFOLD TXT_SPACECADET_VARTHEME_AUTOCOMPLETE TXT_SPACECADET_VARTHEME_LINEBOARD TXT_SPACECADET_VARTHEME_SPECIALCHAR TXT_SPACECADET_VARTHEME_SESSIONS)
 
 //Sunburst variable theme
 #define TXT_SUNBURST_VARTHEME_BASIC \
@@ -1915,11 +2112,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #F8F8F8\r\
 AutoComplete_ListBasicBkColor #060606\r\
 AutoComplete_ListSelTextColor #F8F8F8\r\
@@ -1946,7 +2143,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #515151\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_SUNBURST_VARTHEME (TXT_SUNBURST_VARTHEME_BASIC TXT_SUNBURST_VARTHEME_HIGHLIGHT TXT_SUNBURST_VARTHEME_CODEFOLD TXT_SUNBURST_VARTHEME_AUTOCOMPLETE TXT_SUNBURST_VARTHEME_LINEBOARD TXT_SUNBURST_VARTHEME_SPECIALCHAR)
+#define TXT_SUNBURST_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #F8F8F8\r\
+Sessions_ListBkColor #060606\r"
+
+#define TXT_SUNBURST_VARTHEME (TXT_SUNBURST_VARTHEME_BASIC TXT_SUNBURST_VARTHEME_HIGHLIGHT TXT_SUNBURST_VARTHEME_CODEFOLD TXT_SUNBURST_VARTHEME_AUTOCOMPLETE TXT_SUNBURST_VARTHEME_LINEBOARD TXT_SUNBURST_VARTHEME_SPECIALCHAR TXT_SUNBURST_VARTHEME_SESSIONS)
 
 //Twilight variable theme
 #define TXT_TWILIGHT_VARTHEME_BASIC \
@@ -2016,11 +2217,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #F8F8F8\r\
 AutoComplete_ListBasicBkColor #141414\r\
 AutoComplete_ListSelTextColor #F8F8F8\r\
@@ -2047,7 +2248,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #6F6F6F\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_TWILIGHT_VARTHEME (TXT_TWILIGHT_VARTHEME_BASIC TXT_TWILIGHT_VARTHEME_HIGHLIGHT TXT_TWILIGHT_VARTHEME_CODEFOLD TXT_TWILIGHT_VARTHEME_AUTOCOMPLETE TXT_TWILIGHT_VARTHEME_LINEBOARD TXT_TWILIGHT_VARTHEME_SPECIALCHAR)
+#define TXT_TWILIGHT_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #F8F8F8\r\
+Sessions_ListBkColor #141414\r"
+
+#define TXT_TWILIGHT_VARTHEME (TXT_TWILIGHT_VARTHEME_BASIC TXT_TWILIGHT_VARTHEME_HIGHLIGHT TXT_TWILIGHT_VARTHEME_CODEFOLD TXT_TWILIGHT_VARTHEME_AUTOCOMPLETE TXT_TWILIGHT_VARTHEME_LINEBOARD TXT_TWILIGHT_VARTHEME_SPECIALCHAR TXT_TWILIGHT_VARTHEME_SESSIONS)
 
 //Zenburn variable theme
 #define TXT_ZENBURN_VARTHEME_BASIC \
@@ -2117,11 +2322,11 @@ AutoComplete_ListFontSize 0\r\
 AutoComplete_ListFaceName \"\"\r\
 AutoComplete_ListLineGap 0\r\
 AutoComplete_ListBlockIcon \"\"\r\
-AutoComplete_ListBlockIconMargins \"0;1\"\r\
+AutoComplete_ListBlockIconMargins 0;1\r\
 AutoComplete_ListHlBaseIcon \"\"\r\
-AutoComplete_ListHlBaseIconMargins \"0;1\"\r\
+AutoComplete_ListHlBaseIconMargins 0;1\r\
 AutoComplete_ListDocWordIcon \"\"\r\
-AutoComplete_ListDocWordIconMargins \"0;1\"\r\
+AutoComplete_ListDocWordIconMargins 0;1\r\
 AutoComplete_ListBasicTextColor #FFFFFF\r\
 AutoComplete_ListBasicBkColor #3F3F3F\r\
 AutoComplete_ListSelTextColor #DFDFBF\r\
@@ -2148,7 +2353,11 @@ SpecialChar_SelFontStyle 0\r\
 SpecialChar_SelTextColor #9F9F9F\r\
 SpecialChar_SelBkColor 0\r"
 
-#define TXT_ZENBURN_VARTHEME (TXT_ZENBURN_VARTHEME_BASIC TXT_ZENBURN_VARTHEME_HIGHLIGHT TXT_ZENBURN_VARTHEME_CODEFOLD TXT_ZENBURN_VARTHEME_AUTOCOMPLETE TXT_ZENBURN_VARTHEME_LINEBOARD TXT_ZENBURN_VARTHEME_SPECIALCHAR)
+#define TXT_ZENBURN_VARTHEME_SESSIONS \
+L"Sessions_ListTextColor #FFFFFF\r\
+Sessions_ListBkColor #3F3F3F\r"
+
+#define TXT_ZENBURN_VARTHEME (TXT_ZENBURN_VARTHEME_BASIC TXT_ZENBURN_VARTHEME_HIGHLIGHT TXT_ZENBURN_VARTHEME_CODEFOLD TXT_ZENBURN_VARTHEME_AUTOCOMPLETE TXT_ZENBURN_VARTHEME_LINEBOARD TXT_ZENBURN_VARTHEME_SPECIALCHAR TXT_ZENBURN_VARTHEME_SESSIONS)
 
 
 #endif

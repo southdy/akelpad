@@ -25,8 +25,6 @@
 #define STRID_INFO   1
 #define STRID_PLUGIN 2
 
-#define BUFFER_SIZE       1024
-
 //Functions prototypes
 const char* GetLangStringA(LANGID wLangID, int nStringID);
 const wchar_t* GetLangStringW(LANGID wLangID, int nStringID);
@@ -50,7 +48,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Stats";
 }
 

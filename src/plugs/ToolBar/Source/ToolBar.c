@@ -3,11 +3,13 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
-#include "AkelEdit.h"
-#include "AkelDLL.h"
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
+#include "MethodFunc.h"
+#include "IconMenu.h"
+#include "AkelEdit.h"
+#include "AkelDLL.h"
 #include "Resources\Resource.h"
 
 
@@ -17,6 +19,7 @@
 #define StackInsertAfter
 #define StackInsertBefore
 #define StackInsertIndex
+#define StackMoveBefore
 #define StackDelete
 #define StackClear
 #define StackSize
@@ -40,6 +43,7 @@
 #define dec2hexW
 #define hex2decW
 #define xprintfW
+#define xstrstrW
 #include "StrFunc.h"
 
 //Include wide functions
@@ -55,8 +59,11 @@
 #define GetMessageWide
 #define GetWindowLongPtrWide
 #define GetWindowTextWide
+#define IconExtractWide
 #define InsertMenuWide
 #define IsDialogMessageWide
+#define LoadImageWide
+#define LoadLibraryExWide
 #define RegisterClassWide
 #define SearchPathWide
 #define SetDlgItemTextWide
@@ -67,36 +74,56 @@
 #include "WideFunc.h"
 //*/
 
+//Include method functions
+#define ALLMETHODFUNC
+#include "MethodFunc.h"
+
+//Include icon menu functions
+#define ICONMENU_INCLUDE
+#include "IconMenu.h"
+
 //Defines
 #define DLLA_TOOLBAR_ROWS      1
 
-#define STRID_SETUP                          1
-#define STRID_AUTOLOAD                       2
-#define STRID_BIGICONS                       3
-#define STRID_FLATBUTTONS                    4
-#define STRID_16BIT                          5
-#define STRID_32BIT                          6
-#define STRID_SIDE                           7
-#define STRID_ROWS                           8
-#define STRID_PARSEMSG_UNKNOWNMETHOD         9
-#define STRID_PARSEMSG_METHODALREADYDEFINED  10
-#define STRID_PARSEMSG_NOMETHOD              11
-#define STRID_PLUGIN                         12
-#define STRID_OK                             13
-#define STRID_CANCEL                         14
-#define STRID_DEFAULTMENU                    15
+#define STRID_SETUP                           1
+#define STRID_AUTOLOAD                        2
+#define STRID_BIGICONS                        3
+#define STRID_FLATBUTTONS                     4
+#define STRID_16BIT                           5
+#define STRID_32BIT                           6
+#define STRID_SIDE                            7
+#define STRID_ROWS                            8
+#define STRID_PARSEMSG_UNKNOWNSPECIAL         9
+#define STRID_PARSEMSG_UNKNOWNMETHOD          10
+#define STRID_PARSEMSG_METHODALREADYDEFINED   11
+#define STRID_PARSEMSG_NOMETHOD               12
+#define STRID_PARSEMSG_WRONGPARAMCOUNT        13
+#define STRID_PARSEMSG_NOOPENSET              14
+#define STRID_PARSEMSG_NOCOMMA                15
+#define STRID_PARSEMSG_NOCLOSEPARENTHESIS     16
+#define STRID_PARSEMSG_NOEOL                  17
+#define STRID_IF_NOCOMMA                      18
+#define STRID_IF_NOCLOSEPARENTHESIS           19
+#define STRID_IF_UNKNOWNOPERATOR              20
+#define STRID_IF_UNKNOWNMETHOD                21
+#define STRID_IF_CALLERROR                    22
+#define STRID_IF_NOFALSE                      23
+#define STRID_IF_FOCUSCHANGED                 24
+#define STRID_IF_WRONGPARAMCOUNT              25
+#define STRID_IF_SCRIPTDENIED                 26
+#define STRID_PLUGIN                          27
+#define STRID_OK                              28
+#define STRID_CANCEL                          29
+#define STRID_DEFAULTMENU                     30
 
 #define AKDLL_RECREATE        (WM_USER + 100)
 #define AKDLL_REFRESH         (WM_USER + 101)
 #define AKDLL_SETUP           (WM_USER + 102)
 #define AKDLL_SELTEXT         (WM_USER + 103)
-#define AKDLL_FREEMESSAGELOOP (WM_USER + 150)
 
 #define OF_LISTTEXT       0x1
 #define OF_SETTINGS       0x2
 #define OF_RECT           0x4
-
-#define BUFFER_SIZE       1024
 
 #define EXTACT_COMMAND    1
 #define EXTACT_CALL       2
@@ -122,6 +149,8 @@
 #define CCMS_NOMDI       0x02
 #define CCMS_NOPMDI      0x04
 #define CCMS_NOFILEEXIST 0x20
+#define CCMS_SKIPIF      0x40
+#define CCMS_CHECKIF     0x80
 
 #define MAX_TOOLBARTEXT_SIZE  64000
 
@@ -135,8 +164,32 @@
 #define TSP_TOPBOTTOM  1
 #define TSP_LEFTRIGHT  2
 
+//Icon arrow overlay
+#define IAO_WHOLEDROPDOWN   -1 //BTNS_WHOLEDROPDOWN style used.
+#define IAO_NONE             0 //Don't draw any arrows.
+#define IAO_COPYNORMAL       1 //IDI_ICONARROW1 icon used.
+#define IAO_COPYWHITEASMASK  2 //IDI_ICONARROW2 icon used.
+
+//Icon size
+#define BIS_ICON16          0 //16x16 icons.
+#define BIS_ICON32          1 //32x32 icons.
+#define BIS_ICON24          2 //24x24 icons.
+
+//Grayed icons
+#define GI_SYSTEM          0 //System drawing.
+#define GI_PLUGIN          1 //Plugin drawing.
+
 #define IMENU_EDIT     0x00000001
 #define IMENU_CHECKS   0x00000004
+
+//If() method states
+#define IFS_NORMAL           0x0
+#define IFS_CHECKED          0x1
+#define IFS_GRAYED           0x2
+#define IFS_DISABLED         0x4 //Only for ContextMenu
+
+//AKD_IFEXPRESSION custom errors
+#define IEE_FOCUSCHANGED     7
 
 #define TOOLBARBACKGROUNDA   "ToolbarBG"
 #define TOOLBARBACKGROUNDW  L"ToolbarBG"
@@ -146,29 +199,33 @@
 #define ROWSHOW_OFF       0
 #define ROWSHOW_ON        1
 
-typedef struct _EXTPARAM {
-  struct _EXTPARAM *next;
-  struct _EXTPARAM *prev;
-  DWORD dwType;
-  INT_PTR nNumber;
-  char *pString;
-  wchar_t *wpString;
-  char *pExpanded;
-  int nExpandedAnsiLen;
-  wchar_t *wpExpanded;
-  int nExpandedUnicodeLen;
-} EXTPARAM;
+#ifndef BTNS_WHOLEDROPDOWN
+  #define BTNS_WHOLEDROPDOWN 0x0080
+#endif
+#ifndef TBSTYLE_EX_DOUBLEBUFFER
+  #define TBSTYLE_EX_DOUBLEBUFFER 0x00000080
+#endif
+
+typedef struct _STATEIF {
+  struct _STATEIF *next;
+  struct _STATEIF *prev;
+  DWORD dwFlags;
+  STACKEXTPARAM hParamStack;
+  INT_PTR nValue;
+  BOOL bCalculated;
+  int nStopError;
+} STATEIF;
 
 typedef struct {
-  EXTPARAM *first;
-  EXTPARAM *last;
-  int nElements;
-} STACKEXTPARAM;
+  STATEIF *first;
+  STATEIF *last;
+} STACKSTATEIF;
 
 typedef struct _TOOLBARITEM {
   struct _TOOLBARITEM *next;
   struct _TOOLBARITEM *prev;
   BOOL bUpdateItem;
+  STATEIF *lpStateIf;
   BOOL bAutoLoad;
   DWORD dwAction;
   int nTextOffset;
@@ -183,7 +240,11 @@ typedef struct {
   TOOLBARITEM *first;
   TOOLBARITEM *last;
   HIMAGELIST hImageList;
-} TOOLBARDATA;
+  HIMAGELIST hDisabledImageList;
+  int nRows;
+  int nSepRows;
+  STACKSTATEIF hStateIfStack;
+} STACKTOOLBAR;
 
 typedef struct _ROWITEM {
   struct _ROWITEM *next;
@@ -206,6 +267,7 @@ typedef struct {
   unsigned char *pPosY;
   INT_PTR nMenuIndex;
   unsigned char *pMenuName;
+  INT_PTR *lpnMenuHeight;
 } DLLEXTCONTEXTMENU;
 
 #define DLLA_CONTEXTMENU_SHOWSUBMENU   1
@@ -218,47 +280,46 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 void CALLBACK NewMainProcRet(CWPRETSTRUCT *cwprs);
 LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewToolbarProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+VOID CALLBACK PaintTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
 BOOL CreateToolbarWindow();
-BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText);
+BOOL CreateToolbarData(STACKTOOLBAR *hStack, const wchar_t *wpText);
 DWORD IsFlagOn(DWORD dwSetFlags, DWORD dwCheckFlags);
 int ParseRows(STACKROW *lpRowListStack);
 ROWITEM* GetRow(STACKROW *lpRowListStack, int nRow);
 TOOLBARITEM* GetFirstToolbarItemOfNextRow(ROWITEM *lpRowItem);
 void FreeRows(STACKROW *lpRowListStack);
-void FreeToolbarData(TOOLBARDATA *hToolbarData);
-void SetToolbarButtons(TOOLBARDATA *hToolbarData);
+void FreeToolbarData(STACKTOOLBAR *hStack);
+void SetToolbarButtons(STACKTOOLBAR *hStack);
 void ClearToolbarButtons();
-void UpdateToolbar(TOOLBARDATA *hToolbarData);
+void UpdateToolbar(STACKTOOLBAR *hStack);
 void ViewItemCode(TOOLBARITEM *lpButton);
-void CallToolbar(TOOLBARDATA *hToolbarData, int nItem);
-void CallContextMenuShow(TOOLBARITEM *lpButton, int nPosX, int nPosY);
+void CallToolbar(STACKTOOLBAR *hStack, int nItem);
+void CallContextMenuShow(TOOLBARITEM *lpButton, int nPosX, int nPosY, INT_PTR *lpnMenuHeight);
+int GetMenuPosY(TOOLBARITEM *lpButton, RECT *rcButton);
 void DestroyToolbarWindow(BOOL bDestroyBG);
-TOOLBARITEM* StackInsertBeforeButton(TOOLBARDATA *hToolbarData, TOOLBARITEM *lpInsertBefore);
-TOOLBARITEM* StackGetButtonByID(TOOLBARDATA *hToolbarData, int nItemID);
-TOOLBARITEM* StackGetButtonByIndex(TOOLBARDATA *hToolbarData, int nIndex);
-void StackFreeButton(TOOLBARDATA *hToolbarData);
+TOOLBARITEM* StackInsertBeforeButton(STACKTOOLBAR *hStack, TOOLBARITEM *lpInsertBefore);
+TOOLBARITEM* StackGetButtonByID(STACKTOOLBAR *hStack, int nItemID);
+TOOLBARITEM* StackGetButtonByIndex(STACKTOOLBAR *hStack, int nIndex);
+void StackFreeButton(STACKTOOLBAR *hStack);
 
-void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, const wchar_t **wppText);
-void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, const wchar_t *wpExeDir, HWND hToolbar, int nButtonID, const RECT *lprcButton);
-int StructMethodParameters(STACKEXTPARAM *hParamStack, unsigned char *lpStruct);
-EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex);
-void GetIconParameters(const wchar_t *wpText, wchar_t *wszIconFile, int nMaxIconFile, int *nIconIndex, const wchar_t **wppText);
-void FreeMethodParameters(STACKEXTPARAM *hParamStack);
-int GetMethodName(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText);
-int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus);
+int GetWord(const wchar_t *wpText, wchar_t *wszWord, int nWordMax, const wchar_t **wppNextWord, BOOL *lpbQuote);
+BOOL NextLine(const wchar_t **wpText);
 BOOL SkipComment(const wchar_t **wpText);
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen);
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax);
 INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *wszOutput, DWORD *lpdwCaret);
 int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBufferSize);
 
 int GetCurFile(wchar_t *wszFile, int nMaxFile);
-INT_PTR GetEditText(HWND hWnd, wchar_t **Text);
+INT_PTR GetEditText(HWND hWnd, wchar_t **wpText);
+INT_PTR CopyWideStr(const wchar_t *wpSrc, INT_PTR nSrcLen, wchar_t **wppDst);
+BOOL FreeWideStr(wchar_t **wppWideStr);
 void ShowStandardEditMenu(HWND hWnd, HMENU hMenu, BOOL bMouse);
 DWORD ScrollCaret(HWND hWnd);
 
 void ReadOptions(DWORD dwFlags);
 void SaveOptions(DWORD dwFlags);
+wchar_t* GetDefaultMenu(int nStringID);
 const char* GetLangStringA(LANGID wLangID, int nStringID);
 const wchar_t* GetLangStringW(LANGID wLangID, int nStringID);
 BOOL IsExtCallParamValid(LPARAM lParam, int nIndex);
@@ -284,7 +345,7 @@ HMENU hPopupEdit;
 HICON hMainIcon;
 HACCEL hGlobalAccel;
 BOOL bOldWindows;
-BOOL bAkelEdit;
+BOOL bNewComctl32;
 int nMDI;
 LANGID wLangModule;
 BOOL bInitCommon=FALSE;
@@ -294,24 +355,29 @@ char szExeDir[MAX_PATH];
 wchar_t wszExeDir[MAX_PATH];
 char *szToolBarText=NULL;
 wchar_t *wszToolBarText=NULL;
-TOOLBARDATA hToolbarData={0};
+STACKTOOLBAR hStackToolbar={0};
 wchar_t wszRowList[MAX_PATH]=L"";
 STACKROW hRowListStack={0};
 HWND hToolbarBG=NULL;
 HWND hToolbar=NULL;
-BOOL bBigIcons=FALSE;
+HICON hIconArrowOverlay=NULL;
+int nArrowOverlay=IAO_COPYWHITEASMASK;
+int nBigIcons=BIS_ICON16;
 BOOL bFlatButtons=TRUE;
 int nIconsBit=32;
+int nGrayedIcons=GI_SYSTEM;
 int nToolbarSide=TBSIDE_TOP;
 int nSidePriority=TSP_TOPBOTTOM;
 SIZE sizeToolbar={0};
 SIZE sizeButtons={0};
+SIZE sizeIcon={0};
 CHARRANGE64 crExtSetSel={0};
-HANDLE hThread=NULL;
-DWORD dwThreadId;
+UINT_PTR dwPaintTimerId=0;
+BOOL bLockRefresh=FALSE;
 HWND hWndMainDlg=NULL;
 RECT rcMainMinMaxDialog={532, 174, 0, 0};
 RECT rcMainCurrentDialog={0};
+int nFocusChanged=0;
 WNDPROC lpOldToolbarProc=NULL;
 WNDPROC lpOldEditDlgProc=NULL;
 WNDPROCDATA *NewMainProcData=NULL;
@@ -324,7 +390,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="ToolBar";
 }
 
@@ -416,23 +482,23 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndRowsEdit;
   static HWND hWndOK;
   static HWND hWndCancel;
-  static DIALOGRESIZE drs[]={{&hWndToolBarText,      DRS_SIZE|DRS_X, 0},
-                             {&hWndToolBarText,      DRS_SIZE|DRS_Y, 0},
-                             {&hWndBigIconsCheck,    DRS_MOVE|DRS_Y, 0},
-                             {&hWndFlatButtonsCheck, DRS_MOVE|DRS_Y, 0},
-                             {&hWndBit16,            DRS_MOVE|DRS_Y, 0},
-                             {&hWndBit32,            DRS_MOVE|DRS_Y, 0},
-                             {&hWndSideLeft,         DRS_MOVE|DRS_Y, 0},
-                             {&hWndSideTop,          DRS_MOVE|DRS_Y, 0},
-                             {&hWndSideRight,        DRS_MOVE|DRS_Y, 0},
-                             {&hWndSideBottom,       DRS_MOVE|DRS_Y, 0},
-                             {&hWndSideLabel,        DRS_MOVE|DRS_Y, 0},
-                             {&hWndRowsLabel,        DRS_MOVE|DRS_Y, 0},
-                             {&hWndRowsEdit,         DRS_MOVE|DRS_Y, 0},
-                             {&hWndOK,               DRS_MOVE|DRS_X, 0},
-                             {&hWndOK,               DRS_MOVE|DRS_Y, 0},
-                             {&hWndCancel,           DRS_MOVE|DRS_X, 0},
-                             {&hWndCancel,           DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndToolBarText,      RDS_SIZE|RDS_X, 0},
+                             {&hWndToolBarText,      RDS_SIZE|RDS_Y, 0},
+                             {&hWndBigIconsCheck,    RDS_MOVE|RDS_Y, 0},
+                             {&hWndFlatButtonsCheck, RDS_MOVE|RDS_Y, 0},
+                             {&hWndBit16,            RDS_MOVE|RDS_Y, 0},
+                             {&hWndBit32,            RDS_MOVE|RDS_Y, 0},
+                             {&hWndSideLeft,         RDS_MOVE|RDS_Y, 0},
+                             {&hWndSideTop,          RDS_MOVE|RDS_Y, 0},
+                             {&hWndSideRight,        RDS_MOVE|RDS_Y, 0},
+                             {&hWndSideBottom,       RDS_MOVE|RDS_Y, 0},
+                             {&hWndSideLabel,        RDS_MOVE|RDS_Y, 0},
+                             {&hWndRowsLabel,        RDS_MOVE|RDS_Y, 0},
+                             {&hWndRowsEdit,         RDS_MOVE|RDS_Y, 0},
+                             {&hWndOK,               RDS_MOVE|RDS_X, 0},
+                             {&hWndOK,               RDS_MOVE|RDS_Y, 0},
+                             {&hWndCancel,           RDS_MOVE|RDS_X, 0},
+                             {&hWndCancel,           RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -468,8 +534,10 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessage(hWndToolBarText, EM_EXLIMITTEXT, 0, MAX_TOOLBARTEXT_SIZE);
     SetWindowTextWide(hWndToolBarText, wszToolBarText);
 
-    if (bBigIcons)
+    if (nBigIcons == BIS_ICON32)
       SendMessage(hWndBigIconsCheck, BM_SETCHECK, BST_CHECKED, 0);
+    else if (nBigIcons == BIS_ICON24)
+      SendMessage(hWndBigIconsCheck, BM_SETCHECK, BST_INDETERMINATE, 0);
     if (bFlatButtons)
       SendMessage(hWndFlatButtonsCheck, BM_SETCHECK, BST_CHECKED, 0);
     if (nIconsBit == 16)
@@ -491,46 +559,31 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     lpOldEditDlgProc=(WNDPROC)GetWindowLongPtrWide(hWndToolBarText, GWLP_WNDPROC);
     SetWindowLongPtrWide(hWndToolBarText, GWLP_WNDPROC, (UINT_PTR)NewEditDlgProc);
 
-    //Post AKDLL_SELTEXT because dialog size can be changed after AKD_DIALOGRESIZE
-    PostMessage(hDlg, AKDLL_SELTEXT, 0, 0);
-  }
-  else if (uMsg == AKDLL_FREEMESSAGELOOP)
-  {
-    MSG msg;
+    SendMessage(hMainWnd, AKD_SETMODELESS, (WPARAM)hDlg, MLA_ADD);
 
-    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-    {
-      if (hWndMainDlg && !IsDialogMessageWide(hWndMainDlg, &msg))
-      {
-        TranslateMessage(&msg);
-        DispatchMessageWide(&msg);
-      }
-    }
+    //Post AKDLL_SELTEXT because dialog size can be changed after AKD_RESIZEDIALOG
+    PostMessage(hDlg, AKDLL_SELTEXT, 0, 0);
   }
   else if (uMsg == AKDLL_SELTEXT)
   {
+    if (IsIconic(hDlg))
+      ShowWindow(hDlg, SW_RESTORE);
+
     if (crExtSetSel.cpMin || crExtSetSel.cpMax)
     {
       int nLine;
-      int nLockScroll=0;
 
-      if (crExtSetSel.cpMax == -1)
+      if (crExtSetSel.cpMax < crExtSetSel.cpMin)
       {
         nLine=(int)SendMessage(hWndToolBarText, EM_EXLINEFROMCHAR, 0, crExtSetSel.cpMin);
         crExtSetSel.cpMax=SendMessage(hWndToolBarText, EM_LINEINDEX, nLine, 0) + SendMessage(hWndToolBarText, EM_LINELENGTH, crExtSetSel.cpMin, 0);
       }
 
-      if (bAkelEdit)
-      {
-        if ((nLockScroll=(int)SendMessage(hWndToolBarText, AEM_LOCKSCROLL, (WPARAM)-1, 0)) == -1)
-          SendMessage(hWndToolBarText, AEM_LOCKSCROLL, SB_BOTH, TRUE);
-      }
+      SendMessage(hWndToolBarText, AEM_LOCKSCROLL, SB_BOTH, TRUE);
       SendMessage(hWndToolBarText, EM_SETSEL, crExtSetSel.cpMax, crExtSetSel.cpMin);
-      if (bAkelEdit && nLockScroll == -1)
-      {
-        SendMessage(hWndToolBarText, AEM_LOCKSCROLL, SB_BOTH, FALSE);
-        ScrollCaret(hWndToolBarText);
-      }
+      SendMessage(hWndToolBarText, AEM_LOCKSCROLL, SB_BOTH, FALSE);
+      ScrollCaret(hWndToolBarText);
+
       crExtSetSel.cpMin=0;
       crExtSetSel.cpMax=0;
     }
@@ -543,14 +596,20 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD(wParam) == IDOK)
       {
-        TOOLBARDATA hTestStack={0};
+        STACKTOOLBAR hTestStack;
         wchar_t *wszTest;
         int nValue;
 
         //Big icons
-        if (SendMessage(hWndBigIconsCheck, BM_GETCHECK, 0, 0) != bBigIcons)
+        if (SendMessage(hWndBigIconsCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+          nValue=BIS_ICON32;
+        else if (SendMessage(hWndBigIconsCheck, BM_GETCHECK, 0, 0) == BST_INDETERMINATE)
+          nValue=BIS_ICON24;
+        else
+          nValue=BIS_ICON16;
+        if (nValue != nBigIcons)
         {
-          bBigIcons=!bBigIcons;
+          nBigIcons=nValue;
           bUpdate=TRUE;
         }
 
@@ -605,18 +664,28 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           GetEditText(hWndToolBarText, &wszTest);
 
           //Test for errors
+          xmemset(&hTestStack, 0, sizeof(STACKTOOLBAR));
+
           if (!CreateToolbarData(&hTestStack, wszTest))
           {
             FreeToolbarData(&hTestStack);
-            HeapFree(hHeap, 0, wszTest);
+            FreeWideStr(&wszTest);
             return FALSE;
           }
 
           //Success
-          FreeToolbarData(&hToolbarData);
-          HeapFree(hHeap, 0, wszToolBarText);
+          FreeToolbarData(&hStackToolbar);
+          FreeWideStr(&wszToolBarText);
           wszToolBarText=wszTest;
-          hToolbarData=hTestStack;
+          xmemcpy(&hStackToolbar, &hTestStack, sizeof(STACKTOOLBAR));
+
+          if (!*wszToolBarText)
+          {
+            FreeToolbarData(&hStackToolbar);
+            FreeWideStr(&wszToolBarText);
+            wszToolBarText=GetDefaultMenu(STRID_DEFAULTMENU);
+            CreateToolbarData(&hStackToolbar, wszToolBarText);
+          }
           bUpdate=TRUE;
         }
         dwSaveFlags|=OF_LISTTEXT|OF_SETTINGS;
@@ -627,14 +696,11 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         dwSaveFlags=0;
       }
 
+      SendMessage(hMainWnd, AKD_SETMODELESS, (WPARAM)hDlg, MLA_DELETE);
       DestroyWindow(hWndMainDlg);
       hWndMainDlg=NULL;
       if (bUpdate)
         PostMessage(hToolbarBG, AKDLL_RECREATE, 0, 0);
-
-      CloseHandle(hThread);
-      hThread=NULL;
-      ExitThread(0);
     }
   }
   else if (uMsg == WM_CLOSE)
@@ -645,9 +711,9 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, DRM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, RDM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
       dwSaveFlags|=OF_RECT;
   }
 
@@ -676,39 +742,18 @@ LRESULT CALLBACK NewEditDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
   return CallWindowProcWide(lpOldEditDlgProc, hWnd, uMsg, wParam, lParam);
 }
 
-DWORD WINAPI ThreadProc(LPVOID lpParameter)
-{
-  MSG msg;
-
-  OleInitialize(NULL);
-
-  hWndMainDlg=CreateDialogWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_SETUP), hMainWnd, (DLGPROC)MainDlgProc);
-
-  if (hWndMainDlg)
-  {
-    while (GetMessageWide(&msg, NULL, 0, 0) > 0)
-    {
-      if (SendMessage(hMainWnd, AKD_TRANSLATEMESSAGE, TMSG_GLOBAL|TMSG_PLUGIN|TMSG_HOTKEY, (LPARAM)&msg))
-        continue;
-
-      if (hWndMainDlg && !IsDialogMessageWide(hWndMainDlg, &msg))
-      {
-        TranslateMessage(&msg);
-        DispatchMessageWide(&msg);
-      }
-    }
-  }
-  if (hThread)
-  {
-    CloseHandle(hThread);
-    hThread=NULL;
-  }
-  return 0;
-}
-
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  if (uMsg == AKDN_MAIN_ONSTART_PRESHOW)
+  if (uMsg == AKD_IFEXPRESSION)
+  {
+    LRESULT lResult;
+
+    bLockRefresh=TRUE;
+    lResult=NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
+    bLockRefresh=FALSE;
+    return lResult;
+  }
+  else if (uMsg == AKDN_MAIN_ONSTART_PRESHOW)
   {
     CreateToolbarWindow();
   }
@@ -732,28 +777,28 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       if (nToolbarSide == TBSIDE_TOP)
       {
-        MoveWindow(hToolbarBG, ns->rcCurrent.left, ns->rcCurrent.top, ns->rcCurrent.right, sizeToolbar.cy, TRUE);
-        MoveWindow(hToolbar, 0, 0, ns->rcCurrent.right, sizeToolbar.cy, TRUE);
+        SetWindowPos(hToolbarBG, 0, ns->rcCurrent.left, ns->rcCurrent.top, ns->rcCurrent.right, sizeToolbar.cy, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
+        SetWindowPos(hToolbar, 0, 0, 0, ns->rcCurrent.right, sizeToolbar.cy, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
         ns->rcCurrent.top+=sizeToolbar.cy;
         ns->rcCurrent.bottom-=sizeToolbar.cy;
       }
       else if (nToolbarSide == TBSIDE_BOTTOM)
       {
-        MoveWindow(hToolbarBG, ns->rcCurrent.left, ns->rcCurrent.top + ns->rcCurrent.bottom - sizeToolbar.cy, ns->rcCurrent.right, sizeToolbar.cy, TRUE);
-        MoveWindow(hToolbar, 0, 0, ns->rcCurrent.right, sizeToolbar.cy, TRUE);
+        SetWindowPos(hToolbarBG, 0, ns->rcCurrent.left, ns->rcCurrent.top + ns->rcCurrent.bottom - sizeToolbar.cy, ns->rcCurrent.right, sizeToolbar.cy, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
+        SetWindowPos(hToolbar, 0, 0, 0, ns->rcCurrent.right, sizeToolbar.cy, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
         ns->rcCurrent.bottom-=sizeToolbar.cy;
       }
       else if (nToolbarSide == TBSIDE_LEFT)
       {
-        MoveWindow(hToolbarBG, ns->rcCurrent.left, ns->rcCurrent.top, sizeToolbar.cx, ns->rcCurrent.bottom, TRUE);
-        MoveWindow(hToolbar, 0, 0, sizeToolbar.cx, ns->rcCurrent.bottom, TRUE);
+        SetWindowPos(hToolbarBG, 0, ns->rcCurrent.left, ns->rcCurrent.top, sizeToolbar.cx, ns->rcCurrent.bottom, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
+        SetWindowPos(hToolbar, 0, 0, 0, sizeToolbar.cx, ns->rcCurrent.bottom, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
         ns->rcCurrent.left+=sizeToolbar.cx;
         ns->rcCurrent.right-=sizeToolbar.cx;
       }
       else if (nToolbarSide == TBSIDE_RIGHT)
       {
-        MoveWindow(hToolbarBG, ns->rcCurrent.left + ns->rcCurrent.right - sizeToolbar.cx, ns->rcCurrent.top, sizeToolbar.cx, ns->rcCurrent.bottom, TRUE);
-        MoveWindow(hToolbar, 0, 0, sizeToolbar.cx, ns->rcCurrent.bottom, TRUE);
+        SetWindowPos(hToolbarBG, 0, ns->rcCurrent.left + ns->rcCurrent.right - sizeToolbar.cx, ns->rcCurrent.top, sizeToolbar.cx, ns->rcCurrent.bottom, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
+        SetWindowPos(hToolbar, 0, 0, 0, sizeToolbar.cx, ns->rcCurrent.bottom, SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_DEFERERASE);
         ns->rcCurrent.right-=sizeToolbar.cx;
       }
       if (bProcess) return lResult;
@@ -778,48 +823,50 @@ void CALLBACK NewMainProcRet(CWPRETSTRUCT *cwprs)
       cwprs->message == AKDN_FRAME_NOWINDOWS ||
       (cwprs->message == AKDN_FRAME_ACTIVATE && !(cwprs->wParam & FWA_NOVISUPDATE)))
   {
-    PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
+    if (cwprs->message == AKDN_DLLCALL)
+    {
+      PLUGINDATA *pd=(PLUGINDATA *)cwprs->lParam;
+
+      if (pd->dwSupport & PDS_GETSUPPORT)
+        goto NextProc;
+      if (!xstrcmpiW(pd->wszFunction, L"ContextMenu::Show"))
+        goto NextProc;
+    }
+    if (!bLockRefresh)
+      PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
+  }
+  else if (cwprs->message == WM_ACTIVATE)
+  {
+    if (nFocusChanged == -1)
+      nFocusChanged=1;
   }
   else if (cwprs->message == WM_COMMAND)
   {
     if (cwprs->hwnd == hMainWnd)
     {
-      PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
+      if (!bLockRefresh)
+        PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
     }
   }
   else if (cwprs->message == WM_NOTIFY)
   {
     if (cwprs->wParam == ID_EDIT)
     {
-      if (bAkelEdit)
+      if (((NMHDR *)cwprs->lParam)->code == AEN_MODIFY)
       {
-        if (((NMHDR *)cwprs->lParam)->code == AEN_MODIFY)
-        {
+        if (!bLockRefresh)
           PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
-        }
       }
-      if (((NMHDR *)cwprs->lParam)->code == EN_SELCHANGE)
+      else if (((NMHDR *)cwprs->lParam)->code == EN_SELCHANGE)
       {
-        PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
-      }
-    }
-
-    if (!bAkelEdit)
-    {
-      if (cwprs->wParam == ID_STATUS)
-      {
-        if (((NMHDR *)cwprs->lParam)->code == (UINT)NM_DBLCLK)
-        {
-          if (((NMMOUSE *)cwprs->lParam)->dwItemSpec == 3)
-          {
-            PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
-          }
-        }
+        if (!bLockRefresh)
+          PostMessage(hToolbarBG, AKDLL_REFRESH, 0, 0);
       }
     }
   }
 
   //Call next procedure
+  NextProc:
   if (cwprs->hwnd == hMainWnd)
   {
     if (NewMainProcRetData->NextProc)
@@ -842,14 +889,14 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
   }
   else if (uMsg == AKDLL_REFRESH)
   {
-    if (hToolbar) UpdateToolbar(&hToolbarData);
+    if (hToolbar) UpdateToolbar(&hStackToolbar);
   }
   else if (uMsg == AKDLL_SETUP)
   {
-    if (!hThread)
-    {
-      hThread=CreateThread(NULL, 0, ThreadProc, NULL, 0, &dwThreadId);
-    }
+    if (!hWndMainDlg)
+      hWndMainDlg=CreateDialogWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_SETUP), hMainWnd, (DLGPROC)MainDlgProc);
+    else
+      SetActiveWindow(hWndMainDlg);
   }
   else if (uMsg == WM_ERASEBKGND)
   {
@@ -861,7 +908,7 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     {
       TOOLBARITEM *lpButton;
 
-      if (lpButton=StackGetButtonByID(&hToolbarData, (int)((NMHDR *)lParam)->idFrom))
+      if (lpButton=StackGetButtonByID(&hStackToolbar, (int)((NMHDR *)lParam)->idFrom))
       {
         //WideCharToMultiByte(CP_ACP, 0, lpButton->wszButtonItem, -1, ((NMTTDISPINFOA *)lParam)->szText, 80, NULL, NULL);
         WideCharToMultiByte(CP_ACP, 0, lpButton->wszButtonItem, -1, szBuffer, BUFFER_SIZE, NULL, NULL);
@@ -872,7 +919,7 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     {
       TOOLBARITEM *lpButton;
 
-      if (lpButton=StackGetButtonByID(&hToolbarData, (int)((NMHDR *)lParam)->idFrom))
+      if (lpButton=StackGetButtonByID(&hStackToolbar, (int)((NMHDR *)lParam)->idFrom))
       {
         //xstrcpynW(((NMTTDISPINFOW *)lParam)->szText, lpButton->wszButtonItem, 80);
         ((NMTTDISPINFOW *)lParam)->lpszText=lpButton->wszButtonItem;
@@ -882,22 +929,26 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     {
       TOOLBARITEM *lpButton;
       RECT rcButton;
+      int nPosX;
+      int nPosY;
 
-      if (lpButton=StackGetButtonByID(&hToolbarData, ((NMTOOLBARA *)lParam)->iItem))
+      if (lpButton=StackGetButtonByID(&hStackToolbar, ((NMTOOLBARA *)lParam)->iItem))
       {
         SendMessage(hToolbar, TB_GETRECT, ((NMTOOLBARA *)lParam)->iItem, (LPARAM)&rcButton);
         ClientToScreen(hToolbar, (LPPOINT)&rcButton.left);
         ClientToScreen(hToolbar, (LPPOINT)&rcButton.right);
+        nPosX=rcButton.left;
+        nPosY=GetMenuPosY(lpButton, &rcButton);
 
         if (!lpButton->hParamMenuName.first)
         {
           //IDM_FILE_OPEN
-          TrackPopupMenu(hMenuRecentFiles, TPM_LEFTBUTTON, rcButton.left, rcButton.bottom, 0, hMainWnd, NULL);
+          TrackPopupMenu(hMenuRecentFiles, TPM_LEFTBUTTON, nPosX, nPosY, 0, hMainWnd, NULL);
         }
         else
         {
           //ContextMenu::Show
-          CallContextMenuShow(lpButton, rcButton.left, rcButton.bottom);
+          CallContextMenuShow(lpButton, nPosX, nPosY, NULL);
         }
       }
     }
@@ -906,7 +957,7 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
   {
     if ((HWND)lParam == hToolbar)
     {
-      CallToolbar(&hToolbarData, LOWORD(wParam));
+      CallToolbar(&hStackToolbar, LOWORD(wParam));
       return TRUE;
     }
   }
@@ -916,7 +967,20 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 LRESULT CALLBACK NewToolbarProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  if (uMsg == WM_LBUTTONDBLCLK)
+  if (uMsg == WM_PAINT)
+  {
+    if (bNewComctl32 && hStackToolbar.nSepRows && hRowListStack.nElements != 1)
+    {
+      //On ComCtl32.dll version 6.10 horizontal separator (TBSTATE_WRAP + TBSTYLE_SEP)
+      //erased if window moved outside the screen and then moved back.
+      //Use timer for more soft update not often than 100 ms.
+      if (!dwPaintTimerId)
+      {
+        dwPaintTimerId=SetTimer(NULL, 0, 100, (TIMERPROC)PaintTimerProc);
+      }
+    }
+  }
+  else if (uMsg == WM_LBUTTONDBLCLK)
   {
     POINT pt={LOWORD(lParam), HIWORD(lParam)};
 
@@ -942,11 +1006,23 @@ LRESULT CALLBACK NewToolbarProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     nIndex=(int)SendMessage(hToolbar, TB_HITTEST, 0, (LPARAM)&pt);
     if (nIndex < 0) nIndex=(0 - nIndex) - 1;
 
-    lpButton=StackGetButtonByIndex(&hToolbarData, nIndex);
+    lpButton=StackGetButtonByIndex(&hStackToolbar, nIndex);
     ViewItemCode(lpButton);
     return 0;
   }
   return CallWindowProcWide(lpOldToolbarProc, hWnd, uMsg, wParam, lParam);
+}
+
+VOID CALLBACK PaintTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+{
+  if (dwPaintTimerId)
+  {
+    InvalidateRect(hToolbar, NULL, FALSE);
+    UpdateWindow(hToolbar);
+
+    KillTimer(NULL, dwPaintTimerId);
+    dwPaintTimerId=0;
+  }
 }
 
 BOOL CreateToolbarWindow()
@@ -957,7 +1033,7 @@ BOOL CreateToolbarWindow()
 
   if (!hToolbarBG)
   {
-    wndclass.style        =CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
+    wndclass.style        =CS_DBLCLKS;
     wndclass.lpfnWndProc  =ToolbarBGProc;
     wndclass.cbClsExtra   =0;
     wndclass.cbWndExtra   =DLGWINDOWEXTRA;
@@ -972,7 +1048,7 @@ BOOL CreateToolbarWindow()
     hToolbarBG=CreateWindowExWide(0,
                           TOOLBARBACKGROUNDW,
                           NULL,
-                          WS_CHILD|WS_VISIBLE,
+                          WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,
                           0, 0, 0, 0,
                           hMainWnd,
                           NULL,
@@ -987,12 +1063,12 @@ BOOL CreateToolbarWindow()
   else if (nToolbarSide == TBSIDE_RIGHT)
     dwStyle=CCS_VERT|CCS_NODIVIDER|CCS_NOPARENTALIGN|CCS_NORESIZE;
   else if (nToolbarSide == TBSIDE_BOTTOM)
-    dwStyle=CCS_BOTTOM|CCS_NODIVIDER|CCS_NOPARENTALIGN|CCS_NORESIZE;
+    dwStyle=CCS_BOTTOM|/*CCS_NODIVIDER|*/CCS_NOPARENTALIGN|CCS_NORESIZE;
 
   hToolbar=CreateWindowExWide(0,
                         L"ToolbarWindow32",
                         NULL,
-                        WS_CHILD|WS_VISIBLE|TBSTYLE_TOOLTIPS|TBSTYLE_TRANSPARENT|
+                        WS_CHILD|WS_VISIBLE|TBSTYLE_TOOLTIPS|/*TBSTYLE_TRANSPARENT|TBSTYLE_CUSTOMERASE|*/
                         (bFlatButtons?TBSTYLE_FLAT:0)|dwStyle,
                         0, 0, 0, 0,
                         hToolbarBG,
@@ -1004,19 +1080,19 @@ BOOL CreateToolbarWindow()
   SetWindowLongPtrWide(hToolbar, GWLP_WNDPROC, (UINT_PTR)NewToolbarProc);
 
   dwStyle=(DWORD)SendMessage(hToolbar, TB_GETEXTENDEDSTYLE, 0, 0);
-  SendMessage(hToolbar, TB_SETEXTENDEDSTYLE, 0, dwStyle|TBSTYLE_EX_DRAWDDARROWS);
+  SendMessage(hToolbar, TB_SETEXTENDEDSTYLE, 0, dwStyle|TBSTYLE_EX_DRAWDDARROWS/*|TBSTYLE_EX_DOUBLEBUFFER*/);
   SendMessage(hToolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
 
   ParseRows(&hRowListStack);
-  if (!CreateToolbarData(&hToolbarData, wszToolBarText))
+  if (!CreateToolbarData(&hStackToolbar, wszToolBarText))
     bResult=FALSE;
 
-  SetToolbarButtons(&hToolbarData);
-  UpdateToolbar(&hToolbarData);
+  SetToolbarButtons(&hStackToolbar);
+  UpdateToolbar(&hStackToolbar);
   return bResult;
 }
 
-BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
+BOOL CreateToolbarData(STACKTOOLBAR *hStack, const wchar_t *wpText)
 {
   ROWITEM *lpRowItem=NULL;
   TOOLBARITEM *lpButton;
@@ -1025,6 +1101,8 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
   EXTPARAM *lpParameter;
   STACKEXTPARAM hParamButton={0};
   STACKEXTPARAM hParamMenuName={0};
+  STACKEXTPARAM hParamStack={0};
+  IFEXPRESSION ie;
   wchar_t wszButtonItem[MAX_PATH];
   wchar_t wszMethodName[MAX_PATH];
   wchar_t wszIconFile[MAX_PATH];
@@ -1032,41 +1110,70 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
   const wchar_t *wpCount=wpText;
   const wchar_t *wpLineBegin;
   const wchar_t *wpErrorBegin=wpText;
-  const wchar_t *wpSetArg;
+  const wchar_t *wpStrEnd;
+  wchar_t *wpFileName;
   HICON hIcon;
-  SIZE sizeIcon;
+  HICON hAdjustIcon;
   DWORD dwAction;
-  DWORD dwNewFlags;
+  DWORD dwNewFlags=0;
   DWORD dwSetFlags=0;
+  int nFlagCountNoSDI=0;
+  int nFlagCountNoMDI=0;
+  int nFlagCountNoPMDI=0;
+  int nFlagCountNoFileExistAll=0;
+  int nFlagCountNoFileExistMore=0;
+  int nFlagCountSkipIfAll=0;
+  int nFlagCountSkipIfMore=0;
+  int nFlagCountStateIf=0;
+  STATEIF *lpStateIf=NULL;
+  INT_PTR nIfResult;
+  DWORD dwStyle;
   int nPlus;
   int nMinus;
   int nFileIconIndex;
   int nItemBitmap=0;
   int nItemCommand=0;
+  int nSetCmp;
+  int nUnsetCmp;
   int nMessageID;
-  int nRow=1;
+  BOOL bQuote;
   BOOL bMethod;
   BOOL bPrevSeparator=FALSE;
   BOOL bInRow=TRUE;
 
   if (wpCount)
   {
-    if (bBigIcons)
+    if (nBigIcons == BIS_ICON32)
     {
-      sizeIcon.cx=32;
-      sizeIcon.cy=32;
+      sizeIcon.cx=32 /*GetSystemMetrics(SM_CXICON)*/;
+      sizeIcon.cy=32 /*GetSystemMetrics(SM_CYICON)*/;
+    }
+    else if (nBigIcons == BIS_ICON24)
+    {
+      sizeIcon.cx=24;
+      sizeIcon.cy=24;
     }
     else
     {
-      sizeIcon.cx=16;
-      sizeIcon.cy=16;
+      sizeIcon.cx=16 /*GetSystemMetrics(SM_CXSMICON)*/;
+      sizeIcon.cy=16 /*GetSystemMetrics(SM_CYSMICON)*/;
     }
-    hToolbarData->hImageList=ImageList_Create(sizeIcon.cx, sizeIcon.cy, (nIconsBit == 16?ILC_COLOR16:ILC_COLOR32)|ILC_MASK, 0, 0);
-    ImageList_SetBkColor(hToolbarData->hImageList, GetSysColor(COLOR_BTNFACE));
+    hStack->hImageList=ImageList_Create(sizeIcon.cx, sizeIcon.cy, (nIconsBit == 16?ILC_COLOR16:ILC_COLOR32)|ILC_MASK, 0, 0);
+    ImageList_SetBkColor(hStack->hImageList, GetSysColor(COLOR_BTNFACE));
+
+    if (nGrayedIcons == GI_PLUGIN)
+    {
+      hStack->hDisabledImageList=ImageList_Create(sizeIcon.cx, sizeIcon.cy, (nIconsBit == 16?ILC_COLOR16:ILC_COLOR32)|ILC_MASK, 0, 0);
+      ImageList_SetBkColor(hStack->hDisabledImageList, GetSysColor(COLOR_BTNFACE));
+    }
+
+    //Rows
+    hStack->nRows=1;
+    hStack->nSepRows=0;
 
     if (hRowListStack.nElements)
     {
-      if (lpRowItem=GetRow(&hRowListStack, nRow))
+      if (lpRowItem=GetRow(&hRowListStack, hStack->nRows))
       {
         lpNextRowItemFirstButton=GetFirstToolbarItemOfNextRow(lpRowItem);
         bInRow=TRUE;
@@ -1083,320 +1190,552 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
       bMethod=FALSE;
       lpButton=NULL;
       hIcon=NULL;
-      FreeMethodParameters(&hParamMenuName);
+      MethodFreeParameters(&hParamMenuName);
       if (!SkipComment(&wpCount)) break;
       wpLineBegin=wpCount;
-      NextString(wpCount, wszButtonItem, MAX_PATH, &wpCount, &nMinus);
+      wpErrorBegin=wpLineBegin;
 
       //Set options
-      wpSetArg=wpLineBegin;
-
-      if (!xstrcmpnW(L"SET(", wpSetArg, (UINT_PTR)-1))
+      if (!(nSetCmp=xstrcmpnW(L"SET(", wpCount, (UINT_PTR)-1)) ||
+          !(nUnsetCmp=xstrcmpnW(L"UNSET(", wpCount, (UINT_PTR)-1)))
       {
-        dwNewFlags=(DWORD)xatoiW(wpSetArg + 4, &wpSetArg);
-
-        if (dwNewFlags & CCMS_NOFILEEXIST)
+        if (!nSetCmp)
         {
-          wchar_t wszPath[MAX_PATH];
-          wchar_t *wpFileName;
+          dwNewFlags=(DWORD)xatoiW(wpCount + 4, &wpCount);
+          MethodComment(wpCount, &wpCount);
 
-          if (*wpSetArg == L',' && NextString(++wpSetArg, wszPath, MAX_PATH, &wpSetArg, NULL))
+          if (dwNewFlags & CCMS_NOSDI)
+            ++nFlagCountNoSDI;
+          if (dwNewFlags & CCMS_NOMDI)
+            ++nFlagCountNoMDI;
+          if (dwNewFlags & CCMS_NOPMDI)
+            ++nFlagCountNoPMDI;
+          if (dwNewFlags & CCMS_NOFILEEXIST)
           {
-            if (TranslateFileString(wszPath, wszBuffer, BUFFER_SIZE))
+            if (*wpCount != L',')
             {
-              if (SearchPathWide(NULL, wszBuffer, NULL, MAX_PATH, wszPath, &wpFileName))
-                dwNewFlags&=~CCMS_NOFILEEXIST;
+              nMessageID=STRID_PARSEMSG_NOCOMMA;
+              goto Error;
             }
-            while (*wpSetArg == L' ' || *wpSetArg == L'\t') ++wpSetArg;
-            if (*wpSetArg == L')') ++wpSetArg;
-            wpCount=wpSetArg;
-          }
-        }
-        dwSetFlags|=dwNewFlags;
-        continue;
-      }
-      else if (!xstrcmpnW(L"UNSET(", wpSetArg, (UINT_PTR)-1))
-      {
-        dwSetFlags&=~xatoiW(wpSetArg + 6, NULL);
-        continue;
-      }
-      if (IsFlagOn(dwSetFlags, CCMS_NOSDI|CCMS_NOMDI|CCMS_NOPMDI|CCMS_NOFILEEXIST))
-      {
-        //Next line
-        while (*wpCount != L'\r' && *wpCount != L'\n') ++wpCount;
-        continue;
-      }
+            MethodComment(wpCount + 1, &wpCount);
 
-      if (!xstrcmpW(wszButtonItem, L"SEPARATOR") ||
-          !xstrcmpW(wszButtonItem, L"SEPARATOR1"))
-      {
-        if (bInRow && (!bPrevSeparator || !xstrcmpW(wszButtonItem, L"SEPARATOR")))
-        {
-          if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
+            GetWord(wpCount, wszButtonItem, MAX_PATH, &wpCount, &bQuote);
+
+            if (nFlagCountNoFileExistMore)
+              ++nFlagCountNoFileExistMore;
+            if (!(dwSetFlags & CCMS_NOFILEEXIST))
+            {
+              if (*wszButtonItem && bQuote)
+              {
+                if (TranslateFileString(wszButtonItem, wszBuffer, BUFFER_SIZE))
+                {
+                  if (SearchPathWide(NULL, wszBuffer, NULL, MAX_PATH, wszButtonItem, &wpFileName))
+                    dwNewFlags&=~CCMS_NOFILEEXIST;
+                }
+              }
+              if (dwNewFlags & CCMS_NOFILEEXIST)
+                ++nFlagCountNoFileExistMore;
+            }
+            ++nFlagCountNoFileExistAll;
+          }
+          if (dwNewFlags & CCMS_SKIPIF)
           {
-            lpLastButton=lpButton;
-            if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
-              lpRowItem->lpFirstToolbarItem=lpButton;
-            lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+            if (*wpCount != L',')
+            {
+              nMessageID=STRID_PARSEMSG_NOCOMMA;
+              goto Error;
+            }
+            MethodComment(wpCount + 1, &wpCount);
 
-            lpButton->tbb.iBitmap=-1;
-            lpButton->tbb.idCommand=0;
-            lpButton->tbb.fsState=0;
-            lpButton->tbb.fsStyle=TBSTYLE_SEP;
-            lpButton->tbb.dwData=0;
-            lpButton->tbb.iString=0;
+            ie.dwFlags=IEF_METHOD;
+            nIfResult=SendMessage(hMainWnd, AKD_IFEXPRESSION, (WPARAM)wpCount, (LPARAM)&ie);
+            wpCount=ie.wpEnd;
+            if (ie.nError)
+            {
+              nMessageID=(ie.nError - 1) + STRID_IF_NOCOMMA;
+              goto Error;
+            }
+
+            if (nFlagCountSkipIfMore)
+              ++nFlagCountSkipIfMore;
+            if (!(dwSetFlags & CCMS_SKIPIF))
+            {
+              if (nIfResult)
+                dwNewFlags&=~CCMS_SKIPIF;
+              if (dwNewFlags & CCMS_SKIPIF)
+                ++nFlagCountSkipIfMore;
+            }
+            ++nFlagCountSkipIfAll;
           }
-        }
-        bPrevSeparator=TRUE;
-        bMethod=TRUE;
-      }
-      else
-      {
-        bPrevSeparator=FALSE;
+          if (dwNewFlags & CCMS_CHECKIF)
+          {
+            if (*wpCount != L',')
+            {
+              nMessageID=STRID_PARSEMSG_NOCOMMA;
+              goto Error;
+            }
+            MethodComment(wpCount + 1, &wpCount);
 
-        if (!xstrcmpW(wszButtonItem, L"BREAK"))
+            ie.dwFlags=IEF_STACKEXTPARAM|IEF_PARSEONLY;
+            ie.sep=&hParamStack;
+            SendMessage(hMainWnd, AKD_IFEXPRESSION, (WPARAM)wpCount, (LPARAM)&ie);
+            wpCount=ie.wpEnd;
+            if (!(ie.dwFlags & IEF_IF))
+            {
+              nMessageID=STRID_IF_UNKNOWNMETHOD;
+              goto Error;
+            }
+            if (ie.nError)
+            {
+              nMessageID=(ie.nError - 1) + STRID_IF_NOCOMMA;
+              goto Error;
+            }
+            if (hParamStack.nElements != 1 && hParamStack.nElements != 3)
+            {
+              nMessageID=STRID_IF_WRONGPARAMCOUNT;
+              goto Error;
+            }
+            if (xstrstrW(hParamStack.first->wpString, -1, L"\"Scripts::Main\"", -1, FALSE, NULL, &wpStrEnd) &&
+                xstrcmpnW(L", 5", wpStrEnd, (UINT_PTR)-1) && xstrcmpnW(L", 6", wpStrEnd, (UINT_PTR)-1))
+            {
+              MethodFreeParameters(&hParamStack);
+              nMessageID=STRID_IF_SCRIPTDENIED;
+              goto Error;
+            }
+            if (!StackInsertAfter((stack **)&hStack->hStateIfStack.first, (stack **)&hStack->hStateIfStack.last, (stack *)lpStateIf, (stack **)&lpStateIf, sizeof(STATEIF)))
+            {
+              lpStateIf->dwFlags=IEF_IF;
+              lpStateIf->hParamStack=hParamStack;
+              xmemset(&hParamStack, 0, sizeof(STACKEXTPARAM));
+            }
+            ++nFlagCountStateIf;
+          }
+          dwSetFlags|=dwNewFlags;
+        }
+        else if (!nUnsetCmp)
         {
-          if (lpLastButton)
-            lpLastButton->tbb.fsState|=TBSTATE_WRAP;
+          dwNewFlags=(DWORD)xatoiW(wpCount + 6, &wpCount);
+
+          if (dwNewFlags & CCMS_NOSDI)
+          {
+            if (nFlagCountNoSDI <= 0)
+              goto UnsetError;
+            if (--nFlagCountNoSDI > 0)
+              dwNewFlags&=~CCMS_NOSDI;
+          }
+          if (dwNewFlags & CCMS_NOMDI)
+          {
+            if (nFlagCountNoMDI <= 0)
+              goto UnsetError;
+            if (--nFlagCountNoMDI > 0)
+              dwNewFlags&=~CCMS_NOMDI;
+          }
+          if (dwNewFlags & CCMS_NOPMDI)
+          {
+            if (nFlagCountNoPMDI <= 0)
+              goto UnsetError;
+            if (--nFlagCountNoPMDI > 0)
+              dwNewFlags&=~CCMS_NOPMDI;
+          }
+          if (dwNewFlags & CCMS_NOFILEEXIST)
+          {
+            if (--nFlagCountNoFileExistAll < 0)
+              goto UnsetError;
+            if (nFlagCountNoFileExistMore && --nFlagCountNoFileExistMore > 0)
+              dwNewFlags&=~CCMS_NOFILEEXIST;
+          }
+          if (dwNewFlags & CCMS_SKIPIF)
+          {
+            if (--nFlagCountSkipIfAll < 0)
+              goto UnsetError;
+            if (nFlagCountSkipIfMore && --nFlagCountSkipIfMore > 0)
+              dwNewFlags&=~CCMS_SKIPIF;
+          }
+          if (dwNewFlags & CCMS_CHECKIF)
+          {
+            if (--nFlagCountStateIf < 0)
+              goto UnsetError;
+            if (lpStateIf)
+              lpStateIf=lpStateIf->prev;
+            if (lpStateIf)
+              dwNewFlags&=~CCMS_CHECKIF;
+          }
+          dwSetFlags&=~dwNewFlags;
+        }
+        MethodComment(wpCount, &wpCount);
+        if (*wpCount != L')')
+        {
+          nMessageID=STRID_PARSEMSG_NOCLOSEPARENTHESIS;
+          goto Error;
+        }
+        MethodComment(wpCount + 1, &wpCount);
+        if (*wpCount != L'\r' && *wpCount != L'\0')
+        {
+          nMessageID=STRID_PARSEMSG_NOEOL;
+          goto Error;
+        }
+        if (!NextLine(&wpCount)) break;
+        continue;
+
+        UnsetError:
+        nMessageID=STRID_PARSEMSG_NOOPENSET;
+        goto Error;
+      }
+      //Skip line if skip flag set
+      if (IsFlagOn(dwSetFlags, CCMS_NOSDI|CCMS_NOMDI|CCMS_NOPMDI|CCMS_NOFILEEXIST|CCMS_SKIPIF))
+      {
+        if (!NextLine(&wpCount)) break;
+        continue;
+      }
+
+      if (*wpCount == L'-')
+      {
+        nMinus=1;
+        ++wpCount;
+      }
+      else nMinus=0;
+      GetWord(wpCount, wszButtonItem, MAX_PATH, &wpCount, &bQuote);
+
+      if (!bQuote)
+      {
+        //Special item
+        if (!xstrcmpW(wszButtonItem, L"SEPARATOR") ||
+            !xstrcmpW(wszButtonItem, L"SEPARATOR1"))
+        {
+          if (bInRow && (!bPrevSeparator || !xstrcmpW(wszButtonItem, L"SEPARATOR")))
+          {
+            if (lpButton=StackInsertBeforeButton(hStack, lpNextRowItemFirstButton))
+            {
+              lpLastButton=lpButton;
+              if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
+                lpRowItem->lpFirstToolbarItem=lpButton;
+              lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+
+              lpButton->tbb.iBitmap=-1;
+              lpButton->tbb.idCommand=0;
+              lpButton->tbb.fsState=0;
+              lpButton->tbb.fsStyle=TBSTYLE_SEP;
+              lpButton->tbb.dwData=0;
+              lpButton->tbb.iString=0;
+            }
+          }
+          bPrevSeparator=TRUE;
           bMethod=TRUE;
-          ++nRow;
-
-          if (hRowListStack.nElements)
-          {
-            if (lpRowItem=GetRow(&hRowListStack, nRow))
-            {
-              lpNextRowItemFirstButton=GetFirstToolbarItemOfNextRow(lpRowItem);
-              bInRow=TRUE;
-            }
-            else
-            {
-              lpNextRowItemFirstButton=NULL;
-              bInRow=FALSE;
-            }
-          }
         }
         else
         {
-          //Item name is normal string
-          while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
+          bPrevSeparator=FALSE;
 
-          if (*wpCount == L'+')
+          if (!xstrcmpW(wszButtonItem, L"BREAK"))
           {
-            ++wpCount;
-            nPlus=1;
-          }
-          else nPlus=0;
-
-          //Parse methods
-          for (;;)
-          {
-            while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
-            wpErrorBegin=wpCount;
-
-            if (!GetMethodName(wpCount, wszMethodName, MAX_PATH, &wpCount))
-              break;
-
-            if (!xstrcmpiW(wszMethodName, L"Icon"))
+            if (lpLastButton)
             {
-              if (!hIcon)
+              lpLastButton->tbb.fsState|=TBSTATE_WRAP;
+              if (lpLastButton->tbb.fsStyle & TBSTYLE_SEP)
+                ++hStack->nSepRows;
+            }
+            bMethod=TRUE;
+            ++hStack->nRows;
+
+            if (hRowListStack.nElements)
+            {
+              if (lpRowItem=GetRow(&hRowListStack, hStack->nRows))
               {
-                GetIconParameters(wpCount, wszIconFile, MAX_PATH, &nFileIconIndex, &wpCount);
-
-                if (bInRow)
-                {
-                  if (!*wszIconFile)
-                  {
-                    hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(nFileIconIndex + 100), IMAGE_ICON, sizeIcon.cx, sizeIcon.cy, 0);
-
-                    if (hIcon)
-                    {
-                      ImageList_AddIcon(hToolbarData->hImageList, hIcon);
-                      DestroyIcon(hIcon);
-                    }
-                  }
-                  else
-                  {
-                    wchar_t wszPath[MAX_PATH];
-                    wchar_t *wpFileName;
-
-                    if (TranslateFileString(wszIconFile, wszPath, MAX_PATH))
-                    {
-                      if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, wszIconFile, &wpFileName))
-                      {
-                        if (bBigIcons)
-                          ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
-                        else
-                          ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
-
-                        if (hIcon)
-                        {
-                          ImageList_AddIcon(hToolbarData->hImageList, hIcon);
-                          DestroyIcon(hIcon);
-                        }
-                      }
-                    }
-                  }
-                }
+                lpNextRowItemFirstButton=GetFirstToolbarItemOfNextRow(lpRowItem);
+                bInRow=TRUE;
               }
               else
               {
-                nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
-                goto Error;
+                lpNextRowItemFirstButton=NULL;
+                bInRow=FALSE;
               }
-            }
-            else if (!xstrcmpiW(wszMethodName, L"Menu"))
-            {
-              if (!hParamMenuName.first)
-              {
-                ParseMethodParameters(&hParamMenuName, wpCount, &wpCount);
-                if (!bInRow) FreeMethodParameters(&hParamMenuName);
-                bMethod=TRUE;
-              }
-              else
-              {
-                nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
-                goto Error;
-              }
-            }
-            else
-            {
-              //Actions
-              if (!lpButton)
-              {
-                if (!xstrcmpiW(wszMethodName, L"Command"))
-                  dwAction=EXTACT_COMMAND;
-                else if (!xstrcmpiW(wszMethodName, L"Call"))
-                  dwAction=EXTACT_CALL;
-                else if (!xstrcmpiW(wszMethodName, L"Exec"))
-                  dwAction=EXTACT_EXEC;
-                else if (!xstrcmpiW(wszMethodName, L"OpenFile"))
-                  dwAction=EXTACT_OPENFILE;
-                else if (!xstrcmpiW(wszMethodName, L"SaveFile"))
-                  dwAction=EXTACT_SAVEFILE;
-                else if (!xstrcmpiW(wszMethodName, L"Font"))
-                  dwAction=EXTACT_FONT;
-                else if (!xstrcmpiW(wszMethodName, L"Recode"))
-                  dwAction=EXTACT_RECODE;
-                else if (!xstrcmpiW(wszMethodName, L"Insert"))
-                  dwAction=EXTACT_INSERT;
-                else
-                  dwAction=0;
-
-                if (dwAction)
-                {
-                  if (bInRow)
-                  {
-                    if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
-                    {
-                      lpLastButton=lpButton;
-                      if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
-                        lpRowItem->lpFirstToolbarItem=lpButton;
-                      lpButton->bUpdateItem=!nMinus;
-                      lpButton->bAutoLoad=nPlus;
-                      lpButton->dwAction=dwAction;
-                      lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
-
-                      xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
-                      lpButton->tbb.iBitmap=-1;
-                      lpButton->tbb.idCommand=++nItemCommand;
-                      lpButton->tbb.fsState=TBSTATE_ENABLED;
-                      lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
-                      lpButton->tbb.dwData=0;
-                      lpButton->tbb.iString=0;
-                      ParseMethodParameters(&lpButton->hParamStack, wpCount, &wpCount);
-
-                      if (dwAction == EXTACT_COMMAND)
-                      {
-                        int nCommand=0;
-
-                        if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
-                          nCommand=(int)lpParameter->nNumber;
-
-                        if (nCommand == IDM_FILE_OPEN)
-                        {
-                          lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
-                        }
-                        if (!*lpButton->wszButtonItem)
-                        {
-                          GetMenuStringWide(hMainMenu, nCommand, lpButton->wszButtonItem, MAX_PATH, MF_BYCOMMAND);
-                        }
-                      }
-                    }
-                  }
-                  else
-                  {
-                    ParseMethodParameters(&hParamButton, wpCount, &wpCount);
-                    FreeMethodParameters(&hParamButton);
-                  }
-                  bMethod=TRUE;
-                }
-                else
-                {
-                  nMessageID=STRID_PARSEMSG_UNKNOWNMETHOD;
-                  goto Error;
-                }
-              }
-              else
-              {
-                nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
-                goto Error;
-              }
-            }
-          }
-
-          if (bMethod)
-          {
-            if (hParamMenuName.first)
-            {
-              if (!lpButton)
-              {
-                //Method "Menu()" without action
-                if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
-                {
-                  lpLastButton=lpButton;
-                  if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
-                    lpRowItem->lpFirstToolbarItem=lpButton;
-                  lpButton->dwAction=EXTACT_MENU;
-                  lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
-
-                  xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
-                  lpButton->tbb.iBitmap=-1;
-                  lpButton->tbb.idCommand=++nItemCommand;
-                  lpButton->tbb.fsState=TBSTATE_ENABLED;
-                  lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
-                  lpButton->tbb.dwData=0;
-                  lpButton->tbb.iString=0;
-                }
-              }
-              else lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
-
-              lpButton->hParamMenuName=hParamMenuName;
-              hParamMenuName.first=0;
-              hParamMenuName.last=0;
-              hParamMenuName.nElements=0;
-            }
-            if (hIcon)
-            {
-              lpButton->tbb.iBitmap=nItemBitmap++;
             }
           }
           else
           {
-            wpErrorBegin=wpLineBegin;
-            nMessageID=STRID_PARSEMSG_NOMETHOD;
+            nMessageID=STRID_PARSEMSG_UNKNOWNSPECIAL;
             goto Error;
           }
         }
       }
+      else
+      {
+        //Normal item
+        bPrevSeparator=FALSE;
+        while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
+
+        if (*wpCount == L'+')
+        {
+          ++wpCount;
+          nPlus=1;
+        }
+        else nPlus=0;
+
+        //Parse methods
+        for (;;)
+        {
+          while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
+          wpErrorBegin=wpCount;
+
+          if (!MethodGetName(wpCount, wszMethodName, MAX_PATH, &wpCount))
+            break;
+
+          if (!xstrcmpiW(wszMethodName, L"Icon"))
+          {
+            if (hIcon)
+            {
+              nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
+              goto Error;
+            }
+            MethodGetIcon(wpCount, wszIconFile, MAX_PATH, &nFileIconIndex, &wpCount);
+            if (*(wpCount - 1) == L')') --wpCount;
+
+            if (bInRow)
+            {
+              if (!*wszIconFile)
+              {
+                hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(nFileIconIndex + 100), IMAGE_ICON, sizeIcon.cx, sizeIcon.cy, 0);
+              }
+              else
+              {
+                wchar_t wszPath[MAX_PATH];
+                wchar_t *wpFileName;
+
+                if (TranslateFileString(wszIconFile, wszPath, MAX_PATH))
+                {
+                  if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, wszIconFile, &wpFileName))
+                  {
+                    //if (nBigIcons)
+                    //  ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
+                    //else
+                    //  ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
+                    hIcon=IconExtractWide(wszPath, nFileIconIndex, sizeIcon.cx, sizeIcon.cy);
+                  }
+                }
+              }
+              if (hIcon)
+              {
+                if (nArrowOverlay > 0)
+                {
+                  //Method "Menu()" without action. Add overlay arrow.
+                  if (hParamMenuName.first && !lpButton)
+                  {
+                    if (!hIconArrowOverlay)
+                      hIconArrowOverlay=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(nArrowOverlay == IAO_COPYNORMAL?IDI_ICONARROW1:IDI_ICONARROW2), IMAGE_ICON, sizeIcon.cx, sizeIcon.cy, 0);
+                    if (hAdjustIcon=IconMenu_MixIcons(NULL, hIcon, hIconArrowOverlay, nArrowOverlay == IAO_COPYWHITEASMASK))
+                    {
+                      DestroyIcon(hIcon);
+                      hIcon=hAdjustIcon;
+                    }
+                  }
+                }
+                ImageList_AddIcon(hStack->hImageList, hIcon);
+                if (hStack->hDisabledImageList)
+                {
+                  if (hAdjustIcon=IconMenu_AdjustIcon(NULL, hIcon, TRUE, 30, 0))
+                  {
+                    ImageList_AddIcon(hStack->hDisabledImageList, hAdjustIcon);
+                    DestroyIcon(hAdjustIcon);
+                  }
+                }
+                DestroyIcon(hIcon);
+              }
+            }
+          }
+          else if (!xstrcmpiW(wszMethodName, L"Menu"))
+          {
+            if (!hParamMenuName.first)
+            {
+              if (!MethodParseParameters(&hParamMenuName, wpCount, &wpCount))
+              {
+                nMessageID=STRID_PARSEMSG_WRONGPARAMCOUNT;
+                goto Error;
+              }
+              if (*(wpCount - 1) == L')') --wpCount;
+              if (!bInRow) MethodFreeParameters(&hParamMenuName);
+              bMethod=TRUE;
+            }
+            else
+            {
+              nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
+              goto Error;
+            }
+          }
+          else
+          {
+            //Actions
+            if (lpButton)
+            {
+              nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
+              goto Error;
+            }
+
+            if (!xstrcmpiW(wszMethodName, L"Command"))
+              dwAction=EXTACT_COMMAND;
+            else if (!xstrcmpiW(wszMethodName, L"Call"))
+              dwAction=EXTACT_CALL;
+            else if (!xstrcmpiW(wszMethodName, L"Exec"))
+              dwAction=EXTACT_EXEC;
+            else if (!xstrcmpiW(wszMethodName, L"OpenFile"))
+              dwAction=EXTACT_OPENFILE;
+            else if (!xstrcmpiW(wszMethodName, L"SaveFile"))
+              dwAction=EXTACT_SAVEFILE;
+            else if (!xstrcmpiW(wszMethodName, L"Font"))
+              dwAction=EXTACT_FONT;
+            else if (!xstrcmpiW(wszMethodName, L"Recode"))
+              dwAction=EXTACT_RECODE;
+            else if (!xstrcmpiW(wszMethodName, L"Insert"))
+              dwAction=EXTACT_INSERT;
+            else
+              dwAction=0;
+
+            if (!dwAction)
+            {
+              nMessageID=STRID_PARSEMSG_UNKNOWNMETHOD;
+              goto Error;
+            }
+
+            if (bInRow)
+            {
+              if (lpButton=StackInsertBeforeButton(hStack, lpNextRowItemFirstButton))
+              {
+                lpLastButton=lpButton;
+                if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
+                  lpRowItem->lpFirstToolbarItem=lpButton;
+                lpButton->bUpdateItem=!nMinus;
+                lpButton->lpStateIf=lpStateIf;
+                lpButton->bAutoLoad=nPlus;
+                lpButton->dwAction=dwAction;
+                lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+
+                xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
+                lpButton->tbb.iBitmap=-1;
+                lpButton->tbb.idCommand=++nItemCommand;
+                lpButton->tbb.fsState=TBSTATE_ENABLED;
+                lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
+                lpButton->tbb.dwData=0;
+                lpButton->tbb.iString=0;
+                if (!MethodParseParameters(&lpButton->hParamStack, wpCount, &wpCount))
+                {
+                  nMessageID=STRID_PARSEMSG_WRONGPARAMCOUNT;
+                  goto Error;
+                }
+                if (*(wpCount - 1) == L')') --wpCount;
+
+                if (dwAction == EXTACT_COMMAND)
+                {
+                  int nCommand=0;
+
+                  if (lpParameter=MethodGetParameter(&lpButton->hParamStack, 1))
+                    nCommand=(int)lpParameter->nNumber;
+
+                  if (nCommand == IDM_FILE_OPEN)
+                  {
+                    lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
+                  }
+                  if (!*lpButton->wszButtonItem)
+                  {
+                    GetMenuStringWide(hMainMenu, nCommand, lpButton->wszButtonItem, MAX_PATH, MF_BYCOMMAND);
+                  }
+                }
+              }
+            }
+            else
+            {
+              if (!MethodParseParameters(&hParamButton, wpCount, &wpCount))
+              {
+                nMessageID=STRID_PARSEMSG_WRONGPARAMCOUNT;
+                goto Error;
+              }
+              if (*(wpCount - 1) == L')') --wpCount;
+              MethodFreeParameters(&hParamButton);
+            }
+            bMethod=TRUE;
+          }
+
+          MethodComment(wpCount, &wpCount);
+          if (*wpCount != L')')
+          {
+            nMessageID=STRID_PARSEMSG_NOCLOSEPARENTHESIS;
+            goto Error;
+          }
+          ++wpCount;
+        }
+
+        if (bMethod)
+        {
+          if (hParamMenuName.first)
+          {
+            if (!lpButton)
+            {
+              //Method "Menu()" without action
+              if (lpButton=StackInsertBeforeButton(hStack, lpNextRowItemFirstButton))
+              {
+                lpLastButton=lpButton;
+                if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
+                  lpRowItem->lpFirstToolbarItem=lpButton;
+                lpButton->dwAction=EXTACT_MENU;
+                lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+
+                xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
+                lpButton->tbb.iBitmap=-1;
+                lpButton->tbb.idCommand=++nItemCommand;
+                lpButton->tbb.fsState=TBSTATE_ENABLED;
+                lpButton->tbb.fsStyle=TBSTYLE_BUTTON|(nArrowOverlay == IAO_WHOLEDROPDOWN?BTNS_WHOLEDROPDOWN:0);
+                lpButton->tbb.dwData=0;
+                lpButton->tbb.iString=0;
+              }
+            }
+            else lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
+
+            lpButton->hParamMenuName=hParamMenuName;
+            hParamMenuName.first=0;
+            hParamMenuName.last=0;
+            hParamMenuName.nElements=0;
+          }
+          if (hIcon)
+          {
+            lpButton->tbb.iBitmap=nItemBitmap++;
+          }
+        }
+        else
+        {
+          nMessageID=STRID_PARSEMSG_NOMETHOD;
+          goto Error;
+        }
+      }
     }
   }
-  if (lpLastButton)
-    lpLastButton->tbb.fsState|=TBSTATE_WRAP;
-  if (hToolbarData->last)
-    hToolbarData->last->tbb.fsState&=~TBSTATE_WRAP;
+  if (hRowListStack.nElements)
+  {
+    if (lpLastButton)
+      lpLastButton->tbb.fsState|=TBSTATE_WRAP;
+    if (hStack->last && hRowListStack.last->lpFirstToolbarItem)
+      hStack->last->tbb.fsState&=~TBSTATE_WRAP;
+  }
+  else
+  {
+    //First button with TBSTATE_WRAP + TBSTYLE_SEP skipped in SetToolbarButtons.
+    dwStyle=(DWORD)GetWindowLongPtrWide(hToolbar, GWL_STYLE);
+
+    if (nToolbarSide == TBSIDE_BOTTOM)
+    {
+      if (hStack->first && (hStack->first->tbb.fsState & TBSTATE_WRAP))
+      {
+        if (dwStyle & CCS_NODIVIDER)
+          SetWindowLongPtrWide(hToolbar, GWL_STYLE, dwStyle & ~CCS_NODIVIDER);
+      }
+      else
+      {
+        if (!(dwStyle & CCS_NODIVIDER))
+          SetWindowLongPtrWide(hToolbar, GWL_STYLE, dwStyle|CCS_NODIVIDER);
+      }
+    }
+  }
   return TRUE;
 
   Error:
+  MethodFreeParameters(&hParamStack);
   crExtSetSel.cpMin=wpErrorBegin - wpText;
   crExtSetSel.cpMax=wpCount - wpText;
 
@@ -1422,6 +1761,10 @@ DWORD IsFlagOn(DWORD dwSetFlags, DWORD dwCheckFlags)
     return CCMS_NOPMDI;
   if ((dwCheckFlags & CCMS_NOFILEEXIST) && (dwSetFlags & CCMS_NOFILEEXIST))
     return CCMS_NOFILEEXIST;
+  if ((dwCheckFlags & CCMS_SKIPIF) && (dwSetFlags & CCMS_SKIPIF))
+    return CCMS_SKIPIF;
+  if ((dwCheckFlags & CCMS_CHECKIF) && (dwSetFlags & CCMS_CHECKIF))
+    return CCMS_CHECKIF;
   return 0;
 }
 
@@ -1516,42 +1859,59 @@ void FreeRows(STACKROW *lpRowListStack)
   lpRowListStack->nElements=0;
 }
 
-void FreeToolbarData(TOOLBARDATA *hToolbarData)
+void FreeToolbarData(STACKTOOLBAR *hStack)
 {
-  StackFreeButton(hToolbarData);
-  ImageList_Destroy(hToolbarData->hImageList);
+  STATEIF *lpStateIf;
+
+  for (lpStateIf=hStack->hStateIfStack.first; lpStateIf; lpStateIf=lpStateIf->next)
+  {
+    MethodFreeParameters(&lpStateIf->hParamStack);
+  }
+  StackClear((stack **)&hStack->hStateIfStack.first, (stack **)&hStack->hStateIfStack.last);
+
+  StackFreeButton(hStack);
+  if (hStack->hImageList)
+  {
+    ImageList_Destroy(hStack->hImageList);
+    hStack->hImageList=NULL;
+  }
+  if (hStack->hDisabledImageList)
+  {
+    ImageList_Destroy(hStack->hDisabledImageList);
+    hStack->hDisabledImageList=NULL;
+  }
+  if (hIconArrowOverlay)
+  {
+    DestroyIcon(hIconArrowOverlay);
+    hIconArrowOverlay=NULL;
+  }
+  hStack->nRows=0;
+  hStack->nSepRows=0;
 }
 
-void SetToolbarButtons(TOOLBARDATA *hToolbarData)
+void SetToolbarButtons(STACKTOOLBAR *hStack)
 {
   TOOLBARITEM *lpButton;
   int nArrorWidth;
   int nRowWidth;
   int nMaxRowWidth;
 
-  if (bBigIcons)
-  {
-    sizeButtons.cx=40;
-    sizeButtons.cy=38;
-    sizeToolbar.cx=44;
-    sizeToolbar.cy=44;
+  if (nBigIcons)
     nArrorWidth=10;
-    SendMessage(hToolbar, TB_SETBITMAPSIZE, 0, MAKELONG(32, 32));
-  }
   else
-  {
-    sizeButtons.cx=24;
-    sizeButtons.cy=22;
-    sizeToolbar.cx=28;
-    sizeToolbar.cy=28;
     nArrorWidth=9;
-    SendMessage(hToolbar, TB_SETBITMAPSIZE, 0, MAKELONG(16, 16));
-  }
+  sizeButtons.cx=sizeIcon.cx + 8;
+  sizeButtons.cy=sizeIcon.cy + 6;
+  sizeToolbar.cx=sizeIcon.cx + 12;
+  sizeToolbar.cy=sizeIcon.cy + 12;
+  SendMessage(hToolbar, TB_SETBITMAPSIZE, 0, MAKELONG(sizeIcon.cx, sizeIcon.cy));
+
   nMaxRowWidth=sizeButtons.cx;
   SendMessage(hToolbar, TB_SETBUTTONSIZE, 0, MAKELONG(sizeButtons.cx, sizeButtons.cy));
-  SendMessage(hToolbar, TB_SETIMAGELIST, 0, (LPARAM)hToolbarData->hImageList);
+  SendMessage(hToolbar, TB_SETIMAGELIST, 0, (LPARAM)hStack->hImageList);
+  SendMessage(hToolbar, TB_SETDISABLEDIMAGELIST, 0, (LPARAM)hStack->hDisabledImageList);
 
-  for (lpButton=hToolbarData->first; lpButton; lpButton=lpButton->next)
+  for (lpButton=hStack->first; lpButton; lpButton=lpButton->next)
   {
     lpButton->nButtonWidth=sizeButtons.cx;
     if (lpButton->tbb.fsStyle & TBSTYLE_DROPDOWN)
@@ -1572,7 +1932,17 @@ void SetToolbarButtons(TOOLBARDATA *hToolbarData)
     if (lpButton->tbb.fsState & TBSTATE_WRAP)
     {
       if (nToolbarSide == TBSIDE_TOP || nToolbarSide == TBSIDE_BOTTOM)
-        sizeToolbar.cy+=sizeButtons.cy + ((lpButton->tbb.fsStyle & TBSTYLE_SEP)?8:0);
+      {
+        if (lpButton->prev && lpButton->next)
+          sizeToolbar.cy+=sizeButtons.cy + ((lpButton->tbb.fsStyle & TBSTYLE_SEP)?8:0);
+        else
+        {
+          sizeToolbar.cy+=(lpButton->tbb.fsStyle & TBSTYLE_SEP)?2:0;
+          //First button with TBSTATE_WRAP + TBSTYLE_SEP signal to remove CCS_NODIVIDER
+          //style (already done in CreateToolbarData) and don't add this button.
+          if (!lpButton->prev) continue;
+        }
+      }
     }
     else if (nToolbarSide == TBSIDE_LEFT || nToolbarSide == TBSIDE_RIGHT)
       lpButton->tbb.fsState|=TBSTATE_WRAP;
@@ -1590,85 +1960,158 @@ void ClearToolbarButtons()
   while (SendMessage(hToolbar, TB_DELETEBUTTON, 0, 0));
 }
 
-void UpdateToolbar(TOOLBARDATA *hToolbarData)
+void UpdateToolbar(STACKTOOLBAR *hStack)
 {
   EDITINFO ei;
-  TOOLBARITEM *lpButton=(TOOLBARITEM *)hToolbarData->first;
+  STATEIF *lpStateIf;
+  TOOLBARITEM *lpButton;
   EXTPARAM *lpParameter;
   BOOL bInitMenu=FALSE;
+  static BOOL bUpdating;
 
-  ei.hWndEdit=NULL;
-
-  while (lpButton)
+  if (!bUpdating)
   {
-    if (lpButton->bUpdateItem)
+    bUpdating=TRUE;
+    ei.hWndEdit=NULL;
+    for (lpStateIf=hStack->hStateIfStack.first; lpStateIf; lpStateIf=lpStateIf->next)
+      lpStateIf->bCalculated=FALSE;
+
+    for (lpButton=hStack->first; lpButton; lpButton=lpButton->next)
     {
-      if (lpButton->dwAction == EXTACT_COMMAND)
+      if (lpButton->bUpdateItem)
       {
-        DWORD dwMenuState=0;
-        DWORD dwToolState;
-        int nCommand=0;
-
-        if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
-          nCommand=(int)lpParameter->nNumber;
-
-        if (nCommand)
+        if (lpButton->lpStateIf)
         {
-          if (nCommand == IDM_VIEW_SPLIT_WINDOW_ALL ||
-              nCommand == IDM_VIEW_SPLIT_WINDOW_WE ||
-              nCommand == IDM_VIEW_SPLIT_WINDOW_NS)
+          if (!lpButton->lpStateIf->nStopError)
           {
-            if (!ei.hWndEdit)
-              SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei);
-            if (ei.hWndEdit)
+            DWORD dwButtonState;
+
+            lpStateIf=lpButton->lpStateIf;
+
+            if (!lpStateIf->bCalculated)
             {
-              if ((nCommand == IDM_VIEW_SPLIT_WINDOW_ALL && ei.hWndClone1 && ei.hWndClone2 && ei.hWndClone3) ||
-                  (nCommand == IDM_VIEW_SPLIT_WINDOW_WE && ei.hWndClone1 && !ei.hWndClone2 && !ei.hWndClone3) ||
-                  (nCommand == IDM_VIEW_SPLIT_WINDOW_NS && !ei.hWndClone1 && ei.hWndClone2 && !ei.hWndClone3))
+              IFEXPRESSION ie;
+              INT_PTR nIfTrue=0;
+              INT_PTR nIfFalse=0;
+              int nMessageID;
+              EXPPARAM ep[]={{L"%f", 2, 0, EXPPARAM_FILE},
+                             {L"%d", 2, 0, EXPPARAM_FILEDIR},
+                             {L"%m", 2, (INT_PTR)hToolbar, EXPPARAM_INT},
+                             {L"%i", 2, lpButton->tbb.idCommand, EXPPARAM_INT},
+                             {0, 0, 0, 0}};
+
+              SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&lpStateIf->hParamStack, (LPARAM)ep);
+              if (lpParameter=MethodGetParameter(&lpStateIf->hParamStack, 2))
+                nIfTrue=lpParameter->nNumber;
+              if (lpParameter=MethodGetParameter(&lpStateIf->hParamStack, 3))
+                nIfFalse=lpParameter->nNumber;
+
+              nFocusChanged=-1;
+              ie.dwFlags=lpStateIf->dwFlags|IEF_STACKEXTPARAM;
+              ie.sep=&lpStateIf->hParamStack;
+              lpStateIf->nValue=SendMessage(hMainWnd, AKD_IFEXPRESSION, (WPARAM)NULL, (LPARAM)&ie);
+              if (ie.nError == IEE_SUCCESS && nFocusChanged == 1)
+                ie.nError=IEE_FOCUSCHANGED;
+              nFocusChanged=0;
+
+              if (lpParameter)
               {
-                dwMenuState=MF_CHECKED;
+                if (lpStateIf->nValue)
+                  lpStateIf->nValue=nIfTrue;
+                else
+                  lpStateIf->nValue=nIfFalse;
+              }
+
+              if (ie.nError)
+              {
+                lpStateIf->nStopError=ie.nError;
+                nMessageID=(ie.nError - 1) + STRID_IF_NOCOMMA;
+                xprintfW(wszBuffer, GetLangStringW(wLangModule, nMessageID), ie.wpEnd);
+                MessageBoxW(hMainWnd, wszBuffer, wszPluginTitle, MB_OK|MB_ICONERROR);
+                ViewItemCode(lpButton);
+                return;
+              }
+              lpStateIf->bCalculated=TRUE;
+            }
+            dwButtonState=(DWORD)SendMessage(hToolbar, TB_GETSTATE, lpButton->tbb.idCommand, 0);
+            if (!(dwButtonState & TBSTATE_CHECKED) != !(lpStateIf->nValue & IFS_CHECKED))
+              SendMessage(hToolbar, TB_CHECKBUTTON, lpButton->tbb.idCommand, (lpStateIf->nValue & TBSTATE_CHECKED)?TRUE:FALSE);
+            if (!(dwButtonState & TBSTATE_ENABLED) == !(lpStateIf->nValue & IFS_GRAYED))
+              SendMessage(hToolbar, TB_ENABLEBUTTON, lpButton->tbb.idCommand, (lpStateIf->nValue & IFS_GRAYED)?FALSE:TRUE);
+          }
+        }
+        else
+        {
+          if (lpButton->dwAction == EXTACT_COMMAND)
+          {
+            DWORD dwMenuState=0;
+            DWORD dwButtonState;
+            int nCommand=0;
+
+            if (lpParameter=MethodGetParameter(&lpButton->hParamStack, 1))
+              nCommand=(int)lpParameter->nNumber;
+
+            if (nCommand)
+            {
+              if (nCommand == IDM_VIEW_SPLIT_WINDOW_ALL ||
+                  nCommand == IDM_VIEW_SPLIT_WINDOW_WE ||
+                  nCommand == IDM_VIEW_SPLIT_WINDOW_NS)
+              {
+                if (!ei.hWndEdit)
+                  SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei);
+                if (ei.hWndEdit)
+                {
+                  if ((nCommand == IDM_VIEW_SPLIT_WINDOW_ALL && ei.hWndClone1 && ei.hWndClone2 && ei.hWndClone3) ||
+                      (nCommand == IDM_VIEW_SPLIT_WINDOW_WE && ei.hWndClone1 && !ei.hWndClone2 && !ei.hWndClone3) ||
+                      (nCommand == IDM_VIEW_SPLIT_WINDOW_NS && !ei.hWndClone1 && ei.hWndClone2 && !ei.hWndClone3))
+                  {
+                    dwMenuState=MF_CHECKED;
+                  }
+                }
+              }
+              else
+              {
+                if (!bInitMenu)
+                {
+                  SendMessage(hMainWnd, WM_INITMENU, (WPARAM)hMainMenu, IMENU_EDIT|IMENU_CHECKS);
+                  bInitMenu=TRUE;
+                }
+                dwMenuState=GetMenuState(hMainMenu, nCommand, MF_BYCOMMAND);
+              }
+              if (dwMenuState != (DWORD)-1)
+              {
+                dwButtonState=(DWORD)SendMessage(hToolbar, TB_GETSTATE, lpButton->tbb.idCommand, 0);
+                if (!(dwMenuState & MF_CHECKED) != !(dwButtonState & TBSTATE_CHECKED))
+                  SendMessage(hToolbar, TB_CHECKBUTTON, lpButton->tbb.idCommand, (dwMenuState & MF_CHECKED)?TRUE:FALSE);
+                if (!(dwMenuState & MF_GRAYED) == !(dwButtonState & TBSTATE_ENABLED))
+                  SendMessage(hToolbar, TB_ENABLEBUTTON, lpButton->tbb.idCommand, (dwMenuState & MF_GRAYED)?FALSE:TRUE);
               }
             }
           }
-          else
+          else if (lpButton->dwAction == EXTACT_CALL)
           {
-            if (!bInitMenu)
+            PLUGINFUNCTION *pf;
+            wchar_t *wpFunction=NULL;
+            int nDllAction=0;
+            BOOL bChecked;
+
+            if (lpParameter=MethodGetParameter(&lpButton->hParamStack, 1))
+              wpFunction=lpParameter->wpString;
+            if (lpParameter=MethodGetParameter(&lpButton->hParamStack, 2))
+              nDllAction=(int)lpParameter->nNumber;
+
+            if (wpFunction)
             {
-              SendMessage(hMainWnd, WM_INITMENU, (WPARAM)hMainMenu, IMENU_EDIT|IMENU_CHECKS);
-              bInitMenu=TRUE;
+              bChecked=FALSE;
+              if (!lpParameter && (pf=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)wpFunction, 0)))
+                if (pf->bRunning) bChecked=TRUE;
+              SendMessage(hToolbar, TB_CHECKBUTTON, lpButton->tbb.idCommand, bChecked);
             }
-            dwMenuState=GetMenuState(hMainMenu, nCommand, MF_BYCOMMAND);
           }
-          if (dwMenuState != (DWORD)-1)
-          {
-            dwToolState=(DWORD)SendMessage(hToolbar, TB_GETSTATE, lpButton->tbb.idCommand, 0);
-
-            if (!(dwMenuState & MF_GRAYED) == !(dwToolState & TBSTATE_ENABLED))
-              SendMessage(hToolbar, TB_ENABLEBUTTON, lpButton->tbb.idCommand, (dwMenuState & MF_GRAYED)?FALSE:TRUE);
-            if (!(dwMenuState & MF_CHECKED) != !(dwToolState & TBSTATE_CHECKED))
-              SendMessage(hToolbar, TB_CHECKBUTTON, lpButton->tbb.idCommand, (dwMenuState & MF_CHECKED)?TRUE:FALSE);
-          }
-        }
-      }
-      else if (lpButton->dwAction == EXTACT_CALL)
-      {
-        PLUGINFUNCTION *pf;
-        wchar_t *wpFunction=NULL;
-        BOOL bChecked;
-
-        if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
-          wpFunction=lpParameter->wpString;
-
-        if (wpFunction)
-        {
-          bChecked=FALSE;
-          if (pf=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)wpFunction, 0))
-            if (pf->bRunning) bChecked=TRUE;
-          SendMessage(hToolbar, TB_CHECKBUTTON, lpButton->tbb.idCommand, bChecked);
         }
       }
     }
-    lpButton=lpButton->next;
+    bUpdating=FALSE;
   }
 }
 
@@ -1685,15 +2128,22 @@ void ViewItemCode(TOOLBARITEM *lpButton)
     PostMessage(hWndMainDlg, AKDLL_SELTEXT, 0, 0);
 }
 
-void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
+void CallToolbar(STACKTOOLBAR *hStack, int nItem)
 {
+  static RECT rcButton;
   TOOLBARITEM *lpElement;
   EXTPARAM *lpParameter;
-  wchar_t wszCurrentFile[MAX_PATH];
-  RECT rcButton;
-  int nButtonID;
+  EXPPARAM ep[]={{L"%f", 2, 0, EXPPARAM_FILE},
+                 {L"%d", 2, 0, EXPPARAM_FILEDIR},
+                 {L"%m", 2, (INT_PTR)hToolbar, EXPPARAM_INT},
+                 {L"%i", 2, nItem, EXPPARAM_INT},
+                 {L"%bl", 3, (INT_PTR)&rcButton.left, EXPPARAM_LPINT},
+                 {L"%bt", 3, (INT_PTR)&rcButton.top, EXPPARAM_LPINT},
+                 {L"%br", 3, (INT_PTR)&rcButton.right, EXPPARAM_LPINT},
+                 {L"%bb", 3, (INT_PTR)&rcButton.bottom, EXPPARAM_LPINT},
+                 {0, 0, 0, 0}};
 
-  if (lpElement=StackGetButtonByID(hToolbarData, nItem))
+  if (lpElement=StackGetButtonByID(hStack, nItem))
   {
     if (GetKeyState(VK_CONTROL) & 0x80)
     {
@@ -1701,10 +2151,7 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       return;
     }
 
-    GetCurFile(wszCurrentFile, MAX_PATH);
-    nButtonID=lpElement->tbb.idCommand;
-
-    SendMessage(hToolbar, TB_GETRECT, lpElement->tbb.idCommand, (LPARAM)&rcButton);
+    SendMessage(hToolbar, TB_GETRECT, nItem, (LPARAM)&rcButton);
     ClientToScreen(hToolbar, (LPPOINT)&rcButton.left);
     ClientToScreen(hToolbar, (LPPOINT)&rcButton.right);
 
@@ -1713,9 +2160,9 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       int nCommand=0;
       LPARAM lParam=0;
 
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 1))
         nCommand=(int)lpParameter->nNumber;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 2))
         lParam=lpParameter->nNumber;
 
       if (nCommand)
@@ -1751,22 +2198,20 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
 
       if (bCall)
       {
-        ExpandMethodParameters(&lpElement->hParamStack, wszCurrentFile, wszExeDir, hToolbar, nButtonID, &rcButton);
+        SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&lpElement->hParamStack, (LPARAM)ep);
 
-        if (nStructSize=StructMethodParameters(&lpElement->hParamStack, NULL))
+        nStructSize=MethodStructParameters(&lpElement->hParamStack, NULL);
+        if (pcp=(PLUGINCALLPOSTW *)GlobalAlloc(GPTR, sizeof(PLUGINCALLPOSTW) + nStructSize))
         {
-          if (pcp=(PLUGINCALLPOSTW *)GlobalAlloc(GPTR, sizeof(PLUGINCALLPOSTW) + nStructSize))
+          xstrcpynW(pcp->szFunction, wpFunction, MAX_PATH);
+          if (nStructSize > 0)
           {
-            xstrcpynW(pcp->szFunction, wpFunction, MAX_PATH);
-            if (nStructSize > (INT_PTR)sizeof(INT_PTR))
-            {
-              pcp->lParam=(LPARAM)((unsigned char *)pcp + sizeof(PLUGINCALLPOSTW));
-              StructMethodParameters(&lpElement->hParamStack, (unsigned char *)pcp->lParam);
-            }
-            else pcp->lParam=0;
-
-            PostMessage(hMainWnd, AKD_DLLCALLW, (lpElement->bAutoLoad?DLLCF_SWITCHAUTOLOAD|DLLCF_SAVEONEXIT:0), (LPARAM)pcp);
+            pcp->lParam=(LPARAM)((unsigned char *)pcp + sizeof(PLUGINCALLPOSTW));
+            MethodStructParameters(&lpElement->hParamStack, (unsigned char *)pcp->lParam);
           }
+          else pcp->lParam=0;
+
+          PostMessage(hMainWnd, AKD_DLLCALLW, (lpElement->bAutoLoad?DLLCF_SWITCHAUTOLOAD|DLLCF_SAVEONEXIT:0), (LPARAM)pcp);
         }
       }
     }
@@ -1777,19 +2222,27 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       wchar_t *wpCmdLine=NULL;
       wchar_t *wpWorkDir=NULL;
       BOOL bWait=FALSE;
+      int nShowWindow=-1;
 
-      ExpandMethodParameters(&lpElement->hParamStack, wszCurrentFile, wszExeDir, hToolbar, nButtonID, &rcButton);
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
+      SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&lpElement->hParamStack, (LPARAM)ep);
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 1))
         wpCmdLine=lpParameter->wpExpanded;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 2))
         wpWorkDir=lpParameter->wpExpanded;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 3))
         bWait=(BOOL)lpParameter->nNumber;
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 4))
+        nShowWindow=(int)lpParameter->nNumber;
 
       if (wpCmdLine)
       {
         xmemset(&si, 0, sizeof(STARTUPINFOW));
         si.cb=sizeof(STARTUPINFOW);
+        if (nShowWindow >= 0)
+        {
+          si.dwFlags=STARTF_USESHOWWINDOW;
+          si.wShowWindow=(WORD)nShowWindow;
+        }
         if (CreateProcessWide(NULL, wpCmdLine, NULL, NULL, FALSE, 0, NULL, (wpWorkDir && *wpWorkDir)?wpWorkDir:NULL, &si, &pi))
         {
           if (bWait)
@@ -1809,26 +2262,27 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       int nCodePage=-1;
       BOOL bBOM=-1;
 
-      ExpandMethodParameters(&lpElement->hParamStack, wszCurrentFile, wszExeDir, hToolbar, nButtonID, &rcButton);
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
+      SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&lpElement->hParamStack, (LPARAM)ep);
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 1))
         wpFile=lpParameter->wpExpanded;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 2))
         nCodePage=(int)lpParameter->nNumber;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 3))
         bBOM=(BOOL)lpParameter->nNumber;
 
       if (lpElement->dwAction == EXTACT_OPENFILE)
       {
         OPENDOCUMENTW od;
 
-        od.dwFlags=OD_ADT_BINARY_ERROR;
-        if (nCodePage == -1) od.dwFlags|=OD_ADT_DETECT_CODEPAGE;
-        if (bBOM == -1) od.dwFlags|=OD_ADT_DETECT_BOM;
+        od.dwFlags=OD_ADT_BINARYERROR;
+        if (nCodePage == -1) od.dwFlags|=OD_ADT_DETECTCODEPAGE;
+        if (bBOM == -1) od.dwFlags|=OD_ADT_DETECTBOM;
 
         od.pFile=wpFile;
         od.pWorkDir=NULL;
         od.nCodePage=nCodePage;
         od.bBOM=bBOM;
+        od.hDoc=NULL;
         SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
       }
       else if (lpElement->dwAction == EXTACT_SAVEFILE)
@@ -1846,6 +2300,7 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
           sd.nCodePage=nCodePage;
           sd.bBOM=bBOM;
           sd.dwFlags=SD_UPDATE;
+          sd.hDoc=NULL;
           SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)NULL, (LPARAM)&sd);
         }
       }
@@ -1859,12 +2314,12 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       DWORD dwFontStyle=0;
       int nPointSize=0;
 
-      ExpandMethodParameters(&lpElement->hParamStack, wszCurrentFile, wszExeDir, hToolbar, nButtonID, &rcButton);
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
+      SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&lpElement->hParamStack, (LPARAM)ep);
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 1))
         wpFaceName=lpParameter->wpExpanded;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 2))
         dwFontStyle=(DWORD)lpParameter->nNumber;
-      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
+      if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 3))
         nPointSize=(int)lpParameter->nNumber;
 
       if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
@@ -1899,9 +2354,9 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
 
       if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
       {
-        if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
+        if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 1))
           tr.nCodePageFrom=(int)lpParameter->nNumber;
-        if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+        if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 2))
           tr.nCodePageTo=(int)lpParameter->nNumber;
 
         SendMessage(hMainWnd, AKD_RECODESEL, (WPARAM)ei.hWndEdit, (LPARAM)&tr);
@@ -1921,10 +2376,10 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       {
         if (!ei.bReadOnly)
         {
-          ExpandMethodParameters(&lpElement->hParamStack, wszCurrentFile, wszExeDir, hToolbar, nButtonID, &rcButton);
-          if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
+          SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&lpElement->hParamStack, (LPARAM)ep);
+          if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 1))
             wpText=lpParameter->wpExpanded;
-          if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+          if (lpParameter=MethodGetParameter(&lpElement->hParamStack, 2))
             bEscSequences=(BOOL)lpParameter->nNumber;
 
           if (bEscSequences)
@@ -1969,12 +2424,15 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
     }
     else if (lpElement->dwAction == EXTACT_MENU)
     {
-      CallContextMenuShow(lpElement, rcButton.left, rcButton.bottom);
+      int nPosX=rcButton.left;
+      int nPosY=GetMenuPosY(lpElement, &rcButton);
+
+      CallContextMenuShow(lpElement, nPosX, nPosY, NULL);
     }
   }
 }
 
-void CallContextMenuShow(TOOLBARITEM *lpButton, int nPosX, int nPosY)
+void CallContextMenuShow(TOOLBARITEM *lpButton, int nPosX, int nPosY, INT_PTR *lpnMenuHeight)
 {
   if (lpButton->hParamMenuName.first)
   {
@@ -2002,6 +2460,7 @@ void CallContextMenuShow(TOOLBARITEM *lpButton, int nPosX, int nPosY)
     decm.pPosY=szBottom;
     decm.nMenuIndex=-1;
     decm.pMenuName=pMenuName;
+    decm.lpnMenuHeight=lpnMenuHeight;
 
     pcs.pFunction=L"ContextMenu::Show";
     pcs.lParam=(LPARAM)&decm;
@@ -2010,11 +2469,49 @@ void CallContextMenuShow(TOOLBARITEM *lpButton, int nPosX, int nPosY)
   }
 }
 
+int GetMenuPosY(TOOLBARITEM *lpButton, RECT *rcButton)
+{
+  int nMaxY;
+  INT_PTR nPosY;
+  INT_PTR nMenuHeight=0;
+
+  nPosY=rcButton->bottom;
+
+  if (nToolbarSide != TBSIDE_TOP)
+  {
+    //Get menu height
+    if (!lpButton->hParamMenuName.first)
+    {
+      //IDM_FILE_OPEN
+      STACKRECENTFILE *rfs;
+
+      if (SendMessage(hMainWnd, AKD_RECENTFILES, RF_GET, (LPARAM)&rfs))
+        nMenuHeight=rfs->nElements * GetSystemMetrics(SM_CYMENU);
+    }
+    else
+    {
+      //ContextMenu::Show
+      CallContextMenuShow(lpButton, 0, 0, &nMenuHeight);
+    }
+
+    //Correct y-position
+    nMaxY=GetSystemMetrics(SM_CYSCREEN);
+
+    if (nPosY + nMenuHeight > nMaxY)
+    {
+      nPosY=rcButton->top;
+      if (nPosY + nMenuHeight <= nMaxY)
+        nPosY=rcButton->top - nMenuHeight;
+    }
+  }
+  return (int)nPosY;
+}
+
 void DestroyToolbarWindow(BOOL bDestroyBG)
 {
   DestroyWindow(hToolbar);
   hToolbar=NULL;
-  FreeToolbarData(&hToolbarData);
+  FreeToolbarData(&hStackToolbar);
 
   if (bDestroyBG)
   {
@@ -2024,446 +2521,97 @@ void DestroyToolbarWindow(BOOL bDestroyBG)
   }
 }
 
-TOOLBARITEM* StackInsertBeforeButton(TOOLBARDATA *hToolbarData, TOOLBARITEM *lpInsertBefore)
+TOOLBARITEM* StackInsertBeforeButton(STACKTOOLBAR *hStack, TOOLBARITEM *lpInsertBefore)
 {
   TOOLBARITEM *lpElement=NULL;
 
-  StackInsertBefore((stack **)&hToolbarData->first, (stack **)&hToolbarData->last, (stack *)lpInsertBefore, (stack **)&lpElement, sizeof(TOOLBARITEM));
+  StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpInsertBefore, (stack **)&lpElement, sizeof(TOOLBARITEM));
   return lpElement;
 }
 
-TOOLBARITEM* StackGetButtonByID(TOOLBARDATA *hToolbarData, int nItemID)
+TOOLBARITEM* StackGetButtonByID(STACKTOOLBAR *hStack, int nItemID)
 {
-  TOOLBARITEM *lpElement=(TOOLBARITEM *)hToolbarData->first;
+  TOOLBARITEM *lpElement;
 
-  while (lpElement)
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
     if (lpElement->tbb.idCommand == nItemID)
       return lpElement;
-
-    lpElement=lpElement->next;
   }
   return NULL;
 }
 
-TOOLBARITEM* StackGetButtonByIndex(TOOLBARDATA *hToolbarData, int nIndex)
+TOOLBARITEM* StackGetButtonByIndex(STACKTOOLBAR *hStack, int nIndex)
 {
-  TOOLBARITEM *lpElement=(TOOLBARITEM *)hToolbarData->first;
+  TOOLBARITEM *lpElement;
   int nCount=0;
 
-  while (lpElement)
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
     if (nCount++ == nIndex)
       return lpElement;
-
-    lpElement=lpElement->next;
   }
   return NULL;
 }
 
-void StackFreeButton(TOOLBARDATA *hToolbarData)
+void StackFreeButton(STACKTOOLBAR *hStack)
 {
-  TOOLBARITEM *lpElement=(TOOLBARITEM *)hToolbarData->first;
+  TOOLBARITEM *lpElement;
 
-  while (lpElement)
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
-    FreeMethodParameters(&lpElement->hParamStack);
-    FreeMethodParameters(&lpElement->hParamMenuName);
-
-    lpElement=lpElement->next;
+    MethodFreeParameters(&lpElement->hParamStack);
+    MethodFreeParameters(&lpElement->hParamMenuName);
   }
-  StackClear((stack **)&hToolbarData->first, (stack **)&hToolbarData->last);
+  StackClear((stack **)&hStack->first, (stack **)&hStack->last);
 }
 
-void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, const wchar_t **wppText)
+int GetWord(const wchar_t *wpText, wchar_t *wszWord, int nWordMax, const wchar_t **wppNextWord, BOOL *lpbQuote)
 {
-  EXTPARAM *lpParameter;
-  const wchar_t *wpParamBegin=wpText;
-  const wchar_t *wpParamEnd;
-  wchar_t *wpString;
+  const wchar_t *wpCount;
   wchar_t wchStopChar;
-  int nStringLen;
 
-  MethodParameter:
-  while (*wpParamBegin == L' ' || *wpParamBegin == L'\t') ++wpParamBegin;
-
-  if (*wpParamBegin == L'\"' || *wpParamBegin == L'\'' || *wpParamBegin == L'`')
-  {
-    //String
-    wchStopChar=*wpParamBegin++;
-    nStringLen=0;
-
-    for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != L'\0'; ++wpParamEnd)
-      ++nStringLen;
-
-    if (!StackInsertIndex((stack **)&hParamStack->first, (stack **)&hParamStack->last, (stack **)&lpParameter, -1, sizeof(EXTPARAM)))
-    {
-      ++hParamStack->nElements;
-
-      if (lpParameter->wpString=(wchar_t *)GlobalAlloc(GPTR, (nStringLen + 1) * sizeof(wchar_t)))
-      {
-        lpParameter->dwType=EXTPARAM_CHAR;
-        wpString=lpParameter->wpString;
-
-        for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != L'\0'; ++wpParamEnd)
-          *wpString++=*wpParamEnd;
-        *wpString=L'\0';
-
-        if (bOldWindows)
-        {
-          nStringLen=WideCharToMultiByte(CP_ACP, 0, lpParameter->wpString, -1, NULL, 0, NULL, NULL);
-          if (lpParameter->pString=(char *)GlobalAlloc(GPTR, nStringLen))
-            WideCharToMultiByte(CP_ACP, 0, lpParameter->wpString, -1, lpParameter->pString, nStringLen, NULL, NULL);
-        }
-      }
-    }
-  }
-  else
-  {
-    //Number
-    for (wpParamEnd=wpParamBegin; *wpParamEnd != L',' && *wpParamEnd != L')' && *wpParamEnd != L'\0'; ++wpParamEnd);
-
-    if (!StackInsertIndex((stack **)&hParamStack->first, (stack **)&hParamStack->last, (stack **)&lpParameter, -1, sizeof(EXTPARAM)))
-    {
-      ++hParamStack->nElements;
-
-      lpParameter->dwType=EXTPARAM_INT;
-      lpParameter->nNumber=xatoiW(wpParamBegin, NULL);
-    }
-  }
-
-  while (*wpParamEnd != L',' && *wpParamEnd != L')' && *wpParamEnd != L'\0')
-    ++wpParamEnd;
-  if (*wpParamEnd == L',')
-  {
-    wpParamBegin=++wpParamEnd;
-    goto MethodParameter;
-  }
-  if (*wpParamEnd == L')')
-    ++wpParamEnd;
-  if (wppText) *wppText=wpParamEnd;
-}
-
-void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, const wchar_t *wpExeDir, HWND hToolbar, int nButtonID, const RECT *lprcButton)
-{
-  //%f -file, %d -file directory, %a -AkelPad directory, %% -%
-  //%m -toolbar handle, %i -button command id, button screen coordinates: %bl -left, %bt -top, %br -right, %bb -bottom
-  EXTPARAM *lpParameter;
-  wchar_t *wszSource;
-  wchar_t *wpSource;
-  wchar_t *wszTarget;
-  wchar_t *wpTarget;
-  int nStringLen;
-  int nTargetLen=0;
-
-  for (lpParameter=hParamStack->first; lpParameter; lpParameter=lpParameter->next)
-  {
-    if (lpParameter->dwType == EXTPARAM_CHAR)
-    {
-      //Expand environment strings
-      nStringLen=ExpandEnvironmentStringsWide(lpParameter->wpString, NULL, 0);
-
-      if (wszSource=(wchar_t *)GlobalAlloc(GPTR, nStringLen * sizeof(wchar_t)))
-      {
-        ExpandEnvironmentStringsWide(lpParameter->wpString, wszSource, nStringLen);
-
-        //Expand plugin variables
-        wszTarget=NULL;
-        wpTarget=NULL;
-
-        for (;;)
-        {
-          for (wpSource=wszSource; *wpSource;)
-          {
-            if (*wpSource == L'%')
-            {
-              if (*++wpSource == L'%')
-              {
-                ++wpSource;
-                if (wszTarget) *wpTarget=L'%';
-                ++wpTarget;
-              }
-              else if (*wpSource == L'f' || *wpSource == L'F')
-              {
-                ++wpSource;
-                if (*wpFile) wpTarget+=xstrcpyW(wszTarget?wpTarget:NULL, wpFile) - !wszTarget;
-              }
-              else if (*wpSource == L'd' || *wpSource == L'D')
-              {
-                ++wpSource;
-                if (*wpFile) wpTarget+=GetFileDir(wpFile, -1, wszTarget?wpTarget:NULL, MAX_PATH) - !wszTarget;
-              }
-              else if (*wpSource == L'a' || *wpSource == L'A')
-              {
-                ++wpSource;
-                wpTarget+=xstrcpyW(wszTarget?wpTarget:NULL, wpExeDir) - !wszTarget;
-              }
-              else if (*wpSource == L'm' || *wpSource == L'M')
-              {
-                ++wpSource;
-                wpTarget+=(int)xitoaW((INT_PTR)hToolbar, wszTarget?wpTarget:NULL) - !wszTarget;
-              }
-              else if (*wpSource == L'i' || *wpSource == L'I')
-              {
-                ++wpSource;
-                wpTarget+=(int)xitoaW(nButtonID, wszTarget?wpTarget:NULL) - !wszTarget;
-              }
-              else if (*wpSource == L'b' || *wpSource == L'B')
-              {
-                if (*++wpSource == L'l' || *wpSource == L'L')
-                {
-                  ++wpSource;
-                  wpTarget+=(int)xitoaW(lprcButton->left, wszTarget?wpTarget:NULL) - !wszTarget;
-                }
-                else if (*wpSource == L't' || *wpSource == L'T')
-                {
-                  ++wpSource;
-                  wpTarget+=(int)xitoaW(lprcButton->top, wszTarget?wpTarget:NULL) - !wszTarget;
-                }
-                else if (*wpSource == L'r' || *wpSource == L'R')
-                {
-                  ++wpSource;
-                  wpTarget+=(int)xitoaW(lprcButton->right, wszTarget?wpTarget:NULL) - !wszTarget;
-                }
-                else if (*wpSource == L'b' || *wpSource == L'B')
-                {
-                  ++wpSource;
-                  wpTarget+=(int)xitoaW(lprcButton->bottom, wszTarget?wpTarget:NULL) - !wszTarget;
-                }
-              }
-            }
-            else
-            {
-              if (wszTarget) *wpTarget=*wpSource;
-              ++wpTarget;
-              ++wpSource;
-            }
-          }
-
-          if (!wszTarget)
-          {
-            //Allocate wszTarget and loop again
-            if (wszTarget=(wchar_t *)GlobalAlloc(GPTR, (INT_PTR)(wpTarget + 1)))
-            {
-              nTargetLen=(int)((INT_PTR)wpTarget / sizeof(wchar_t));
-              wpTarget=wszTarget;
-            }
-            else break;
-          }
-          else
-          {
-            *wpTarget=L'\0';
-            break;
-          }
-        }
-
-        if (wszTarget)
-        {
-          if (lpParameter->pExpanded)
-          {
-            GlobalFree((HGLOBAL)lpParameter->pExpanded);
-            lpParameter->pExpanded=NULL;
-          }
-          if (lpParameter->wpExpanded)
-          {
-            GlobalFree((HGLOBAL)lpParameter->wpExpanded);
-            lpParameter->wpExpanded=NULL;
-          }
-          lpParameter->wpExpanded=wszTarget;
-          lpParameter->nExpandedUnicodeLen=nTargetLen;
-
-          if (bOldWindows)
-          {
-            lpParameter->nExpandedAnsiLen=WideCharToMultiByte(CP_ACP, 0, lpParameter->wpExpanded, -1, NULL, 0, NULL, NULL);
-            if (lpParameter->pExpanded=(char *)GlobalAlloc(GPTR, lpParameter->nExpandedAnsiLen))
-              WideCharToMultiByte(CP_ACP, 0, lpParameter->wpExpanded, -1, lpParameter->pExpanded, lpParameter->nExpandedAnsiLen, NULL, NULL);
-            if (lpParameter->nExpandedAnsiLen) --lpParameter->nExpandedAnsiLen;
-          }
-        }
-        GlobalFree((HGLOBAL)wszSource);
-      }
-    }
-  }
-}
-
-int StructMethodParameters(STACKEXTPARAM *hParamStack, unsigned char *lpStruct)
-{
-  EXTPARAM *lpParameter;
-  int nElementOffset;
-  int nStringOffset=0;
-
-  if (hParamStack->nElements)
-  {
-    //nStringOffset is pointer to memory where first string will be copied
-    nElementOffset=0;
-    nStringOffset=hParamStack->nElements * sizeof(INT_PTR);
-
-    //First element in structure is the size of the call parameters structure
-    if (lpStruct) *((INT_PTR *)(lpStruct + nElementOffset))=nStringOffset;
-    nElementOffset+=sizeof(INT_PTR);
-
-    //Skip hParamStack->first equal to "Plugin::Function".
-    for (lpParameter=hParamStack->first->next; lpParameter; lpParameter=lpParameter->next)
-    {
-      if (lpParameter->dwType == EXTPARAM_CHAR)
-      {
-        //Strings located after call parameters structure
-        if (lpStruct) *((INT_PTR *)(lpStruct + nElementOffset))=(INT_PTR)(lpStruct + nStringOffset);
-
-        if (bOldWindows)
-        {
-          if (lpStruct) xmemcpy(lpStruct + nStringOffset, lpParameter->pExpanded, lpParameter->nExpandedAnsiLen + 1);
-          nStringOffset+=(lpParameter->nExpandedAnsiLen + 1);
-        }
-        else
-        {
-          if (lpStruct) xmemcpy(lpStruct + nStringOffset, lpParameter->wpExpanded, (lpParameter->nExpandedUnicodeLen + 1) * sizeof(wchar_t));
-          nStringOffset+=(lpParameter->nExpandedUnicodeLen + 1) * sizeof(wchar_t);
-        }
-      }
-      else
-      {
-        if (lpStruct) *((INT_PTR *)(lpStruct + nElementOffset))=lpParameter->nNumber;
-      }
-      nElementOffset+=sizeof(INT_PTR);
-    }
-  }
-  return nStringOffset;
-}
-
-EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex)
-{
-  EXTPARAM *lpParameter;
-
-  if (!StackGetElement((stack *)hParamStack->first, (stack *)hParamStack->last, (stack **)&lpParameter, nIndex))
-    return lpParameter;
-  return NULL;
-}
-
-void GetIconParameters(const wchar_t *wpText, wchar_t *wszIconFile, int nMaxIconFile, int *nIconIndex, const wchar_t **wppText)
-{
-  wchar_t wchStopChar;
-  int i;
-
-  wszIconFile[0]=L'\0';
-  *nIconIndex=0;
-
-  //File
   while (*wpText == L' ' || *wpText == L'\t') ++wpText;
 
   if (*wpText == L'\"' || *wpText == L'\'' || *wpText == L'`')
   {
-    wchStopChar=*wpText++;
+    if (lpbQuote) *lpbQuote=TRUE;
+    wchStopChar=*wpText;
+    wpCount=++wpText;
 
-    for (i=0; i < nMaxIconFile && *wpText != wchStopChar && *wpText != L'\0'; ++i, ++wpText)
+    //Parse: "param" or 'param' or `param`
+    while (*wpCount != wchStopChar /*&& *wpCount != L'\r'*/ && *wpCount != L'\0')
+      ++wpCount;
+
+    if (wppNextWord)
     {
-      wszIconFile[i]=*wpText;
-    }
-    wszIconFile[i]=L'\0';
-
-    while (*wpText != L',' && *wpText != L')' && *wpText != L'\0')
-      ++wpText;
-    if (*wpText == L',')
-      ++wpText;
-    else
-      goto End;
-  }
-
-  //Index
-  while (*wpText == L' ' || *wpText == L'\t') ++wpText;
-
-  *nIconIndex=(int)xatoiW(wpText, NULL);
-
-  while (*wpText != L',' && *wpText != L')' && *wpText != L'\0')
-    ++wpText;
-  if (*wpText == L',')
-    ++wpText;
-  else
-    goto End;
-
-  //End
-  End:
-  if (*wpText == L')')
-    ++wpText;
-  *wppText=wpText;
-}
-
-void FreeMethodParameters(STACKEXTPARAM *hParamStack)
-{
-  EXTPARAM *lpParameter;
-
-  for (lpParameter=hParamStack->first; lpParameter; lpParameter=lpParameter->next)
-  {
-    if (lpParameter->dwType == EXTPARAM_CHAR)
-    {
-      if (lpParameter->pString) GlobalFree((HGLOBAL)lpParameter->pString);
-      if (lpParameter->wpString) GlobalFree((HGLOBAL)lpParameter->wpString);
-      if (lpParameter->pExpanded) GlobalFree((HGLOBAL)lpParameter->pExpanded);
-      if (lpParameter->wpExpanded) GlobalFree((HGLOBAL)lpParameter->wpExpanded);
-    }
-  }
-  StackClear((stack **)&hParamStack->first, (stack **)&hParamStack->last);
-  hParamStack->nElements=0;
-}
-
-int GetMethodName(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText)
-{
-  int i=0;
-
-  while (*wpText == L'\"' || *wpText == L' ' || *wpText == L'\t') ++wpText;
-
-  while (*wpText != L'(' && *wpText != L'\r' && *wpText != L'\0')
-  {
-    if (i < nStrLen) wszStr[i++]=*wpText;
-    ++wpText;
-  }
-  wszStr[i]=L'\0';
-  if (*wpText != L'\r' && *wpText != L'\0') ++wpText;
-  if (wppText) *wppText=wpText;
-  return i;
-}
-
-int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus)
-{
-  int i;
-
-  while (*wpText == L' ' || *wpText == L'\t' || *wpText == L'\r' || *wpText == L'\n') ++wpText;
-
-  if (*wpText == L'-')
-  {
-    if (nMinus) *nMinus=1;
-    ++wpText;
-  }
-  else
-  {
-    if (nMinus) *nMinus=0;
-  }
-
-  if (*wpText == L'\"')
-  {
-    ++wpText;
-    i=0;
-
-    while (*wpText != L'\"' && *wpText != L'\0')
-    {
-      if (i < nStrLen) wszStr[i++]=*wpText;
-      ++wpText;
+      *wppNextWord=wpCount;
+      if (*wpCount == wchStopChar)
+        ++*wppNextWord;
     }
   }
   else
   {
-    i=0;
+    if (lpbQuote) *lpbQuote=FALSE;
+    wpCount=wpText;
 
-    while (*wpText != L' ' && *wpText != L'\r' && *wpText != L'\0')
-    {
-      if (i < nStrLen) wszStr[i++]=*wpText;
-      ++wpText;
-    }
+    //Parse: param1 param2 param3
+    while (*wpCount != L' ' && *wpCount != L'\t' && *wpCount != L'\r' && *wpCount != L'\0')
+      ++wpCount;
+
+    if (wppNextWord)
+      *wppNextWord=wpCount;
   }
-  wszStr[i]=L'\0';
-  if (*wpText != L'\r' && *wpText != L'\0') ++wpText;
-  if (wppText) *wppText=wpText;
-  return i;
+  return (int)xstrcpynW(wszWord, wpText, min(nWordMax, wpCount - wpText + 1));
+}
+
+BOOL NextLine(const wchar_t **wpText)
+{
+  while (**wpText != L'\r' && **wpText != L'\n' && **wpText != L'\0') ++*wpText;
+  if (**wpText == L'\0') return FALSE;
+  if (**wpText == L'\r') ++*wpText;
+  if (**wpText == L'\n') ++*wpText;
+  return TRUE;
 }
 
 BOOL SkipComment(const wchar_t **wpText)
@@ -2474,7 +2622,8 @@ BOOL SkipComment(const wchar_t **wpText)
 
     if (**wpText == L';' || **wpText == L'#')
     {
-      while (**wpText != L'\r' && **wpText != L'\0') ++*wpText;
+      if (!NextLine(wpText))
+        return FALSE;
     }
     else break;
   }
@@ -2483,19 +2632,22 @@ BOOL SkipComment(const wchar_t **wpText)
   return TRUE;
 }
 
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen)
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax)
 {
   const wchar_t *wpCount;
 
   if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
-  if (wszFileDir) wszFileDir[0]=L'\0';
 
-  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
     if (*wpCount == L'\\')
-      return (int)xstrcpynW(wszFileDir, wpFile, min(dwFileDirLen, (DWORD)(wpCount - wpFile) + 1));
+    {
+      --wpCount;
+      break;
+    }
   }
-  return 0;
+  ++wpCount;
+  return (int)xstrcpynW(wszFileDir, wpFile, min(nFileDirMax, wpCount - wpFile + 1));
 }
 
 INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *wszOutput, DWORD *lpdwCaret)
@@ -2556,7 +2708,7 @@ INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *ws
             if (!*a) goto Error;
             whex[3]=*++a;
             if (!*a) goto Error;
-            nDec=(int)hex2decW(whex, 4);
+            nDec=(int)hex2decW(whex, 4, NULL);
             if (nDec == -1) goto Error;
             while (*++a == L' ');
 
@@ -2620,7 +2772,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
   wchar_t *wszSource;
   wchar_t *wpSource;
   wchar_t *wpTarget=wszBuffer;
-  wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
+  wchar_t *wpTargetMax=(wszBuffer ? (wszBuffer + nBufferSize) : (wchar_t *)MAXUINT_PTR);
   int nStringLen;
   BOOL bStringStart=TRUE;
 
@@ -2692,8 +2844,32 @@ INT_PTR GetEditText(HWND hWnd, wchar_t **wpText)
   if (nTextLen=SendMessage(hMainWnd, AKD_GETTEXTRANGEW, (WPARAM)hWnd, (LPARAM)&gtr))
     *wpText=(wchar_t *)gtr.pText;
   else
-    *wpText=(wchar_t *)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, sizeof(wchar_t));
+    CopyWideStr(L"", -1, wpText);
   return nTextLen;
+}
+
+INT_PTR CopyWideStr(const wchar_t *wpSrc, INT_PTR nSrcLen, wchar_t **wppDst)
+{
+  wchar_t *wszDst=*wppDst;
+
+  if (nSrcLen == -1)
+    nSrcLen=xstrlenW(wpSrc);
+  if (wszDst)
+    FreeWideStr(&wszDst);
+  if (wszDst=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nSrcLen + 1) * sizeof(wchar_t)))
+    xstrcpynW(wszDst, wpSrc, nSrcLen + 1);
+  *wppDst=wszDst;
+  return nSrcLen;
+}
+
+BOOL FreeWideStr(wchar_t **wppWideStr)
+{
+  if (wppWideStr && *wppWideStr && !GlobalFree((HGLOBAL)*wppWideStr))
+  {
+    *wppWideStr=NULL;
+    return TRUE;
+  }
+  return FALSE;
 }
 
 void ShowStandardEditMenu(HWND hWnd, HMENU hMenu, BOOL bMouse)
@@ -2774,41 +2950,33 @@ INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BY
 void ReadOptions(DWORD dwFlags)
 {
   HANDLE hOptions;
-  DWORD dwSize;
+  int nSize;
 
   if (hOptions=(HANDLE)SendMessage(hMainWnd, AKD_BEGINOPTIONSW, POB_READ, (LPARAM)wszPluginName))
   {
-    dwSize=(DWORD)WideOption(hOptions, L"ToolBarText", PO_BINARY, NULL, 0);
-
-    if (dwSize)
+    if ((nSize=(int)WideOption(hOptions, L"ToolBarText", PO_BINARY, NULL, 0)) > 0)
     {
-      if (wszToolBarText=(wchar_t *)HeapAlloc(hHeap, 0, dwSize + sizeof(wchar_t)))
+      if (wszToolBarText=(wchar_t *)GlobalAlloc(GMEM_FIXED, nSize))
       {
-        WideOption(hOptions, L"ToolBarText", PO_BINARY, (LPBYTE)wszToolBarText, dwSize);
-        wszToolBarText[dwSize / sizeof(wchar_t)]=L'\0';
+        WideOption(hOptions, L"ToolBarText", PO_BINARY, (LPBYTE)wszToolBarText, nSize);
       }
     }
 
-    WideOption(hOptions, L"BigIcons", PO_DWORD, (LPBYTE)&bBigIcons, sizeof(DWORD));
+    WideOption(hOptions, L"BigIcons", PO_DWORD, (LPBYTE)&nBigIcons, sizeof(DWORD));
     WideOption(hOptions, L"FlatButtons", PO_DWORD, (LPBYTE)&bFlatButtons, sizeof(DWORD));
     WideOption(hOptions, L"IconsBit", PO_DWORD, (LPBYTE)&nIconsBit, sizeof(DWORD));
+    WideOption(hOptions, L"GrayedIcons", PO_DWORD, (LPBYTE)&nGrayedIcons, sizeof(DWORD));
     WideOption(hOptions, L"ToolbarSide", PO_DWORD, (LPBYTE)&nToolbarSide, sizeof(DWORD));
     WideOption(hOptions, L"SidePriority", PO_DWORD, (LPBYTE)&nSidePriority, sizeof(DWORD));
+    WideOption(hOptions, L"ArrowOverlay", PO_DWORD, (LPBYTE)&nArrowOverlay, sizeof(DWORD));
     WideOption(hOptions, L"RowList", PO_STRING, (LPBYTE)wszRowList, MAX_PATH * sizeof(wchar_t));
     WideOption(hOptions, L"WindowRect", PO_BINARY, (LPBYTE)&rcMainCurrentDialog, sizeof(RECT));
 
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
   }
 
-  if (!wszToolBarText)
-  {
-    dwSize=(DWORD)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTMENU));
-
-    if (wszToolBarText=(wchar_t *)HeapAlloc(hHeap, 0, dwSize * sizeof(wchar_t)))
-    {
-      xprintfW(wszToolBarText, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTMENU));
-    }
-  }
+  //Default menus
+  if (!wszToolBarText) wszToolBarText=GetDefaultMenu(STRID_DEFAULTMENU);
 }
 
 void SaveOptions(DWORD dwFlags)
@@ -2823,11 +2991,13 @@ void SaveOptions(DWORD dwFlags)
     }
     if (dwFlags & OF_SETTINGS)
     {
-      WideOption(hOptions, L"BigIcons", PO_DWORD, (LPBYTE)&bBigIcons, sizeof(DWORD));
+      WideOption(hOptions, L"BigIcons", PO_DWORD, (LPBYTE)&nBigIcons, sizeof(DWORD));
       WideOption(hOptions, L"FlatButtons", PO_DWORD, (LPBYTE)&bFlatButtons, sizeof(DWORD));
       WideOption(hOptions, L"IconsBit", PO_DWORD, (LPBYTE)&nIconsBit, sizeof(DWORD));
+      WideOption(hOptions, L"GrayedIcons", PO_DWORD, (LPBYTE)&nGrayedIcons, sizeof(DWORD));
       WideOption(hOptions, L"ToolbarSide", PO_DWORD, (LPBYTE)&nToolbarSide, sizeof(DWORD));
       WideOption(hOptions, L"SidePriority", PO_DWORD, (LPBYTE)&nSidePriority, sizeof(DWORD));
+      WideOption(hOptions, L"ArrowOverlay", PO_DWORD, (LPBYTE)&nArrowOverlay, sizeof(DWORD));
       WideOption(hOptions, L"RowList", PO_STRING, (LPBYTE)wszRowList, ((int)xstrlenW(wszRowList) + 1) * sizeof(wchar_t));
     }
     if (dwFlags & OF_RECT)
@@ -2837,6 +3007,17 @@ void SaveOptions(DWORD dwFlags)
 
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
   }
+}
+
+wchar_t* GetDefaultMenu(int nStringID)
+{
+  wchar_t *wszMenuText;
+  DWORD dwSize;
+
+  dwSize=(DWORD)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, nStringID));
+  if (wszMenuText=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize * sizeof(wchar_t)))
+    xprintfW(wszMenuText, L"%s", GetLangStringW(wLangModule, nStringID));
+  return wszMenuText;
 }
 
 const char* GetLangStringA(LANGID wLangID, int nStringID)
@@ -2867,12 +3048,42 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0421\x0442\x043E\x0440\x043E\x043D\x0430";
     if (nStringID == STRID_ROWS)
       return L"\x0420\x044F\x0434\x044B (1,2...)";
+    if (nStringID == STRID_PARSEMSG_UNKNOWNSPECIAL)
+      return L"\x041D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x044B\x0439\x0020\x0441\x043F\x0435\x0446\x0438\x0430\x043B\x044C\x043D\x044B\x0439\x0020\x043F\x0443\x043D\x043A\x0442 \"%s\".";
     if (nStringID == STRID_PARSEMSG_UNKNOWNMETHOD)
       return L"\x041D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x044B\x0439\x0020\x043C\x0435\x0442\x043E\x0434 \"%0.s%s\".";
     if (nStringID == STRID_PARSEMSG_METHODALREADYDEFINED)
       return L"\x041C\x0435\x0442\x043E\x0434\x0020\x0443\x0436\x0435\x0020\x043D\x0430\x0437\x043D\x0430\x0447\x0435\x043D\x002E";
     if (nStringID == STRID_PARSEMSG_NOMETHOD)
       return L"\x042D\x043B\x0435\x043C\x0435\x043D\x0442\x0020\x043D\x0435\x0020\x0438\x0441\x043F\x043E\x043B\x044C\x0437\x0443\x0435\x0442\x0020\x043C\x0435\x0442\x043E\x0434\x0430\x0020\x0434\x043B\x044F\x0020\x0432\x044B\x043F\x043E\x043B\x043D\x0435\x043D\x0438\x044F\x002E";
+    if (nStringID == STRID_PARSEMSG_WRONGPARAMCOUNT)
+      return L"\x041D\x0435\x0432\x0435\x0440\x043D\x043E\x0435\x0020\x043A\x043E\x043B\x0438\x0447\x0435\x0441\x0442\x0432\x043E\x0020\x043F\x0430\x0440\x0430\x043C\x0435\x0442\x0440\x043E\x0432\x002E";
+    if (nStringID == STRID_PARSEMSG_NOOPENSET)
+      return L"\x041D\x0435\x0442\x0020\x043E\x0442\x043A\x0440\x044B\x0432\x0430\x044E\x0449\x0435\x0433\x043E SET().";
+    if (nStringID == STRID_PARSEMSG_NOCOMMA)
+      return L"\x041D\x0435\x0442\x0020\x0437\x0430\x043F\x044F\x0442\x043E\x0439 \",\".";
+    if (nStringID == STRID_PARSEMSG_NOCLOSEPARENTHESIS)
+      return L"\x041D\x0435\x0442\x0020\x0437\x0430\x043A\x0440\x044B\x0432\x0430\x044E\x0449\x0435\x0439\x0020\x0441\x043A\x043E\x0431\x043A\x0438 \")\".";
+    if (nStringID == STRID_PARSEMSG_NOEOL)
+      return L"\x041E\x0436\x0438\x0434\x0430\x0435\x0442\x0441\x044F\x0020\x043A\x043E\x043D\x0435\x0446\x0020\x0441\x0442\x0440\x043E\x043A\x0438.";
+    if (nStringID == STRID_IF_NOCOMMA)
+      return L"If: \x043D\x0435\x0442\x0020\x0437\x0430\x043F\x044F\x0442\x043E\x0439 \",\".";
+    if (nStringID == STRID_IF_NOCLOSEPARENTHESIS)
+      return L"If: \x043D\x0435\x0442\x0020\x0437\x0430\x043A\x0440\x044B\x0432\x0430\x044E\x0449\x0435\x0439\x0020\x0441\x043A\x043E\x0431\x043A\x0438 \")\".";
+    if (nStringID == STRID_IF_UNKNOWNOPERATOR)
+      return L"If: \x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x044B\x0439\x0020\x043E\x043F\x0435\x0440\x0430\x0442\x043E\x0440";
+    if (nStringID == STRID_IF_UNKNOWNMETHOD)
+      return L"If: \x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x044B\x0439\x0020\x043C\x0435\x0442\x043E\x0434.";
+    if (nStringID == STRID_IF_CALLERROR)
+      return L"If: \x043E\x0448\x0438\x0431\x043A\x0430\x0020\x0432\x044B\x0437\x043E\x0432\x0430.";
+    if (nStringID == STRID_IF_NOFALSE)
+      return L"If: \x043E\x0442\x0441\x0443\x0442\x0441\x0442\x0432\x0443\x0435\x0442 \":\".";
+    if (nStringID == STRID_IF_FOCUSCHANGED)
+      return L"If: SET(128) \x0438\x0437\x043C\x0435\x043D\x0438\x043B\x0020\x0444\x043E\x043A\x0443\x0441\x0020\x043E\x043A\x043D\x0430.";
+    if (nStringID == STRID_IF_WRONGPARAMCOUNT)
+      return L"If: \x043D\x0435\x0432\x0435\x0440\x043D\x043E\x0435\x0020\x043A\x043E\x043B\x0438\x0447\x0435\x0441\x0442\x0432\x043E\x0020\x043F\x0430\x0440\x0430\x043C\x0435\x0442\x0440\x043E\x0432.";
+    if (nStringID == STRID_IF_SCRIPTDENIED)
+      return L"If: \x0432\x044B\x0437\x043E\x0432\x0020\x0441\x043A\x0440\x0438\x043F\x0442\x0430\x0020\x0437\x0430\x043F\x0440\x0435\x0449\x0451\x043D\x0020\x0432 SET(128, If(...)).";
     if (nStringID == STRID_PLUGIN)
       return L"%s \x043F\x043B\x0430\x0433\x0438\x043D";
     if (nStringID == STRID_OK)
@@ -2945,10 +3156,10 @@ SEPARATOR1\r\
 " L"\
 SET(32, \"%a\\AkelFiles\\Plugs\\Coder.dll\")\r\
     \"\x041F\x0440\x043E\x0433\x0440\x0430\x043C\x043C\x0438\x0440\x043E\x0432\x0430\x043D\x0438\x0435\" Menu(\"CODER\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 12)\r\
-    \"\x041E\x0442\x043C\x0435\x0442\x0438\x0442\x044C\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 0)\r\
+    \"\x041E\x0442\x043C\x0435\x0442\x0438\x0442\x044C\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 13)\r\
     \"\x0421\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x0442\x0435\x043C\x0430\" Menu(\"SYNTAXTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 4)\r\
     \"\x0426\x0432\x0435\x0442\x043E\x0432\x0430\x044F\x0020\x0442\x0435\x043C\x0430\" Menu(\"COLORTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 5)\r\
-    -\"\x041F\x0430\x043D\x0435\x043B\x044C CodeFold\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
+    \"\x041F\x0430\x043D\x0435\x043B\x044C CodeFold\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
 UNSET(32)\r\
 SEPARATOR1\r\
 " L"\
@@ -2987,9 +3198,9 @@ SEPARATOR1\r\
 " L"\
 SET(32, \"%a\\AkelFiles\\Plugs\\Macros.dll\")\r\
     -\"\x041C\x0430\x043A\x0440\x043E\x0441\x044B...\" Call(\"Macros::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 0)\r\
-    -\"\x0417\x0430\x043F\x0438\x0441\x0430\x0442\x044C\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
-    -\"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x043E\x0434\x0438\x043D\x0020\x0440\x0430\x0437\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
-    -\"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x0434\x043E\x0020\x043A\x043E\x043D\x0446\x0430\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
+    \"\x0417\x0430\x043F\x0438\x0441\x0430\x0442\x044C\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
+    \"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x043E\x0434\x0438\x043D\x0020\x0440\x0430\x0437\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
+    \"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x0434\x043E\x0020\x043A\x043E\x043D\x0446\x0430\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
 UNSET(32)\r\
 SEPARATOR1\r\
 " L"\
@@ -3056,12 +3267,42 @@ SEPARATOR1\r";
       return L"Side";
     if (nStringID == STRID_ROWS)
       return L"Rows (1,2...)";
+    if (nStringID == STRID_PARSEMSG_UNKNOWNSPECIAL)
+      return L"Unknown special item \"%s\".";
     if (nStringID == STRID_PARSEMSG_UNKNOWNMETHOD)
       return L"Unknown method \"%0.s%s\".";
     if (nStringID == STRID_PARSEMSG_METHODALREADYDEFINED)
       return L"Method already defined.";
     if (nStringID == STRID_PARSEMSG_NOMETHOD)
       return L"The element does not use method for execution.";
+    if (nStringID == STRID_PARSEMSG_WRONGPARAMCOUNT)
+      return L"Wrong number of parameters.";
+    if (nStringID == STRID_PARSEMSG_NOOPENSET)
+      return L"No opening SET().";
+    if (nStringID == STRID_PARSEMSG_NOCOMMA)
+      return L"No comma \",\".";
+    if (nStringID == STRID_PARSEMSG_NOCLOSEPARENTHESIS)
+      return L"No close parenthesis \")\".";
+    if (nStringID == STRID_PARSEMSG_NOEOL)
+      return L"End of line expected.";
+    if (nStringID == STRID_IF_NOCOMMA)
+      return L"If: no comma \",\".";
+    if (nStringID == STRID_IF_NOCLOSEPARENTHESIS)
+      return L"If: no close parenthesis \")\".";
+    if (nStringID == STRID_IF_UNKNOWNOPERATOR)
+      return L"If: unknown operator.";
+    if (nStringID == STRID_IF_UNKNOWNMETHOD)
+      return L"If: unknown method.";
+    if (nStringID == STRID_IF_CALLERROR)
+      return L"If: call error.";
+    if (nStringID == STRID_IF_NOFALSE)
+      return L"If: missing \":\".";
+    if (nStringID == STRID_IF_FOCUSCHANGED)
+      return L"If: SET(128) changed window focus.";
+    if (nStringID == STRID_IF_WRONGPARAMCOUNT)
+      return L"If: wrong number of parameters.";
+    if (nStringID == STRID_IF_SCRIPTDENIED)
+      return L"If: script execution in SET(128, If(...)) is denied.";
     if (nStringID == STRID_PLUGIN)
       return L"%s plugin";
     if (nStringID == STRID_OK)
@@ -3134,10 +3375,10 @@ SEPARATOR1\r\
 " L"\
 SET(32, \"%a\\AkelFiles\\Plugs\\Coder.dll\")\r\
     \"Programming\" Menu(\"CODER\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 12)\r\
-    \"Mark\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 0)\r\
+    \"Mark\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 13)\r\
     \"Syntax theme\" Menu(\"SYNTAXTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 4)\r\
     \"Color theme\" Menu(\"COLORTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 5)\r\
-    -\"CodeFold panel\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
+    \"CodeFold panel\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
 UNSET(32)\r\
 SEPARATOR1\r\
 " L"\
@@ -3176,9 +3417,9 @@ SEPARATOR1\r\
 " L"\
 SET(32, \"%a\\AkelFiles\\Plugs\\Macros.dll\")\r\
     -\"Macros...\" Call(\"Macros::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 0)\r\
-    -\"Record\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
-    -\"Play once\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
-    -\"Play to the end\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
+    \"Record\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
+    \"Play once\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
+    \"Play to the end\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
 UNSET(32)\r\
 SEPARATOR1\r\
 " L"\
@@ -3267,13 +3508,18 @@ void InitCommon(PLUGINDATA *pd)
   hMainIcon=pd->hMainIcon;
   hGlobalAccel=pd->hGlobalAccel;
   bOldWindows=pd->bOldWindows;
-  bAkelEdit=pd->bAkelEdit;
   nMDI=pd->nMDI;
   wLangModule=PRIMARYLANGID(pd->wLangModule);
   hHeap=GetProcessHeap();
 
   //Initialize WideFunc.h header
   WideInitialize();
+
+  //Is Comctl32.dll 6.10 or higher
+  if (LOWORD(pd->dwVerComctl32) > 6 || (LOWORD(pd->dwVerComctl32) == 6 && HIWORD(pd->dwVerComctl32) >= 10))
+    bNewComctl32=TRUE;
+  else
+    bNewComctl32=FALSE;
 
   //Plugin name
   {
@@ -3337,12 +3583,7 @@ void UninitMain()
   //Destroy toolbar
   DestroyToolbarWindow(TRUE);
   FreeRows(&hRowListStack);
-
-  if (wszToolBarText)
-  {
-    HeapFree(hHeap, 0, wszToolBarText);
-    wszToolBarText=NULL;
-  }
+  FreeWideStr(&wszToolBarText);
 }
 
 //Entry point

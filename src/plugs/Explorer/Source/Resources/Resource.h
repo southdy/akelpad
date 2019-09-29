@@ -17,11 +17,13 @@
 #define IDC_BROWSE_FILTERCOMBO          1106
 #define IDC_BROWSE_FILTERITEM           1107
 #define IDC_SETUP_ROOT_GROUP            1201
-#define IDC_SETUP_ROOT_DIRECTORY        1202
-#define IDC_SETUP_ROOT_MYCOMPUTER       1203
-#define IDC_SETUP_SHOWHIDDEN            1204
-#define IDC_SETUP_AUTOFIND              1205
-#define IDC_SETUP_SINGLECLICK           1206
+#define IDC_SETUP_ROOTDIRECTORY_EDIT    1202
+#define IDC_SETUP_ROOTDIRECTORY_BROWSE  1203
+#define IDC_SETUP_ROOTMYCOMPUTER        1204
+#define IDC_SETUP_SHOWHIDDEN            1205
+#define IDC_SETUP_AUTOFIND              1206
+#define IDC_SETUP_SINGLECLICK           1207
+#define IDC_SETUP_SETSAVELOCATION       1208
 #define IDC_INPUTBOX_LABEL              1301
 #define IDC_INPUTBOX_EDIT               1302
 #define IDM_SETUP                       2001
@@ -40,12 +42,12 @@
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
-//
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        11001
 #define _APS_NEXT_COMMAND_VALUE         12001
-#define _APS_NEXT_CONTROL_VALUE         13003
+#define _APS_NEXT_CONTROL_VALUE         13001
 #define _APS_NEXT_SYMED_VALUE           14001
 #endif
 #endif

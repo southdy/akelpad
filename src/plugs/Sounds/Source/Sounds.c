@@ -6,6 +6,7 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
+#include "MethodFunc.h"
 #include "AkelEdit.h"
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
@@ -35,8 +36,8 @@
 #define xstrcmpW
 #define xstrcmpiW
 #define xstrrepW
-#define xarraysizeA
-#define xarraysizeW
+#define xarrlenA
+#define xarrlenW
 #define xatoiW
 #define xitoaW
 #define xuitoaW
@@ -66,6 +67,10 @@
 #include "WideFunc.h"
 //*/
 
+//Include method functions
+#define ALLMETHODFUNC
+#include "MethodFunc.h"
+
 
 //// Defines
 
@@ -92,11 +97,6 @@
 #define OF_SETTINGS    0x2
 #define OF_RECT        0x4
 
-#define BUFFER_SIZE      1024
-
-#define EXTPARAM_CHAR     1
-#define EXTPARAM_INT      2
-
 #define LVI_LIST_KEY    0
 #define LVI_LIST_FILE   1
 #define LVI_LIST_LAYOUT 2
@@ -116,25 +116,6 @@ Sound(-3, \"%a\\AkelFiles\\Plugs\\Sounds\\Movement.wav\", 0)\r"
 
 
 //// Structures
-
-typedef struct _EXTPARAM {
-  struct _EXTPARAM *next;
-  struct _EXTPARAM *prev;
-  DWORD dwType;
-  int nNumber;
-  char *pString;
-  wchar_t *wpString;
-  char *pExpanded;
-  int nExpandedAnsiLen;
-  wchar_t *wpExpanded;
-  int nExpandedUnicodeLen;
-} EXTPARAM;
-
-typedef struct {
-  EXTPARAM *first;
-  EXTPARAM *last;
-  int nElements;
-} STACKEXTPARAM;
 
 typedef struct _SOUNDITEM {
   struct _SOUNDITEM *next;
@@ -176,14 +157,9 @@ void StackFreeSounds(SOUNDSTACK *hStack);
 void FillLayoutList(HWND hWndLayoutList, WORD wSelLangID);
 int GetLayoutName(WORD wLangID, wchar_t *wszName, int nNameMax);
 
-void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, const wchar_t **wppText);
-void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, const wchar_t *wpExeDir);
-EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex);
-void FreeMethodParameters(STACKEXTPARAM *hParamStack);
-int GetMethodName(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText);
-int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus);
+BOOL NextLine(const wchar_t **wpText);
 BOOL SkipComment(const wchar_t **wpText);
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen);
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax);
 INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *wszOutput, DWORD *lpdwCaret);
 int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBufferSize);
 
@@ -236,7 +212,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Sounds";
 }
 
@@ -286,11 +262,12 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HMENU hMenuList;
   static int nSelItem=-1;
   static BOOL bListChanged=FALSE;
-  static DIALOGRESIZE drs[]={{&hWndSoundList,   DRS_SIZE|DRS_X, 0},
-                             {&hWndSoundList,   DRS_SIZE|DRS_Y, 0},
-                             {&hWndDisableBeep, DRS_MOVE|DRS_Y, 0},
-                             {&hWndClose,       DRS_MOVE|DRS_X, 0},
-                             {&hWndClose,       DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndEnableTheme, 0, 0},
+                             {&hWndSoundList,   RDS_SIZE|RDS_X, 0},
+                             {&hWndSoundList,   RDS_SIZE|RDS_Y, 0},
+                             {&hWndDisableBeep, RDS_MOVE|RDS_Y, 0},
+                             {&hWndClose,       RDS_MOVE|RDS_X, 0},
+                             {&hWndClose,       RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -309,7 +286,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetDlgItemTextWide(hDlg, IDC_DISABLEBEEP, GetLangStringW(wLangModule, STRID_DISABLEBEEP));
     SetDlgItemTextWide(hDlg, IDC_CLOSE, GetLangStringW(wLangModule, STRID_CLOSE));
 
-    SendMessage(hWndSoundList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES);
+    SendMessage(hWndSoundList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES|LVS_EX_INFOTIP, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES|LVS_EX_INFOTIP);
     if (bEnableTheme)
       SendMessage(hWndEnableTheme, BM_SETCHECK, BST_CHECKED, 0);
     else
@@ -629,9 +606,9 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, DRM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, RDM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
       dwSaveFlags|=OF_RECT;
   }
 
@@ -980,34 +957,34 @@ void CreateSoundsStack(SOUNDSTACK *hStack, const wchar_t *wpText)
   STACKEXTPARAM hParamStack={0};
   EXTPARAM *lpParameter;
   SOUNDITEM *siElement=NULL;
-  wchar_t wszCurrentFile[MAX_PATH];
+  EXPPARAM ep[]={{L"%f", 2, 0, EXPPARAM_FILE},
+                 {L"%d", 2, 0, EXPPARAM_FILEDIR},
+                 {0, 0, 0, 0}};
 
   if (wpText)
   {
-    GetCurFile(wszCurrentFile, MAX_PATH);
-
-    while (*wpText)
+    for (; *wpText; NextLine(&wpText))
     {
       if (!SkipComment(&wpText)) break;
-      GetMethodName(wpText, wszBuffer, BUFFER_SIZE, &wpText);
+      MethodGetName(wpText, wszBuffer, BUFFER_SIZE, &wpText);
 
       if (!xstrcmpiW(wszBuffer, L"Sound"))
       {
         if (siElement=StackInsertSound(hStack))
         {
-          ParseMethodParameters(&hParamStack, wpText, &wpText);
-          ExpandMethodParameters(&hParamStack, wszCurrentFile, wszExeDir);
+          MethodParseParameters(&hParamStack, wpText, &wpText);
+          SendMessage(hMainWnd, AKD_METHODEXPANDPARAMETERS, (WPARAM)&hParamStack, (LPARAM)ep);
 
-          if (lpParameter=GetMethodParameter(&hParamStack, 1))
-            siElement->dwKey=lpParameter->nNumber;
-          if (lpParameter=GetMethodParameter(&hParamStack, 2))
+          if (lpParameter=MethodGetParameter(&hParamStack, 1))
+            siElement->dwKey=(DWORD)lpParameter->nNumber;
+          if (lpParameter=MethodGetParameter(&hParamStack, 2))
           {
             xstrcpynW(siElement->wszFile, lpParameter->wpString, MAX_PATH);
             xstrcpynW(siElement->wszFileExpanded, lpParameter->wpExpanded, MAX_PATH);
           }
-          if (lpParameter=GetMethodParameter(&hParamStack, 3))
+          if (lpParameter=MethodGetParameter(&hParamStack, 3))
             siElement->wLangID=(WORD)lpParameter->nNumber;
-          FreeMethodParameters(&hParamStack);
+          MethodFreeParameters(&hParamStack);
 
           if (siElement->dwKey == (DWORD)KG_CHARS)
           {
@@ -1038,7 +1015,7 @@ SOUNDITEM* StackInsertSound(SOUNDSTACK *hStack)
 
 SOUNDITEM* StackGetSoundItemByIndex(SOUNDSTACK *hStack, int nIndex)
 {
-  SOUNDITEM *siElement = NULL;
+  SOUNDITEM *siElement;
 
   if (!StackGetElement((stack *)hStack->first, (stack *)hStack->last, (stack **)&siElement, nIndex))
     return siElement;
@@ -1172,300 +1149,49 @@ int GetLayoutName(WORD wLangID, wchar_t *wszName, int nNameMax)
   return nResult;
 }
 
-void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, const wchar_t **wppText)
+BOOL NextLine(const wchar_t **wpText)
 {
-  EXTPARAM *lpParameter;
-  const wchar_t *wpParamBegin=wpText;
-  const wchar_t *wpParamEnd;
-  wchar_t *wpString;
-  wchar_t wchStopChar;
-  int nStringLen;
-
-  MethodParameter:
-  while (*wpParamBegin == ' ' || *wpParamBegin == '\t') ++wpParamBegin;
-
-  if (*wpParamBegin == '\"' || *wpParamBegin == '\'' || *wpParamBegin == '`')
-  {
-    //String
-    wchStopChar=*wpParamBegin++;
-    nStringLen=0;
-
-    for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != '\0'; ++wpParamEnd)
-      ++nStringLen;
-
-    if (!StackInsertIndex((stack **)&hParamStack->first, (stack **)&hParamStack->last, (stack **)&lpParameter, -1, sizeof(EXTPARAM)))
-    {
-      ++hParamStack->nElements;
-
-      if (lpParameter->wpString=(wchar_t *)GlobalAlloc(GPTR, (nStringLen + 1) * sizeof(wchar_t)))
-      {
-        lpParameter->dwType=EXTPARAM_CHAR;
-        wpString=lpParameter->wpString;
-
-        for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != '\0'; ++wpParamEnd)
-          *wpString++=*wpParamEnd;
-        *wpString='\0';
-
-        if (bOldWindows)
-        {
-          nStringLen=WideCharToMultiByte(CP_ACP, 0, lpParameter->wpString, -1, NULL, 0, NULL, NULL);
-          if (lpParameter->pString=(char *)GlobalAlloc(GPTR, nStringLen))
-            WideCharToMultiByte(CP_ACP, 0, lpParameter->wpString, -1, lpParameter->pString, nStringLen, NULL, NULL);
-        }
-      }
-    }
-  }
-  else
-  {
-    //Number
-    for (wpParamEnd=wpParamBegin; *wpParamEnd != ',' && *wpParamEnd != ')' && *wpParamEnd != '\0'; ++wpParamEnd);
-
-    if (!StackInsertIndex((stack **)&hParamStack->first, (stack **)&hParamStack->last, (stack **)&lpParameter, -1, sizeof(EXTPARAM)))
-    {
-      ++hParamStack->nElements;
-
-      lpParameter->dwType=EXTPARAM_INT;
-      lpParameter->nNumber=(int)xatoiW(wpParamBegin, NULL);
-    }
-  }
-
-  while (*wpParamEnd != ',' && *wpParamEnd != ')' && *wpParamEnd != '\0')
-    ++wpParamEnd;
-  if (*wpParamEnd == ',')
-  {
-    wpParamBegin=++wpParamEnd;
-    goto MethodParameter;
-  }
-  if (*wpParamEnd == ')')
-    ++wpParamEnd;
-  if (wppText) *wppText=wpParamEnd;
-}
-
-void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, const wchar_t *wpExeDir)
-{
-  //%f -file, %d -file directory, %a -AkelPad directory, %% -%
-  EXTPARAM *lpParameter;
-  wchar_t *wszSource;
-  wchar_t *wpSource;
-  wchar_t *wszTarget;
-  wchar_t *wpTarget;
-  int nStringLen;
-  int nTargetLen=0;
-
-  for (lpParameter=hParamStack->first; lpParameter; lpParameter=lpParameter->next)
-  {
-    if (lpParameter->dwType == EXTPARAM_CHAR)
-    {
-      //Expand environment strings
-      nStringLen=ExpandEnvironmentStringsWide(lpParameter->wpString, NULL, 0);
-
-      if (wszSource=(wchar_t *)GlobalAlloc(GPTR, nStringLen * sizeof(wchar_t)))
-      {
-        ExpandEnvironmentStringsWide(lpParameter->wpString, wszSource, nStringLen);
-
-        //Expand plugin variables
-        wszTarget=NULL;
-        wpTarget=NULL;
-
-        for (;;)
-        {
-          for (wpSource=wszSource; *wpSource;)
-          {
-            if (*wpSource == '%')
-            {
-              if (*++wpSource == '%')
-              {
-                ++wpSource;
-                if (wszTarget) *wpTarget='%';
-                ++wpTarget;
-              }
-              else if (*wpSource == 'f' || *wpSource == 'F')
-              {
-                ++wpSource;
-                if (*wpFile) wpTarget+=xstrcpyW(wszTarget?wpTarget:NULL, wpFile) - !wszTarget;
-              }
-              else if (*wpSource == 'd' || *wpSource == 'D')
-              {
-                ++wpSource;
-                if (*wpFile) wpTarget+=GetFileDir(wpFile, -1, wszTarget?wpTarget:NULL, MAX_PATH) - !wszTarget;
-              }
-              else if (*wpSource == 'a' || *wpSource == 'A')
-              {
-                ++wpSource;
-                wpTarget+=xstrcpyW(wszTarget?wpTarget:NULL, wpExeDir) - !wszTarget;
-              }
-            }
-            else
-            {
-              if (wszTarget) *wpTarget=*wpSource;
-              ++wpTarget;
-              ++wpSource;
-            }
-          }
-
-          if (!wszTarget)
-          {
-            //Allocate wszTarget and loop again
-            if (wszTarget=(wchar_t *)GlobalAlloc(GPTR, (INT_PTR)(wpTarget + 1)))
-            {
-              nTargetLen=(int)((INT_PTR)wpTarget / sizeof(wchar_t));
-              wpTarget=wszTarget;
-            }
-            else break;
-          }
-          else
-          {
-            *wpTarget='\0';
-            break;
-          }
-        }
-
-        if (wszTarget)
-        {
-          if (lpParameter->pExpanded)
-          {
-            GlobalFree((HGLOBAL)lpParameter->pExpanded);
-            lpParameter->pExpanded=NULL;
-          }
-          if (lpParameter->wpExpanded)
-          {
-            GlobalFree((HGLOBAL)lpParameter->wpExpanded);
-            lpParameter->wpExpanded=NULL;
-          }
-          lpParameter->wpExpanded=wszTarget;
-          lpParameter->nExpandedUnicodeLen=nTargetLen;
-
-          if (bOldWindows)
-          {
-            lpParameter->nExpandedAnsiLen=WideCharToMultiByte(CP_ACP, 0, lpParameter->wpExpanded, -1, NULL, 0, NULL, NULL);
-            if (lpParameter->pExpanded=(char *)GlobalAlloc(GPTR, lpParameter->nExpandedAnsiLen))
-              WideCharToMultiByte(CP_ACP, 0, lpParameter->wpExpanded, -1, lpParameter->pExpanded, lpParameter->nExpandedAnsiLen, NULL, NULL);
-            if (lpParameter->nExpandedAnsiLen) --lpParameter->nExpandedAnsiLen;
-          }
-        }
-        GlobalFree((HGLOBAL)wszSource);
-      }
-    }
-  }
-}
-
-EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex)
-{
-  EXTPARAM *lpParameter = NULL;
-
-  if (!StackGetElement((stack *)hParamStack->first, (stack *)hParamStack->last, (stack **)&lpParameter, nIndex))
-    return lpParameter;
-  return NULL;
-}
-
-void FreeMethodParameters(STACKEXTPARAM *hParamStack)
-{
-  EXTPARAM *lpParameter;
-
-  for (lpParameter=hParamStack->first; lpParameter; lpParameter=lpParameter->next)
-  {
-    if (lpParameter->dwType == EXTPARAM_CHAR)
-    {
-      if (lpParameter->pString) GlobalFree((HGLOBAL)lpParameter->pString);
-      if (lpParameter->wpString) GlobalFree((HGLOBAL)lpParameter->wpString);
-      if (lpParameter->pExpanded) GlobalFree((HGLOBAL)lpParameter->pExpanded);
-      if (lpParameter->wpExpanded) GlobalFree((HGLOBAL)lpParameter->wpExpanded);
-    }
-  }
-  StackClear((stack **)&hParamStack->first, (stack **)&hParamStack->last);
-  hParamStack->nElements=0;
-}
-
-int GetMethodName(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText)
-{
-  int i=0;
-
-  while (*wpText == '\"' || *wpText == ' ' || *wpText == '\t') ++wpText;
-
-  while (*wpText != '(' && *wpText != '\r' && *wpText != '\0')
-  {
-    if (i < nStrLen) wszStr[i++]=*wpText;
-    ++wpText;
-  }
-  wszStr[i]='\0';
-  if (*wpText != '\r' && *wpText != '\0') ++wpText;
-  if (wppText) *wppText=wpText;
-  return i;
-}
-
-int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus)
-{
-  int i;
-
-  while (*wpText == ' ' || *wpText == '\t' || *wpText == '\r' || *wpText == '\n') ++wpText;
-
-  if (*wpText == '-')
-  {
-    if (nMinus) *nMinus=1;
-    ++wpText;
-  }
-  else
-  {
-    if (nMinus) *nMinus=0;
-  }
-
-  if (*wpText == '\"')
-  {
-    ++wpText;
-    i=0;
-
-    while (*wpText != '\"' && *wpText != '\0')
-    {
-      if (i < nStrLen) wszStr[i++]=*wpText;
-      ++wpText;
-    }
-  }
-  else
-  {
-    i=0;
-
-    while (*wpText != ' ' && *wpText != '\r' && *wpText != '\0')
-    {
-      if (i < nStrLen) wszStr[i++]=*wpText;
-      ++wpText;
-    }
-  }
-  wszStr[i]='\0';
-  if (*wpText != '\r' && *wpText != '\0') ++wpText;
-  if (wppText) *wppText=wpText;
-  return i;
+  while (**wpText != L'\r' && **wpText != L'\n' && **wpText != L'\0') ++*wpText;
+  if (**wpText == L'\0') return FALSE;
+  if (**wpText == L'\r') ++*wpText;
+  if (**wpText == L'\n') ++*wpText;
+  return TRUE;
 }
 
 BOOL SkipComment(const wchar_t **wpText)
 {
   for (;;)
   {
-    while (**wpText == ' ' || **wpText == '\t' || **wpText == '\r' || **wpText == '\n') ++*wpText;
+    while (**wpText == L' ' || **wpText == L'\t' || **wpText == L'\r' || **wpText == L'\n') ++*wpText;
 
-    if (**wpText == ';' || **wpText == '#')
+    if (**wpText == L';' || **wpText == L'#')
     {
-      while (**wpText != '\r' && **wpText != '\0') ++*wpText;
+      if (!NextLine(wpText))
+        return FALSE;
     }
     else break;
   }
-  if (**wpText == '\0')
+  if (**wpText == L'\0')
     return FALSE;
   return TRUE;
 }
 
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen)
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax)
 {
   const wchar_t *wpCount;
 
   if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
-  if (wszFileDir) wszFileDir[0]=L'\0';
 
-  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
     if (*wpCount == L'\\')
-      return (int)xstrcpynW(wszFileDir, wpFile, min(dwFileDirLen, (DWORD)(wpCount - wpFile) + 1));
+    {
+      --wpCount;
+      break;
+    }
   }
-  return 0;
+  ++wpCount;
+  return (int)xstrcpynW(wszFileDir, wpFile, min(nFileDirMax, wpCount - wpFile + 1));
 }
 
 INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *wszOutput, DWORD *lpdwCaret)
@@ -1526,7 +1252,7 @@ INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *ws
             if (!*a) goto Error;
             whex[3]=*++a;
             if (!*a) goto Error;
-            nDec=(int)hex2decW(whex, 4);
+            nDec=(int)hex2decW(whex, 4, NULL);
             if (nDec == -1) goto Error;
             while (*++a == ' ');
 
@@ -1590,7 +1316,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
   wchar_t *wszSource;
   wchar_t *wpSource;
   wchar_t *wpTarget=wszBuffer;
-  wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
+  wchar_t *wpTargetMax=(wszBuffer ? (wszBuffer + nBufferSize) : (wchar_t *)MAXUINT_PTR);
   int nStringLen;
   BOOL bStringStart=TRUE;
 
@@ -1712,18 +1438,16 @@ INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BY
 void ReadOptions(DWORD dwFlags)
 {
   HANDLE hOptions;
-  DWORD dwSize;
+  int nSize;
 
   if (hOptions=(HANDLE)SendMessage(hMainWnd, AKD_BEGINOPTIONSW, POB_READ, (LPARAM)wszPluginName))
   {
-    dwSize=(DWORD)WideOption(hOptions, L"SoundText", PO_BINARY, NULL, 0);
-
-    if (dwSize)
+    if ((nSize=(DWORD)WideOption(hOptions, L"SoundText", PO_BINARY, NULL, 0)) > 0)
     {
-      if (wszSoundText=(wchar_t *)HeapAlloc(hHeap, 0, dwSize + sizeof(wchar_t)))
+      if (wszSoundText=(wchar_t *)HeapAlloc(hHeap, 0, nSize + sizeof(wchar_t)))
       {
-        WideOption(hOptions, L"SoundText", PO_BINARY, (LPBYTE)wszSoundText, dwSize);
-        wszSoundText[dwSize / sizeof(wchar_t)]=L'\0';
+        WideOption(hOptions, L"SoundText", PO_BINARY, (LPBYTE)wszSoundText, nSize);
+        wszSoundText[nSize / sizeof(wchar_t)]=L'\0';
       }
     }
 

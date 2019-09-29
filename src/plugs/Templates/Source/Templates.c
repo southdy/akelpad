@@ -447,9 +447,9 @@ static void CALLCONV FillTreeCtrl(HWND hTreeCtrl, LPCWSTR szPath, HTREEITEM hRoo
 					tvi.item.iSelectedImage = sfis.iIcon;
 					tvi.item.mask = TVIF_TEXT|TVIF_PARAM|TVIF_IMAGE|TVIF_SELECTEDIMAGE;
 					hNode = TreeView_InsertItem(hTreeCtrl,&tvi);
-					//! Что-бы не "оптимизировало" в вызов memcpy пришлось установить опцию
-					//! компилятора "Inline Function Expansion" в /Ob1
-					//! На значение по-умолчанию "Default" в Win32 всё нормально, в x64 - вылазит memcpy
+					//! Чт?бы не "оптимизировало" ?вызо?memcpy пришлось установить опци?
+					//! компилятора "Inline Function Expansion" ?/Ob1
+					//! На значение по-умолчани?"Default" ?Win32 вс?нормальн? ?x64 - вылази?memcpy
 					xmemcpy(szChild,szPath,nPathLen*sizeof(WCHAR));
 					i = nPathLen;
 					szChild[i]=L'\\'; i++;
@@ -937,7 +937,7 @@ static BOOL CALLCONV IsHighLightThemeAssigned(HWND hWnd)
 	LRESULT size = 0;
 	WCHAR *name = NULL;
 	if(!IsWindow(hWnd)) return FALSE;
-	hTheme = (AEHTHEME)SendMessageW(hWnd,AEM_HLGETTHEMEW,0,0);
+	hTheme = (AEHTHEME)SendMessageW(hWnd,AEM_HLGETTHEMENAMEW,0,0);
 	if(!hTheme) return FALSE;
 	name = (WCHAR*)PLUGIN_ALLOC(sizeof(WCHAR)*4096);
 	size = SendMessageW(hWnd,AEM_HLGETTHEMENAMEW,(WPARAM)hTheme,(LPARAM)name);
@@ -950,7 +950,7 @@ static void CALLCONV OpenTemplate(HWND hWnd, BOOL bInsert)
 	LRESULT			pos = 0;
 	TEXTFINDW		tf = {FRF_BEGINNING|FRF_DOWN|FRF_MATCHCASE,CARETPOSMARKER,-1};
 	TEXTREPLACEW	tr = {FRF_BEGINNING|FRF_DOWN|FRF_MATCHCASE,CARETPOSMARKER,-1,L"",0,TRUE,0};
-	DETECTFILEW	dc = {g_szTemplate,1024,ADT_BINARY_ERROR|ADT_DETECT_BOM|ADT_DETECT_CODEPAGE,0,FALSE};
+	DETECTFILEW	dc = {g_szTemplate,1024,ADT_BINARYERROR|ADT_DETECTBOM|ADT_DETECTCODEPAGE,0,FALSE};
 	if(g_szTemplate[0]/*!<EMPTY>*/ && (EDT_SUCCESS == SendMessageW(g_hMainWnd, AKD_DETECTFILEW,0,(LPARAM)&dc)))
 	{
 		HANDLE hFile = CreateFileW(g_szTemplate, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,NULL);
@@ -1009,7 +1009,7 @@ static void CALLCONV OpenTemplate(HWND hWnd, BOOL bInsert)
 						//! Mark newly inserted text
 						cursel.cpMax = cursel.cpMin + lSize;
 						SendMessageW(hWnd,PEM_EXSETSEL,0,(LPARAM)&cursel);
-						tr.dwFlags = FRF_SELECTION|FRF_DOWN|FRF_MATCHCASE;
+						tr.dwFindFlags = FRF_SELECTION|FRF_DOWN|FRF_MATCHCASE;
 						//! Remove all markers
 						SendMessageW(g_hMainWnd,AKD_TEXTREPLACEW,(WPARAM)hWnd,(LPARAM)&tr);
 						//! Put caret after inserted text
@@ -1071,7 +1071,7 @@ static void CALLCONV EditTemplate(BOOL bCreate)
 	SendMessageW(g_hMainWnd, AKD_SETCMDLINEOPTIONS, (bCreate?CLO_MSGOPENCREATEYES:CLO_MSGOPENCREATENO)|CLO_MSGOPENBINARYNO, 0);
 	od.pFile     = g_szTemplate;
 	od.pWorkDir  = NULL;
-	od.dwFlags   = OD_ADT_DETECT_BOM|OD_ADT_DETECT_CODEPAGE;
+	od.dwFlags   = OD_ADT_DETECTBOM|OD_ADT_DETECTCODEPAGE;
 	od.nCodePage = 0;
 	od.bBOM      = 0;
 	SendMessageW(g_hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);

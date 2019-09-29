@@ -27,8 +27,6 @@
 #define STRID_MENU_RESTORE  1
 #define STRID_MENU_EXIT     2
 
-#define BUFFER_SIZE      1024
-
 //Functions prototypes
 LRESULT CALLBACK NewEditParentProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void Hide();
@@ -66,7 +64,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="MinimizeToTray";
 }
 
@@ -255,7 +253,7 @@ void Hide()
 
 void Show()
 {
-  NOTIFYICONDATAA nid;
+  NOTIFYICONDATA nid;
 
   //Delete notify icon
   nid.cbSize=sizeof(nid);
@@ -284,7 +282,7 @@ const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen)
 
   if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
 
-  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
     if (*wpCount == L'\\')
       return wpCount + 1;

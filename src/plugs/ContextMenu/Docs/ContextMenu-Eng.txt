@@ -1,8 +1,8 @@
 *****************************************************************
-***              ContextMenu AkelPad plugin v15.0             ***
+***              ContextMenu AkelPad plugin v17.9             ***
 *****************************************************************
 
-2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2007-2018 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -64,7 +64,12 @@ Special menu items:
     MDI documents list (work in "Main menu" with MDI mode only).
   CLEAR
     clear menu (work in "Main menu" only).
-  SET(flags[, "string"])
+  INCLUDE("MENU NAME")
+    "MENU NAME"
+      Specified submenu name from "ContextMenu::Show menu".
+    INCLUDE("SYNTAXTHEME")
+      insert "SYNTAXTHEME" submenu items from "ContextMenu::Show menu".
+  SET(flags[, additional parameters])
     set text parse flags (doesn't remove flags that already set). Sets by the sum of members:
       SET(1)
         ignore following lines, if SDI mode is used.
@@ -75,9 +80,71 @@ Special menu items:
       SET(8)
         when copying text from the main menu, don't capture the hotkey.
       SET(16)
-        don't use the icons for menu items.
+        create menu items without plugin processing (turned off: icons, Menu() method, special item INCLUDE).
+        It is necessary to locate SET(16) before the first menu item and UNSET(16) right after the last.
       SET(32, "%a\AkelFiles\Plugs\Scripts.dll")
-        ignore following lines, if "Scripts.dll" file doesn't exist.
+        parse following lines, if "Scripts.dll" file exists.
+      SET(64, If("expression"[, IfTrue, IfFalse]))
+        parse following lines, if result not equal to zero.
+          "expression"
+            Expression could consist of::
+            - mathematical operations:
+              +, -, *, /, %, &, |, ^.
+            - logical operations:
+              >, <, ==, !=, >=, <=, &&, ||, x?y:z.
+            - comments:
+              /*comment*/
+            - methods:
+              SendMain(nMessage, wParam, lParam)
+                nMessage
+                  Specifies the message to be sent to the main window.
+                wParam
+                  Specifies additional message-specific information.
+                lParam
+                  Specifies additional message-specific information.
+              SendEdit(nMessage, wParam, lParam)
+                nMessage
+                  Specifies the message to be sent to the current edit window.
+                wParam
+                  Specifies additional message-specific information.
+                lParam
+                  Specifies additional message-specific information.
+              Call("Plugin::Function"[, additional parameters])
+                - If a plugin is called, then exit code transfered via special parameter &nResult. &nResult must be located in a place where external call syntax requires a pointer to an integer.
+                  SET(64, If(`Call("Coder::CodeFold", 1, &nResult)`)
+                    parse following lines, if CodeFold window is open.
+                - If a script is called, then it is necessary to use external calls 2 or 4 and also transfer exit code from script via AkelPad.ScriptExitCode.
+                  SET(64, If(`Call("Scripts::Main", 4, "EvalCmd.js", 'if (AkelPad.GetEditFile(0)) AkelPad.ScriptExitCode(1);')`)
+                    parse following lines, if current document has name.
+                - It is possible to call Scripts plugin method directly.
+                  SET(64, If(`AkelPad.Constants._X64 == 1`))
+                    parse following lines, if program is x64.
+          IfTrue
+            Numeric value, if expression result is true (not equal to zero).
+          IfFalse
+            Numeric value, if expression result is false (equal to zero).
+        SET(64, If(`SendMain(1222 /*AKD_GETMAININFO*/, 5 /*MI_SAVESETTINGS*/, 0) == 2 /*SS_INI*/`))
+          parse following lines, if settings saved to ini file.
+      SET(128, If("expression"[, IfTrue, IfFalse]))
+        set menu item status.
+          "expression"
+            See SET(64) description.
+          IfTrue
+            0x0 //IFS_NORMAL    Normal item.
+            0x1 //IFS_CHECKED   Checked item.
+            0x2 //IFS_GRAYED    Disabled, grayed item.
+            0x4 //IFS_DISABLED  Disabled item.
+          IfFalse
+            0x0 //IFS_NORMAL    Normal item.
+            0x1 //IFS_CHECKED   Checked item.
+            0x2 //IFS_GRAYED    Disabled, grayed item.
+            0x4 //IFS_DISABLED  Disabled item.
+        SET(128, If("SendMain(1223 /*AKD_GETFRAMEINFO*/, 69 /*FI_CARETOPTIONS*/, 0) & 0x2 /*CO_CARETVERTLINE*/", 0x1, 0x0))
+          check following items, if caret active column is on.
+        SET(128, If(`Call("Scripts::Main", 5, "SearchReplace.js", 2 /*SH_THISSCRIPT*/, &nResult)`, 0x1, 0x0))
+          check following items, if script SearchReplace.js is working.
+        SET(128, If(`AkelPad.IsPluginRunning("Coder::HighLight")`, 0x1, 0x0))
+          check following items, if Coder::HighLight is working.
   UNSET(flags)
     unset text parse flags. See SET() for description.
 
@@ -106,7 +173,21 @@ Menu item creation:
       +Call("LineBoard::Main")
         method calls LineBoard plugin and Main function. Plug-in will work also after
         program restart.
-    Exec("command line"[, "working directory"])
+    Exec("command line"[, "working directory"][, Wait][, WindowStyle])
+      "command line"
+        Command line string.
+      "working directory"
+        Working directory string. Default is "".
+      Wait
+        Wait until the program finishes. 1 - wait, 0 - return immediately (default).
+      WindowStyle (one of the following):
+        0 hidden window.
+        1 window as is (by default).
+        2 minimized window.
+        3 maximized window.
+        6 minimized, inactive window.
+        9 non-maximized window.
+        Note: programs could ignore this parameter.
       Exec("notepad.exe")
         method calls notepad.
       Exec(`notepad.exe`)
@@ -277,6 +358,13 @@ Call("ContextMenu::Main", 1, INDEX, "STRING")
     STRING
       Find string and select (default is "").
 
+Call("ContextMenu::Main", 2, OPERATION)
+  Parameters:
+    2
+      External call for favourite files list.
+    OPERATION
+      Operation number. See description of Favourites() method.
+
 Call("ContextMenu::Main", 10)
   Parameters:
     10
@@ -285,7 +373,7 @@ Call("ContextMenu::Main", 10)
 
 *** External call ContextMenu::Show ***
 
-Call("ContextMenu::Show", 1, "X", "Y", INDEX, "SUBMENU")
+Call("ContextMenu::Show", 1, "X", "Y", INDEX, "SUBMENU", *MENUHEIGHT)
   Parameters:
     1
       Open user menu at specified position.
@@ -297,6 +385,8 @@ Call("ContextMenu::Show", 1, "X", "Y", INDEX, "SUBMENU")
       Open only specified submenu by number. If -1, show all menu (default).
     "SUBMENU"
       Open only specified submenu by name. INDEX must be equal to -1.
+    *MENUHEIGHT
+      Pointer to a buffer, that receives menu height. If specified, then menu not open.
   Remarks:
     - If X and Y equal to "-1", then edit window left-top corner position is used.
     - If X and Y equal to "-2", then edit window right-top corner position is used.

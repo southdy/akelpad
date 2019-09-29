@@ -2,11 +2,10 @@
 #include <windows.h>
 #include <richedit.h>
 #include "StrFunc.h"
-#include "StackFunc.h"
 #include "x64Func.h"
 #include "WideFunc.h"
-#include "RegExpFunc.h"
 #include "AkelEdit.h"
+#include "RegExpFunc.h"
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
@@ -147,7 +146,6 @@
 #define OF_RUN      0x08
 #define OF_RUNRECT  0x10
 
-#define BUFFER_SIZE      1024
 #define COMMANDLINE_SIZE 32768
 
 //DestroyDock type
@@ -189,14 +187,19 @@
 #define OUTF_TARGETNEWTAB    0x00800000
 
 //Patterns
-#define PAT_MICROSOFTGCC    L"^\\s*(.*)([(:](\\d+)[,:](\\d+)[):]|[(:](\\d+)[):])"
-#define PAT_MICROSOFTGCCTAG L"/FILE=\\1 /GOTOLINE=\\3:\\4"
-#define PAT_BORLAND         L"^(\\[.*\\] )?(.*)\\((\\d+)(,(\\d+))?\\)"
+#define PAT_MICROSOFTGCC    L"(?-s)^\\s*(.*?)[(:](\\d++)([,:](\\d++))?[):]"
+#define PAT_MICROSOFTGCCTAG L"/FILE=\\1 /GOTOLINE=\\2:\\4"
+#define PAT_BORLAND         L"^(\\[.*?\\] )?(.*?)\\((\\d++)(,(\\d++))?\\)"
 #define PAT_BORLANDTAG      L"/FILE=\\2 /GOTOLINE=\\3:\\5"
 
 //Find document type
 #define FDT_BYFILENAME   1
 #define FDT_BYFRAME      2
+
+//Set text append
+#define STA_ERASE           0
+#define STA_APPEND          1
+#define STA_APPENDNEWLINE   2
 
 //Code pages strings
 #define STR_UNICODE_UTF8W  L"65001 (UTF-8)"
@@ -283,6 +286,8 @@ typedef struct {
 void CreateOutput(PLUGINDATA *pd, BOOL bShow);
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
 void DestroyDock(HWND hWndDock, DWORD dwType);
+void SetEditWindowSettings();
+void SetWordWrap(DWORD dwOutputFlags);
 void SetCoderAlias();
 void RemoveCoderAlias();
 BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -327,7 +332,7 @@ BOOL IsCodePageUnicode(int nCodePage);
 void ChangeTwoBytesOrder(unsigned char *lpBuffer, unsigned int nBufferLen);
 int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBufferSize);
 BOOL GetFullName(const wchar_t *wpFile, wchar_t *wszFileFullName, int nFileMax, int *lpnFileLen);
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc);
 void ShowOutputMenu(HWND hWnd, HMENU hMenu, BOOL bMouse);
 DWORD ScrollCaret(HWND hWnd);
 int SaveLineScroll(HWND hWnd);
@@ -361,7 +366,6 @@ HINSTANCE hInstanceDLL;
 HINSTANCE hInstanceEXE;
 HWND hMainWnd;
 BOOL bOldWindows;
-BOOL bOldComctl32;
 int nMDI;
 LANGID wLangModule;
 BOOL bInitCommon=FALSE;
@@ -400,7 +404,7 @@ WNDPROC lpOldOutputProc;
 
 wchar_t wszRunCmdLine[COMMANDLINE_SIZE];
 wchar_t wszRunDir[MAX_PATH];
-RECT rcRunMinMaxDialog={363, 270, 0, 270};
+RECT rcRunMinMaxDialog={363, 270, 0, 0};
 RECT rcRunCurrentDialog={0};
 
 PLUGINFUNCTION *pfWatch=NULL;
@@ -429,7 +433,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Log";
 }
 
@@ -600,12 +604,17 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
     else if (nAction == DLLA_LOGOUTPUT_GETWINDOW)
     {
       HWND *lpWndOutput=NULL;
+      DOCK **lppDock=NULL;
 
       if (IsExtCallParamValid(pd->lParam, 2))
         lpWndOutput=(HWND *)GetExtCallParam(pd->lParam, 2);
+      if (IsExtCallParamValid(pd->lParam, 3))
+        lppDock=(DOCK **)GetExtCallParam(pd->lParam, 3);
 
       if (lpWndOutput)
         *lpWndOutput=hWndOutputView;
+      if (lppDock)
+        *lppDock=dkOutputDlg;
     }
     else if (nAction == DLLA_LOGOUTPUT_GETEXECINFO)
     {
@@ -613,6 +622,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
       HANDLE *lphExecThread=NULL;
       HANDLE *lphProcess=NULL;
       DWORD *lpdwProcessId=NULL;
+      DWORD *lpdwExitCode=NULL;
 
       if (IsExtCallParamValid(pd->lParam, 2))
         lpdwExecState=(DWORD *)GetExtCallParam(pd->lParam, 2);
@@ -622,6 +632,8 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         lphProcess=(HANDLE *)GetExtCallParam(pd->lParam, 4);
       if (IsExtCallParamValid(pd->lParam, 5))
         lpdwProcessId=(DWORD *)GetExtCallParam(pd->lParam, 5);
+      if (IsExtCallParamValid(pd->lParam, 6))
+        lpdwExitCode=(DWORD *)GetExtCallParam(pd->lParam, 6);
 
       if (lpdwExecState)
         *lpdwExecState=oe.dwExecState;
@@ -631,6 +643,8 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         *lphProcess=oe.hProcess;
       if (lpdwProcessId)
         *lpdwProcessId=oe.dwProcessId;
+      if (lpdwExitCode)
+        *lpdwExitCode=oe.dwExitCode;
     }
     else if (nAction == DLLA_LOGOUTPUT_SETTEXTA ||
              nAction == DLLA_LOGOUTPUT_SETTEXTW)
@@ -638,7 +652,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
       unsigned char *pText=NULL;
       unsigned char *pCoderAlias=NULL;
       INT_PTR nTextLen=-1;
-      BOOL bAppend=TRUE;
+      int nAppend=STA_APPEND;
       int nCodePage=0;
 
       if (IsExtCallParamValid(pd->lParam, 2))
@@ -646,7 +660,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
       if (IsExtCallParamValid(pd->lParam, 3))
         nTextLen=GetExtCallParam(pd->lParam, 3);
       if (IsExtCallParamValid(pd->lParam, 4))
-        bAppend=(BOOL)GetExtCallParam(pd->lParam, 4);
+        nAppend=(BOOL)GetExtCallParam(pd->lParam, 4);
       if (IsExtCallParamValid(pd->lParam, 5))
         nCodePage=(int)GetExtCallParam(pd->lParam, 5);
       if (IsExtCallParamValid(pd->lParam, 6))
@@ -680,8 +694,18 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
 
         if (pd->dwSupport & PDS_STRANSI)
         {
-          if (bAppend)
+          if (nAppend)
+          {
+            if (nAppend == STA_APPENDNEWLINE)
+            {
+              AECHARINDEX ciLastChar;
+
+              SendMessage(hWndOutputView, AEM_GETINDEX, AEGI_LASTCHAR, (LPARAM)&ciLastChar);
+              if (ciLastChar.nCharInLine)
+                AppendTextAnsi(hWndOutputView, nCodePage, (char *)"\n", 1);
+            }
             AppendTextAnsi(hWndOutputView, nCodePage, (char *)pText, nTextLen);
+          }
           else
           {
             AESETTEXTA st;
@@ -695,8 +719,18 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         }
         else
         {
-          if (bAppend)
+          if (nAppend)
+          {
+            if (nAppend == STA_APPENDNEWLINE)
+            {
+              AECHARINDEX ciLastChar;
+
+              SendMessage(hWndOutputView, AEM_GETINDEX, AEGI_LASTCHAR, (LPARAM)&ciLastChar);
+              if (ciLastChar.nCharInLine)
+                AppendTextWide(hWndOutputView, (wchar_t *)L"\n", 1);
+            }
             AppendTextWide(hWndOutputView, (wchar_t *)pText, nTextLen);
+          }
           else
           {
             AESETTEXTW st;
@@ -822,6 +856,31 @@ void DestroyDock(HWND hWndDock, DWORD dwType)
   SendMessage(hWndDock, WM_COMMAND, IDCANCEL, dwType);
 }
 
+void SetEditWindowSettings()
+{
+  HFONT hFontEdit;
+
+  SendMessage(hWndOutputView, EM_SETUNDOLIMIT, 0, 0);
+  SendMessage(hWndOutputView, AEM_SETOPTIONS, AECOOP_OR, AECO_READONLY);
+  SetWordWrap(oe.dwOutputFlags);
+  hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
+  SendMessage(hWndOutputView, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
+}
+
+void SetWordWrap(DWORD dwOutputFlags)
+{
+  if (dwOutputFlags & OUTF_WRAP)
+  {
+    SendMessage(hWndOutputView, AEM_SETWORDWRAP, AEWW_WORD, 0);
+    SendMessage(hWndOutputView, AEM_SHOWSCROLLBAR, SB_HORZ, FALSE);
+  }
+  else
+  {
+    SendMessage(hWndOutputView, AEM_SETWORDWRAP, AEWW_NONE, 0);
+    SendMessage(hWndOutputView, AEM_SHOWSCROLLBAR, SB_HORZ, TRUE);
+  }
+}
+
 void SetCoderAlias()
 {
   if (*oe.wszCoderAlias || dwDllFunction)
@@ -920,6 +979,7 @@ void SetCoderAlias()
 
           dwDllFunction|=CODER_CODEFOLD;
         }
+        SetEditWindowSettings();
       }
     }
   }
@@ -974,22 +1034,20 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndTitleText;
   static HWND hWndTitleClose;
   static HMENU hMenuEdit;
-  static DIALOGRESIZE drs[]={{&hWndTitleText,     DRS_SIZE|DRS_X, 0},
-                             {&hWndTitleClose,    DRS_MOVE|DRS_X, 0},
-                             {&hWndOutputView,    DRS_SIZE|DRS_X, 0},
-                             {&hWndOutputView,    DRS_SIZE|DRS_Y, 0},
-                             {&hWndInputEdit,     DRS_SIZE|DRS_X, 0},
-                             {&hWndInputEdit,     DRS_MOVE|DRS_Y, 0},
-                             {&hWndInputButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndInputButton,   DRS_MOVE|DRS_Y, 0},
-                             {&hWndRunStopButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndRunStopButton, DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndTitleText,     RDS_SIZE|RDS_X, 0},
+                             {&hWndTitleClose,    RDS_MOVE|RDS_X, 0},
+                             {&hWndOutputView,    RDS_SIZE|RDS_X, 0},
+                             {&hWndOutputView,    RDS_SIZE|RDS_Y, 0},
+                             {&hWndInputEdit,     RDS_SIZE|RDS_X, 0},
+                             {&hWndInputEdit,     RDS_MOVE|RDS_Y, 0},
+                             {&hWndInputButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndInputButton,   RDS_MOVE|RDS_Y, 0},
+                             {&hWndRunStopButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndRunStopButton, RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
   {
-    HFONT hFontEdit;
-
     hWndOutputView=GetDlgItem(hDlg, IDC_DOCK_OUTPUTWATCH);
     hWndInputEdit=GetDlgItem(hDlg, IDC_DOCK_EXECINPUT_EDIT);
     hWndInputButton=GetDlgItem(hDlg, IDC_DOCK_INPUT_BUTTON);
@@ -999,13 +1057,8 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     SetDlgItemTextWide(hDlg, IDC_DOCK_INPUT_BUTTON, GetLangStringW(wLangModule, STRID_INPUT));
     SetWindowTextWide(hWndRunStopButton, GetLangStringW(wLangModule, STRID_RUNDLG));
-    SendMessage(hWndOutputView, EM_SETUNDOLIMIT, 0, 0);
-    SendMessage(hWndOutputView, AEM_SETOPTIONS, AECOOP_OR, AECO_READONLY);
-    if (oe.dwOutputFlags & OUTF_WRAP)
-      SendMessage(hWndOutputView, AEM_SETWORDWRAP, AEWW_WORD, 0);
-    hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
-    SendMessage(hWndOutputView, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
 
+    SetEditWindowSettings();
     EnableWindow(hWndInputEdit, FALSE);
     EnableWindow(hWndInputButton, FALSE);
     if (oe.dwOutputFlags & OUTF_HIDEINPUT)
@@ -1074,12 +1127,12 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       bResult=TRUE;
     }
 
-    //Update DIALOGRESIZE offsets
+    //Update RESIZEDIALOG offsets
     if (bResult)
     {
-      DIALOGRESIZEMSG drsm={&drs[0], NULL, &rcOutputCurrentDialog, 0, hDlg, WM_INITDIALOG, wParam, lParam};
+      RESIZEDIALOGMSG rdsm={&rds[0], NULL, &rcOutputCurrentDialog, 0, hDlg, WM_INITDIALOG, wParam, lParam};
 
-      SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm);
+      SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm);
     }
     return FALSE;
   }
@@ -1177,7 +1230,7 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           pfOutput->bRunning=FALSE;
           SendMessage(hMainWnd, WM_COMMAND, 0, 0);
         }
-        else PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
+        else SendMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
       }
     }
   }
@@ -1192,10 +1245,10 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], NULL, &rcOutputCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], NULL, &rcOutputCurrentDialog, 0, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
-      if (dkOutputDlg) GetWindowPos(hWndTitleText, hDlg, &dkOutputDlg->rcDragDrop);
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
+      if (dkOutputDlg) GetWindowSize(hWndTitleText, hDlg, &dkOutputDlg->rcDragDrop);
   }
 
   return FALSE;
@@ -1212,18 +1265,18 @@ BOOL CALLBACK DockRunDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndTargetCombo;
   static HWND hWndExecButton;
   static HWND hWndCancelButton;
-  static DIALOGRESIZE drs[]={{&hWndCmdEdit,      DRS_SIZE|DRS_X, 0},
-                             {&hWndDirEdit,      DRS_SIZE|DRS_X, 0},
-                             {&hWndSourceLabel,  DRS_MOVE|DRS_Y, 0},
-                             {&hWndSourceCombo,  DRS_MOVE|DRS_Y, 0},
-                             {&hWndTargetLabel,  DRS_MOVE|DRS_X, 0},
-                             {&hWndTargetLabel,  DRS_MOVE|DRS_Y, 0},
-                             {&hWndTargetCombo,  DRS_MOVE|DRS_X, 0},
-                             {&hWndTargetCombo,  DRS_MOVE|DRS_Y, 0},
-                             {&hWndExecButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndExecButton,   DRS_MOVE|DRS_Y, 0},
-                             {&hWndCancelButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndCancelButton, DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndCmdEdit,      RDS_SIZE|RDS_X, 0},
+                             {&hWndDirEdit,      RDS_SIZE|RDS_X, 0},
+                             {&hWndSourceLabel,  RDS_MOVE|RDS_Y, 0},
+                             {&hWndSourceCombo,  RDS_MOVE|RDS_Y, 0},
+                             {&hWndTargetLabel,  RDS_MOVE|RDS_X, 0},
+                             {&hWndTargetLabel,  RDS_MOVE|RDS_Y, 0},
+                             {&hWndTargetCombo,  RDS_MOVE|RDS_X, 0},
+                             {&hWndTargetCombo,  RDS_MOVE|RDS_Y, 0},
+                             {&hWndExecButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndExecButton,   RDS_MOVE|RDS_Y, 0},
+                             {&hWndCancelButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndCancelButton, RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -1350,9 +1403,9 @@ BOOL CALLBACK DockRunDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], &rcRunMinMaxDialog, &rcRunCurrentDialog, DRM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], &rcRunMinMaxDialog, &rcRunCurrentDialog, RDM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
       dwSaveFlags|=OF_RUNRECT;
   }
 
@@ -1393,8 +1446,8 @@ void DockShowInput(BOOL bShow, HWND hWndInputEdit, HWND hWndInputButton, HWND hW
     ShowWindow(hWndInputEdit, SW_SHOW);
     ShowWindow(hWndInputButton, SW_SHOW);
     ShowWindow(hWndRunStopButton, SW_SHOW);
-    GetWindowPos(hWndInputEdit, hWndDockDlg, &rcInputEdit);
-    GetWindowPos(hWndOutputView, hWndDockDlg, &rcOutputView);
+    GetWindowSize(hWndInputEdit, hWndDockDlg, &rcInputEdit);
+    GetWindowSize(hWndOutputView, hWndDockDlg, &rcOutputView);
     SetWindowPos(hWndOutputView, NULL, 0, 0, rcOutputView.right, (rcInputEdit.top - 5) - rcOutputView.top, SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
   }
   else
@@ -1402,8 +1455,8 @@ void DockShowInput(BOOL bShow, HWND hWndInputEdit, HWND hWndInputButton, HWND hW
     ShowWindow(hWndInputEdit, SW_HIDE);
     ShowWindow(hWndInputButton, SW_HIDE);
     ShowWindow(hWndRunStopButton, SW_HIDE);
-    GetWindowPos(hWndInputEdit, hWndDockDlg, &rcInputEdit);
-    GetWindowPos(hWndOutputView, hWndDockDlg, &rcOutputView);
+    GetWindowSize(hWndInputEdit, hWndDockDlg, &rcInputEdit);
+    GetWindowSize(hWndOutputView, hWndDockDlg, &rcOutputView);
     SetWindowPos(hWndOutputView, NULL, 0, 0, rcOutputView.right, (rcInputEdit.top + rcInputEdit.bottom) - rcOutputView.top, SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
   }
 }
@@ -1418,8 +1471,8 @@ void SettingsSheet(int nStartPage)
   POINT ptSmallIcon;
 
   //Create image list
-  ptSmallIcon.x=GetSystemMetrics(SM_CXSMICON);
-  ptSmallIcon.y=GetSystemMetrics(SM_CYSMICON);
+  ptSmallIcon.x=16 /*GetSystemMetrics(SM_CXSMICON)*/;
+  ptSmallIcon.y=16 /*GetSystemMetrics(SM_CYSMICON)*/;
 
   if (hImageList=ImageList_Create(ptSmallIcon.x, ptSmallIcon.y, ILC_COLOR32|ILC_MASK, 0, 0))
   {
@@ -1814,7 +1867,7 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
       if (hWndOutputView)
       {
         if ((dwOutputFlagsOld & OUTF_WRAP) != (dwOutputFlags & OUTF_WRAP))
-          SendMessage(hWndOutputView, AEM_SETWORDWRAP, (dwOutputFlags & OUTF_WRAP)?AEWW_WORD:AEWW_NONE, 0);
+          SetWordWrap(dwOutputFlags);
         if ((dwOutputFlagsOld & OUTF_HIDEINPUT) != (dwOutputFlags & OUTF_HIDEINPUT))
           PostMessage(hWndDockDlg, AKDLL_SHOWINPUT, !(dwOutputFlags & OUTF_HIDEINPUT), 0);
       }
@@ -1849,9 +1902,11 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   if (uMsg == AKDN_OPENDOCUMENT_START ||
       uMsg == AKDN_SAVEDOCUMENT_START)
   {
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
+
     if (!bLogOpening)
     {
-      if (hWndEditWatch == (HWND)wParam && (nMDI != WMD_PMDI || hDocEditWatch == (AEHDOC)SendMessage(hWndEditWatch, AEM_GETDOCUMENT, 0, 0)))
+      if (hWndEditWatch == lpFrame->ei.hWndEdit && hDocEditWatch == lpFrame->ei.hDocEdit)
       {
         bDocOpening=TRUE;
       }
@@ -1860,9 +1915,11 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   else if (uMsg == AKDN_OPENDOCUMENT_FINISH ||
            uMsg == AKDN_SAVEDOCUMENT_FINISH)
   {
+    FRAMEDATA *lpFrame=(FRAMEDATA *)wParam;
+
     if (!bLogOpening)
     {
-      if (hWndEditWatch == (HWND)wParam && (nMDI != WMD_PMDI || hDocEditWatch == (AEHDOC)SendMessage(hWndEditWatch, AEM_GETDOCUMENT, 0, 0)))
+      if (hWndEditWatch == lpFrame->ei.hWndEdit && hDocEditWatch == lpFrame->ei.hDocEdit)
       {
         bDocOpening=FALSE;
         dwCurPointer=(UINT_PTR)-1;
@@ -1893,6 +1950,13 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       ShowWindow(hWndDockDlg, SW_SHOW);
       dkOutputDlg->dwFlags&=~DKF_HIDDEN;
     }
+  }
+  else if (uMsg == AKDN_DLLCODER)
+  {
+    NCODERUPDATE *ncu=(NCODERUPDATE *)lParam;
+
+    if (ncu->dwFlags & SAE_RESETLIST)
+      SetCoderAlias();
   }
   else if (uMsg == AKDN_MAIN_ONFINISH)
   {
@@ -2030,6 +2094,7 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
             fc.dwMax=dwBlockSize;
             fc.nCodePage=ei.nCodePage;
             fc.bBOM=ei.bBOM;
+            fc.wpContent=NULL;
             if (dwBlockLen=SendMessage(hMainWnd, AKD_READFILECONTENT, 0, (LPARAM)&fc))
             {
               if (!dwCurPointer)
@@ -2198,7 +2263,7 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
       pfOutput->bRunning=FALSE;
       SendMessage(hMainWnd, WM_COMMAND, 0, 0);
     }
-    else PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)hExecThread);
+    else SendMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)hExecThread);
   }
   else
   {
@@ -2899,16 +2964,20 @@ BOOL PatOpenLine(HWND hWnd, const OUTPUTEXEC *oe, const AECHARINDEX *ciChar, AET
         else if (oe->nFindDocType == FDT_BYFILENAME)
         {
           //Document not open  - open it
-          OPENDOCUMENTW od;
+          if (FileExistsWide(wszFile))
+          {
+            OPENDOCUMENTW od;
 
-          od.pFile=wszFile;
-          od.pWorkDir=oe->wszDir;
-          od.dwFlags=OD_ADT_BINARY_ERROR|OD_ADT_REG_CODEPAGE;
-          od.nCodePage=0;
-          od.bBOM=0;
-          SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
+            od.pFile=wszFile;
+            od.pWorkDir=oe->wszDir;
+            od.dwFlags=OD_ADT_BINARYERROR|OD_ADT_REGCODEPAGE;
+            od.nCodePage=0;
+            od.bBOM=0;
+            od.hDoc=NULL;
+            SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
 
-          bResult=TRUE;
+            bResult=TRUE;
+          }
         }
       }
       if (oe->nGotoType && wpLine)
@@ -3030,7 +3099,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
   wchar_t *wszSource;
   wchar_t *wpSource;
   wchar_t *wpTarget=wszBuffer;
-  wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
+  wchar_t *wpTargetMax=(wszBuffer ? (wszBuffer + nBufferSize) : (wchar_t *)MAXUINT_PTR);
   int nStringLen;
 
   //Expand environment strings
@@ -3102,7 +3171,7 @@ BOOL GetFullName(const wchar_t *wpFile, wchar_t *wszFileFullName, int nFileMax, 
   return bResult;
 }
 
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc)
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc)
 {
   if (GetWindowRect(hWnd, rc))
   {
@@ -3592,7 +3661,6 @@ void InitCommon(PLUGINDATA *pd)
   hInstanceEXE=pd->hInstanceEXE;
   hMainWnd=pd->hMainWnd;
   bOldWindows=pd->bOldWindows;
-  bOldComctl32=pd->bOldComctl32;
   nMDI=pd->nMDI;
   wLangModule=PRIMARYLANGID(pd->wLangModule);
 
@@ -3690,7 +3758,7 @@ void StopWatch(int nStringID)
     pfWatch->bRunning=FALSE;
     SendMessage(hMainWnd, WM_COMMAND, 0, 0);
   }
-  else PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
+  else SendMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
 }
 
 void InitOutput()

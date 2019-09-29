@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Coder AkelPad plugin v14.2                ***
+***                 Coder AkelPad plugin v20.0                ***
 *****************************************************************
 
-2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2007-2017 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***
@@ -58,12 +58,13 @@ Call("Coder::HighLight", 2, "#RRGGBB", "#RRGGBB", FLAGS, FONTSTYLE, ID, "TEXT", 
     2
       Отметить выделенный текст или указанный текст.
     "#RRGGBB"
-      Цвет текста, если "0" игнорируется.
+      Цвет текста. Если "0", игнорируется.
     "#RRGGBB"
-      Цвет фона, если "0" игнорируется.
+      Цвет фона. Если "0", игнорируется.
     FLAGS (сумма следующих):
       1  учитывать регистр (по умолчанию).
       2  регулярные выражения в параметре "TEXT".
+      4  слово целиком.
          По умолчанию: 1.
     FONTSTYLE (один из следующих):
       0  игнорировать (по умолчанию).
@@ -104,9 +105,9 @@ Call("Coder::HighLight", 4, ID, "#RRGGBB", "#RRGGBB", DIRECTION)
       Если -1, найти автоматически назначенные идентификаторы по цвету.
       Если -2, найти отметки выделенного текста.
     "#RRGGBB"
-      Цвет текста, если "0" игнорируется.
+      Цвет текста. Если "0", игнорируется.
     "#RRGGBB"
-      Цвет фона, если "0" игнорируется.
+      Цвет фона. Если "0", игнорируется.
     DIRECTION (один из следующих):
       0 найти вниз (по умолчанию).
       1 найти вверх.
@@ -139,6 +140,11 @@ Call("Coder::CodeFold", 1, *WINDOW)
       return hWnd;
     }
 
+Call("Coder::CodeFold", 2)
+  Параметры:
+    2
+      Перейти к правилу.
+
 
 *** Внешний вызов Coder::Settings ***
 
@@ -150,10 +156,15 @@ Call("Coder::Settings", 1, "EXTENSION")
       Расширение, например: "html". Ручная установка темы отменяется, если параметр расширения отсутствует.
       Если параметр расширения равен "?", то документ определяется, как не имеющий темы.
 
-Call("Coder::Settings", 2)
+Call("Coder::Settings", 2, *USECACHE)
   Параметры:
     2
-      Обновить кэш.
+      Обновить кеш.
+    *USECACHE
+      Необязательный параметр. Указатель на переменную, которая получает тип кеша. Один из следующих:
+      0  //UC_NONE   Без кеша.
+      1  //UC_FAST   Быстрый кеш.
+      2  //UC_SMART  Умный кеш.
 
 Call("Coder::Settings", 3, PAGE)
   Параметры:
@@ -362,68 +373,6 @@ Call("Coder::Settings", 22, WINDOW, DOCUMENT, "VARNAME", *VARVALUE, *VARVALUELEN
     }
 
 
-*** Меню для ContextMenu плагина ***
-
-"Отметить" Icon("%a\AkelFiles\Plugs\Coder.dll", 0)
-{
-  "Бирюзовым" Call("Coder::HighLight", 2, 0, "#9BFFFF", 1, 0, 11) Icon("%a\AkelFiles\Plugs\Coder.dll", 6)
-  "Оранжевым" Call("Coder::HighLight", 2, 0, "#FFCD9B", 1, 0, 12) Icon("%a\AkelFiles\Plugs\Coder.dll", 7)
-  "Желтым" Call("Coder::HighLight", 2, 0, "#FFFF9B", 1, 0, 13) Icon("%a\AkelFiles\Plugs\Coder.dll", 8)
-  "Фиолетовым" Call("Coder::HighLight", 2, 0, "#BE7DFF", 1, 0, 14) Icon("%a\AkelFiles\Plugs\Coder.dll", 9)
-  "Зелёным" Call("Coder::HighLight", 2, 0, "#88E188", 1, 0, 15) Icon("%a\AkelFiles\Plugs\Coder.dll", 10)
-  SEPARATOR
-  -"Убрать все отметки" Call("Coder::HighLight", 3, 0) Icon("%a\AkelFiles\Plugs\Coder.dll", 11)
-}
-"Синтаксическая тема" Icon("%a\AkelFiles\Plugs\Coder.dll", 4)
-{
-  "1с" Call("Coder::Settings", 1, "1s")
-  "Assembler" Call("Coder::Settings", 1, "asm")
-  "AutoIt" Call("Coder::Settings", 1, "au3")
-  "Bat" Call("Coder::Settings", 1, "bat")
-  "C++" Call("Coder::Settings", 1, "cpp")
-  "Sharp" Call("Coder::Settings", 1, "cs")
-  "CSS" Call("Coder::Settings", 1, "css")
-  "HTML" Call("Coder::Settings", 1, "html")
-  "Ini" Call("Coder::Settings", 1, "ini")
-  "Inno" Call("Coder::Settings", 1, "iss")
-  "JScript" Call("Coder::Settings", 1, "js")
-  "Lua" Call("Coder::Settings", 1, "lua")
-  "NSIS" Call("Coder::Settings", 1, "nsi")
-  "Pascal" Call("Coder::Settings", 1, "dpr")
-  "Perl" Call("Coder::Settings", 1, "pl")
-  "PHP" Call("Coder::Settings", 1, "php")
-  "Python" Call("Coder::Settings", 1, "py")
-  "Resource" Call("Coder::Settings", 1, "rc")
-  "SQL" Call("Coder::Settings", 1, "sql")
-  "VBScript" Call("Coder::Settings", 1, "vbs")
-  "XML" Call("Coder::Settings", 1, "xml")
-  SEPARATOR
-  "Без темы" Call("Coder::Settings", 1, "?")
-}
-"Цветовая тема" Icon("%a\AkelFiles\Plugs\Coder.dll", 5)
-{
-  "Default" Call("Coder::Settings", 5, "Default")
-  SEPARATOR
-  "Active4D" Call("Coder::Settings", 5, "Active4D")
-  "Bespin" Call("Coder::Settings", 5, "Bespin")
-  "Cobalt" Call("Coder::Settings", 5, "Cobalt")
-  "Dawn" Call("Coder::Settings", 5, "Dawn")
-  "Earth" Call("Coder::Settings", 5, "Earth")
-  "iPlastic" Call("Coder::Settings", 5, "iPlastic")
-  "Lazy" Call("Coder::Settings", 5, "Lazy")
-  "Mac Classic" Call("Coder::Settings", 5, "Mac Classic")
-  "Monokai" Call("Coder::Settings", 5, "Monokai")
-  "Solarized Light" Call("Coder::Settings", 5, "Solarized Light")
-  "Solarized Dark" Call("Coder::Settings", 5, "Solarized Dark")
-  "SpaceCadet" Call("Coder::Settings", 5, "SpaceCadet")
-  "Sunburst" Call("Coder::Settings", 5, "Sunburst")
-  "Twilight" Call("Coder::Settings", 5, "Twilight")
-  "Zenburn" Call("Coder::Settings", 5, "Zenburn")
-  SEPARATOR
-  "Настроить..." Call("Coder::Settings")
-}
-
-
 *** Структура cache файла ***
 
 [Cache]
@@ -438,3 +387,134 @@ DCD8500001CF30A3
   Необязательный ручной параметр. Если 1, то не обновлять информацию о типах файлов из cpp.coder.
 "*.cpp" "*.c"
   Типы файлов.
+
+
+*** Описание иерархии, применяющейся в *.coder файлах ***
+
+Rule ID, Parent ID
+  В правиле, которое является родителем, указывается идентификатор (Rule ID). В дочернем же правиле,
+  которое будет работать, только если находится внутри родителя, указывается идентификатор родителя (Parent ID).
+
+  Например, разделитель "/" будет найден и подсвечен "#FF0000", только если находится между "<" и ">".
+  Quotes:
+  ;===================================================================================
+  ;Flags  Font    Color   Color   Quote   Quote   Escape  Quote   Quote   Parent  Rule
+  ;       style   text    bkgrnd  start   end     char    include exclude ID      ID
+  ;===================================================================================
+  ;5=1+4
+  5       0       0       0       "<"     ">"     ""      ""      ""      0       123
+
+  Delimiters:
+  ;===============================================
+  ;Flags  Font    Color   Color   Char(s)   Parent
+  ;       style   text    bkgrnd            ID
+  ;===============================================
+  1       0       #FF0000 0       "/"       123
+
+  - Может быть несколько правил с одинаковым идентификатором (Rule ID). В таком случае дочерние правила, для
+    которых указан данный идентификатор (Parent ID), будут работать в любом из родителей.
+  - Родителем (Parent ID) для секции "Delimiters:" может быть "Quotes:", "QuotesRE:", "Folds:".
+  - Родителем (Parent ID) для секции "Words:" может быть "Quotes:", "QuotesRE:", "Folds:".
+  - Родителем (Parent ID) для секции "Quotes:" может быть "Quotes:", "QuotesRE:", "Folds:".
+  - Родителем (Parent ID) для секции "QuotesRE:" может быть "Quotes:", "QuotesRE:", "Folds:".
+  - Родителем (Parent ID) для секции "Folds:" может быть "Folds:".
+  - Если родитель (Parent ID) равен 0 (по умолчанию):
+    - Внутри не оформленного диапазона ("Quotes:", "QuotesRE:"), правило обрабатывается.
+    - Внутри оформленного диапазона ("Quotes:", "QuotesRE:"), правило игнорируется.
+    - Внутри не оформленного блока ("Folds:"), правило обрабатывается.
+    - Внутри оформленного блока ("Folds:"), правило из "Folds:" обрабатывается, из остальных секций игнорируется.
+  - Если родитель (Parent ID) равен -1, то правило должно быть без родителя с идентификатором (Rule ID) > 0.
+  - Если родитель (Parent ID) равен -2:
+    - Внутри родителя с идентификатором (Rule ID) == 0, правило не обрабатывается.
+    - Внутри родителя с идентификатором (Rule ID) > 0:
+      - Идентификатор правила (Rule ID) отсутствует, правило обрабатывается.
+      - Идентификатор правила (Rule ID) <> идентификатор родителя (Rule ID), правило обрабатывается.
+      - Идентификатор правила (Rule ID) == идентификатор родителя (Rule ID), правило не обрабатывается.
+  - Если родитель (Parent ID) равен -3:
+    - Внутри родителя с идентификатором (Rule ID) == 0, см. обработку родителя (Parent ID) равного 0.
+    - Внутри родителя с идентификатором (Rule ID) > 0:
+      - Идентификатор правила (Rule ID) отсутствует, правило обрабатывается.
+      - Идентификатор правила (Rule ID) <> идентификатор родителя (Rule ID), правило обрабатывается.
+      - Идентификатор правила (Rule ID) == идентификатор родителя (Rule ID), правило не обрабатывается.
+
+Rule file
+  Файл правила (Rule file) - указывает, что для данного блока применяются правила синтаксиса из другого .coder файла.
+
+  - Текст, захваченный выражением начала блока (Fold start) и конца блока (Fold end), будет подсвечен
+    текущим .coder файлом, а содержимое уже файлом правила (Rule file).
+  - В строке файл правила (Rule file) задаётся конкретный .coder файл, например, "cpp.coder" или
+    псевдоним в формате: "alias:.cpp".
+  - См. html.coder для примера.
+
+
+*** Описание некоторых переменных, применяющихся в темах Coder::Settings ***
+
+Автоматически отмечать выделенное:
+  HighLight_AutoMarkFlags
+    Флаги (сумма следующих):
+    1  учитывать регистр (по умолчанию).
+    2  слово целиком.
+       По умолчанию: 1.
+  HighLight_AutoMarkFontStyle
+    Стиль шрифта (один из следующих):
+    0  игнорировать (по умолчанию).
+    1  обычный шрифт.
+    2  жирный шрифт.
+    3  курсивный шрифт.
+    4  жирный курсивный шрифт.
+  HighLight_AutoMarkTextColor
+    Цвет текста. Если 0, используется умолчание.
+  HighLight_AutoMarkBkColor
+    Цвет фона. Если 0, используется умолчание.
+
+Переменные для LineBoard плагина:
+  LineBoard_TextColor
+    Цвет текста. Если 0, не задан.
+  LineBoard_BkColor
+    Цвет фона. Если 0, не задан.
+  LineBoard_BorderColor
+    Цвет границы. Если 0, не задан.
+  LineBoard_BookmarkTextColor
+    Цвет текста закладки. Если 0, не задан.
+  LineBoard_BookmarkBkColor
+    Цвет фона закладки. Если 0, не задан.
+  LineBoard_BookmarkBorderColor
+    Цвет границы закладки. Если 0, не задан.
+  LineBoard_LineUnsavedColor
+    Цвет несохраненной строки. Если 0, не задан.
+  LineBoard_LineSavedColor
+    Цвет сохраненной строки. Если 0, не задан.
+  LineBoard_RulerScaleColor
+    Цвет шкалы на линейке. Если 0, не задан.
+  LineBoard_RulerCaretColor
+    Цвет каретки на линейке. Если 0, не задан.
+
+Переменные для SpecialChar плагина:
+  SpecialChar_BasicFontStyle
+    Стиль шрифта основной (один из следующих):
+    0  игнорировать (по умолчанию).
+    1  обычный шрифт.
+    2  жирный шрифт.
+    3  курсивный шрифт.
+    4  жирный курсивный шрифт.
+  SpecialChar_BasicTextColor
+    Цвет текста основной. Если 0, не задан.
+  SpecialChar_BasicBkColor
+    Цвет фона основной. Если 0, не задан.
+  SpecialChar_SelFontStyle
+    Стиль шрифта в выделении (один из следующих):
+    0  игнорировать (по умолчанию).
+    1  обычный шрифт.
+    2  жирный шрифт.
+    3  курсивный шрифт.
+    4  жирный курсивный шрифт.
+  SpecialChar_SelTextColor
+    Цвет текста в выделении. Если 0, не задан.
+  SpecialChar_SelBkColor
+    Цвет фона в выделении. Если 0, не задан.
+
+Переменные для Sessions плагина:
+  Sessions_ListTextColor
+    Цвет текста списка. Если 0, не задан.
+  Sessions_ListBkColor
+    Цвет фона списка. Если 0, не задан.

@@ -38,9 +38,10 @@
 #define xmemcpy
 #define xmemset
 #define xmemcmp
-#define xarraysizeA
-#define xarraysizeW
+#define xarrlenA
+#define xarrlenW
 #define xstrcmpiW
+#define xstrcmpinW
 #define xstrcmpnW
 #define xstrcpynW
 #define xstrlenW
@@ -129,35 +130,38 @@
 #define STRID_OPENONSTART             30
 #define STRID_SAVEONEXIT              31
 #define STRID_SHOWPATH                32
-#define STRID_DIALOGTYPE              33
-#define STRID_MODALDIALOG             34
-#define STRID_MODELESSDIALOG          35
-#define STRID_DOCKABLEDIALOG          36
-#define STRID_AUTOLOAD                37
-#define STRID_SAVEDATA                38
-#define STRID_SAVEACTIVE              39
-#define STRID_SAVECODEPAGE            40
-#define STRID_SAVESELECTION           41
-#define STRID_SAVEWORDWRAP            42
-#define STRID_SAVEREADONLY            43
-#define STRID_SAVEOVERTYPE            44
-#define STRID_SAVEBOOKMARKS           45
-#define STRID_SAVEALIAS               46
-#define STRID_SAVEFOLDS               47
-#define STRID_SAVEMARKS               48
-#define STRID_PLUGIN                  49
-#define STRID_OK                      50
-#define STRID_CANCEL                  51
-#define STRID_CLOSE                   52
-#define STRID_CURRENTSESSION          53
-#define STRID_ALREADY_EXIST           54
-#define STRID_RENAME_ERROR            55
-#define STRID_SESSION_CHANGED         56
-#define STRID_CONFIRM_DELETE          57
-#define STRID_RESTARTPROGRAM          58
-#define STRID_SDI_ISNTSUPPORTED       59
-#define STRID_FILTER                  60
-#define STRID_DROPTOCURRENT           61
+#define STRID_SAVERELATIVE            33
+#define STRID_SYSTEMFONT              34
+#define STRID_CODERTHEME              35
+#define STRID_DIALOGTYPE              36
+#define STRID_MODALDIALOG             37
+#define STRID_MODELESSDIALOG          38
+#define STRID_DOCKABLEDIALOG          39
+#define STRID_AUTOLOAD                40
+#define STRID_SAVEDATA                41
+#define STRID_SAVEACTIVE              42
+#define STRID_SAVECODEPAGE            43
+#define STRID_SAVESELECTION           44
+#define STRID_SAVEWORDWRAP            45
+#define STRID_SAVEREADONLY            46
+#define STRID_SAVEOVERTYPE            47
+#define STRID_SAVEBOOKMARKS           48
+#define STRID_SAVEALIAS               49
+#define STRID_SAVEFOLDS               50
+#define STRID_SAVEMARKS               51
+#define STRID_PLUGIN                  52
+#define STRID_OK                      53
+#define STRID_CANCEL                  54
+#define STRID_CLOSE                   55
+#define STRID_CURRENTSESSION          56
+#define STRID_ALREADY_EXIST           57
+#define STRID_RENAME_ERROR            58
+#define STRID_SESSION_CHANGED         59
+#define STRID_CONFIRM_DELETE          60
+#define STRID_RESTARTPROGRAM          61
+#define STRID_SDI_ISNTSUPPORTED       62
+#define STRID_FILTER                  63
+#define STRID_DROPTOCURRENT           64
 
 #define DLLA_SESSIONS_OPEN          1
 #define DLLA_SESSIONS_SAVE          2
@@ -169,7 +173,7 @@
 #define OF_RECT        0x1
 #define OF_SETTINGS    0x2
 
-#define BUFFER_SIZE 8192
+#define FILELIST_SIZE 8192
 
 //Folder flags
 #define FLDF_OPEN     0x1
@@ -279,7 +283,7 @@ typedef struct {
 #define DLLA_LINEBOARD_SETBOOKMARKS  13
 #define DLLA_LINEBOARD_DELBOOKMARKS  14
 
-//Coder::HighLight structures
+//Coder structures
 typedef struct _MARKTEXT {
   struct _MARKTEXT *next;
   struct _MARKTEXT *prev;
@@ -291,6 +295,12 @@ typedef struct {
   MARKTEXT *first;
   MARKTEXT *last;
 } STACKMARKTEXT;
+
+typedef struct {
+  const wchar_t *wpVarName;
+  INT_PTR nVarValue;
+  DWORD dwVarFlags;         //See VARF_* defines.
+} CODERTHEMEITEM;
 
 //Coder external call
 typedef struct {
@@ -328,8 +338,17 @@ typedef struct {
   INT_PTR nMarkTextLen;
 } DLLEXTHIGHLIGHTMARK;
 
+typedef struct {
+  UINT_PTR dwStructSize;
+  INT_PTR nAction;
+  HWND hWndEdit;
+  AEHDOC hDocEdit;
+  CODERTHEMEITEM *cti;
+} DLLEXTCODERFILLVARLIST;
+
 #define DLLA_CODER_SETALIAS         6
 #define DLLA_CODER_GETALIAS         18
+#define DLLA_CODER_FILLVARLIST      23
 #define DLLA_HIGHLIGHT_MARK         2
 #define DLLA_HIGHLIGHT_GETMARKSTACK 12
 
@@ -337,17 +356,25 @@ typedef struct {
 
 #define MARKFLAG_MATCHCASE 0x1
 #define MARKFLAG_REGEXP    0x2
+#define MARKFLAG_WHOLEWORD 0x4
+
+//Variable flags
+#define VARF_LOWPRIORITY   0x001 //Global variable has low priority.
+                                 //Next flags for DLLA_CODER_FILLVARLIST:
+#define VARF_EXTSTRING     0x100 //Copy string pointer to (const wchar_t *)CODERTHEMEITEM.nVarValue.
+#define VARF_EXTINTCOLOR   0x200 //Copy color integer to (COLORREF)CODERTHEMEITEM.nVarValue or -1 if not color.
+#define VARF_EXTLPINTCOLOR 0x400 //Copy color integer to (COLORREF *)CODERTHEMEITEM.nVarValue or -1 if not color.
 
 //Functions prototypes
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
 void DestroyDock(HWND hWndDock, DWORD dwType);
-DWORD WINAPI ThreadProc(LPVOID lpParameter);
 LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK ItemEditDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewTreeViewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 BOOL LoadSessionFile(SESSION *ss);
 BOOL RenameSessionFile(const wchar_t *wpOldSessionName, const wchar_t *wpNewSessionName);
@@ -396,8 +423,9 @@ BOOL TreeDeleteItem(HWND hWndTreeView, HTREEITEM hItem);
 void TreeUpdateItem(HWND hWndTreeView, HTREEITEM hItem);
 LPARAM TreeItemParam(HWND hWndTreeView, HTREEITEM hItem);
 HTREEITEM TreeCursorItem(HWND hWndTreeView);
-void ClearTreeView(HWND hWndTreeView, BOOL bRedraw);
 
+void GetCoderColors(HWND hWnd);
+void SetListColors(HWND hWndEdit, HWND hWndList);
 int GetCollapsedFoldsString(HSTACK *hFoldsStack, wchar_t *wszString);
 int SetCollapsedFoldsString(HWND hWnd, HSTACK *hFoldsStack, const wchar_t *wpString);
 int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBufferSize);
@@ -409,13 +437,13 @@ void SkipSpaces(const wchar_t **wppText);
 
 BOOL IsPathFull(const wchar_t *wpPath);
 const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen);
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
+int GetBaseName(const wchar_t *wpFile, int nFileLen, wchar_t *wszBaseName, int nBaseNameMax);
 BOOL CreateDirectoryRecursive(const wchar_t *wpPath);
 void DropFiles(HDROP hDrop, HWND hWndItemsList);
 int IsFile(const wchar_t *wpFile);
 LRESULT SendToDoc(AEHDOC hDocEdit, HWND hWndEdit, UINT uMsg, WPARAM wParam, LPARAM lParam);
 COLORREF AE_ColorBrightness(COLORREF crColor, int nPercent);
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc);
 
 INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BYTE *lpData, DWORD dwData);
 void ReadOptions(DWORD dwFlags);
@@ -433,8 +461,8 @@ BOOL (WINAPI *SHGetSpecialFolderPathAPtr)(HWND, char *, int, BOOL);
 BOOL (WINAPI *SHGetSpecialFolderPathWPtr)(HWND, wchar_t *, int, BOOL);
 
 //Global variables
-char szBuffer[BUFFER_SIZE];
-wchar_t wszBuffer[BUFFER_SIZE];
+char szBuffer[FILELIST_SIZE];
+wchar_t wszBuffer[FILELIST_SIZE];
 wchar_t wszPluginName[MAX_PATH];
 wchar_t wszPluginTitle[MAX_PATH];
 wchar_t wszExeDir[MAX_PATH];
@@ -449,11 +477,10 @@ LANGID wLangModule;
 BOOL bInitCommon=FALSE;
 BOOL bInitMain=FALSE;
 DWORD dwSaveFlags=0;
-HANDLE hThread=NULL;
-DWORD dwThreadId;
 BOOL bInMemory;
 HICON hPluginIcon;
 HWND hWndMainDlg=NULL;
+HWND hWndItemsList=NULL;
 RECT rcMainMinMaxDialog={275, 388, 0, 0};
 RECT rcMainCurrentDialog={0};
 
@@ -477,6 +504,13 @@ BOOL bSaveOnExit=FALSE;
 int nDialogType=DLGT_MODAL;
 int nNewDialogType=0;
 BOOL bDockAutoload=TRUE;
+COLORREF crListTextColor;
+COLORREF crListBkColor;
+CODERTHEMEITEM cti[]={{L"Sessions_ListTextColor", (INT_PTR)&crListTextColor, VARF_EXTLPINTCOLOR},
+                      {L"Sessions_ListBkColor",   (INT_PTR)&crListBkColor,   VARF_EXTLPINTCOLOR},
+                      {0, 0, 0}};
+BOOL bCoderTheme=TRUE;
+BOOL bListSystemFont=TRUE;
 BOOL bShowPath=FALSE;
 BOOL bItemOpening=FALSE;
 BOOL bSelChanged=FALSE;
@@ -486,8 +520,10 @@ HCURSOR hCursorDragMove;
 SESSIONITEM *siDraggingCursor=NULL;
 HIMAGELIST hImageList=NULL;
 DWORD dwSaveData=SSD_ACTIVE|SSD_CODEPAGE|SSD_SELECTION|SSD_WORDWRAP|SSD_READONLY|SSD_OVERTYPE|SSD_BOOKMARKS|SSD_CODERALIAS|SSD_CODERFOLDS|SSD_CODERMARKS;
+BOOL bSaveRelative=TRUE;
 WNDPROC OldTreeViewProc;
 WNDPROCDATA *NewMainProcData=NULL;
+WNDPROCDATA *NewEditProcData=NULL;
 
 
 //Identification
@@ -495,7 +531,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 9, 7, 0);
   pv->pPluginName="Sessions";
 }
 
@@ -578,29 +614,35 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
   }
 
   //Initialize
-  if (!hThread)
-  {
-    if (!bInitMain) InitMain();
+  if (!bInitMain) InitMain();
 
-    if (nDialogType == DLGT_DOCKABLE)
+  if (nDialogType == DLGT_DOCKABLE)
+  {
+    if (hWndDockDlg)
     {
-      if (hWndDockDlg)
-      {
-        DestroyDock(hWndDockDlg, DKT_DEFAULT);
-      }
-      else
-      {
-        if (!pd->bOnStart || bDockAutoload)
-        {
-          bSessionsDockWaitResize=pd->bOnStart;
-          CreateDock(&hWndDockDlg, &dkSessionsDlg, !bSessionsDockWaitResize);
-        }
-      }
+      DestroyDock(hWndDockDlg, DKT_DEFAULT);
     }
     else
     {
-      if (!pd->bOnStart)
-        hThread=CreateThread(NULL, 0, ThreadProc, NULL, 0, &dwThreadId);
+      if (!pd->bOnStart || bDockAutoload)
+      {
+        bSessionsDockWaitResize=pd->bOnStart;
+        CreateDock(&hWndDockDlg, &dkSessionsDlg, !bSessionsDockWaitResize);
+      }
+    }
+  }
+  else
+  {
+    if (!pd->bOnStart)
+    {
+      if (!hWndMainDlg)
+      {
+        if (nDialogType == DLGT_MODAL)
+          DialogBoxWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_SESSIONS), hMainWnd, (DLGPROC)MainDlgProc);
+        else
+          hWndMainDlg=CreateDialogWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_SESSIONS), hMainWnd, (DLGPROC)MainDlgProc);
+      }
+      else SetActiveWindow(hWndMainDlg);
     }
   }
 
@@ -649,37 +691,6 @@ void DestroyDock(HWND hWndDock, DWORD dwType)
   SendMessage(hWndDock, WM_COMMAND, IDCANCEL, dwType);
 }
 
-DWORD WINAPI ThreadProc(LPVOID lpParameter)
-{
-  MSG msg;
-
-  hWndMainDlg=CreateDialogWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_SESSIONS), hMainWnd, (DLGPROC)MainDlgProc);
-
-  if (hWndMainDlg)
-  {
-    if (nDialogType == DLGT_MODAL)
-      EnableWindow(hMainWnd, FALSE);
-
-    while (GetMessageWide(&msg, NULL, 0, 0) > 0)
-    {
-      if (TranslateAcceleratorWide(hMainWnd, hGlobalAccel, &msg))
-        continue;
-
-      if (hWndMainDlg && !IsDialogMessageWide(hWndMainDlg, &msg))
-      {
-        TranslateMessage(&msg);
-        DispatchMessageWide(&msg);
-      }
-    }
-  }
-  if (hThread)
-  {
-    CloseHandle(hThread);
-    hThread=NULL;
-  }
-  return 0;
-}
-
 LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   static HMENU hMenuLabel;
@@ -687,7 +698,6 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndTitleClose;
   static HWND hWndSessionAction;
   static HWND hWndSessionList;
-  static HWND hWndItemsList;
   static HWND hWndGroupSession;
   static HWND hWndOpenButton;
   static HWND hWndCloseButton;
@@ -701,22 +711,22 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HMENU hMenuItems;
   static HTREEITEM hItemCaretPrev;
   static SESSION ssCurrentTmp;
-  static DIALOGRESIZE drs[]={{&hWndTitleText,      DRS_SIZE|DRS_X, 0},
-                             {&hWndTitleClose,     DRS_MOVE|DRS_X, 0},
-                             {&hWndSessionList,    DRS_SIZE|DRS_X, 0},
-                             {&hWndItemsList,      DRS_SIZE|DRS_X, 0},
-                             {&hWndItemsList,      DRS_SIZE|DRS_Y, 0},
-                             {&hWndGroupSession,   DRS_MOVE|DRS_X, 0},
-                             {&hWndOpenButton,     DRS_MOVE|DRS_X, 0},
-                             {&hWndCloseButton,    DRS_MOVE|DRS_X, 0},
-                             {&hWndSaveButton,     DRS_MOVE|DRS_X, 0},
-                             {&hWndEditButton,     DRS_MOVE|DRS_X, 0},
-                             {&hWndCopyButton,     DRS_MOVE|DRS_X, 0},
-                             {&hWndRenameButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndDeleteButton,   DRS_MOVE|DRS_X, 0},
-                             {&hWndSettingsButton, DRS_MOVE|DRS_X, 0},
-                             {&hWndOKButton,       DRS_MOVE|DRS_X, 0},
-                             {&hWndOKButton,       DRS_MOVE|DRS_Y, 0},
+  static RESIZEDIALOG rds[]={{&hWndTitleText,      RDS_SIZE|RDS_X, 0},
+                             {&hWndTitleClose,     RDS_MOVE|RDS_X, 0},
+                             {&hWndSessionList,    RDS_SIZE|RDS_X, 0},
+                             {&hWndItemsList,      RDS_SIZE|RDS_X, 0},
+                             {&hWndItemsList,      RDS_SIZE|RDS_Y, 0},
+                             {&hWndGroupSession,   RDS_MOVE|RDS_X, 0},
+                             {&hWndOpenButton,     RDS_MOVE|RDS_X, 0},
+                             {&hWndCloseButton,    RDS_MOVE|RDS_X, 0},
+                             {&hWndSaveButton,     RDS_MOVE|RDS_X, 0},
+                             {&hWndEditButton,     RDS_MOVE|RDS_X, 0},
+                             {&hWndCopyButton,     RDS_MOVE|RDS_X, 0},
+                             {&hWndRenameButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndDeleteButton,   RDS_MOVE|RDS_X, 0},
+                             {&hWndSettingsButton, RDS_MOVE|RDS_X, 0},
+                             {&hWndOKButton,       RDS_MOVE|RDS_X, 0},
+                             {&hWndOKButton,       RDS_MOVE|RDS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -810,6 +820,15 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     }
 
+    if (!bListSystemFont)
+    {
+      HFONT hFontEdit;
+
+      hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
+      SendMessage(hWndItemsList, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
+    }
+    SetListColors(NULL, hWndItemsList);
+
     ImageList_SetBkColor(hImageList, (COLORREF)SendMessage(hWndItemsList, TVM_GETBKCOLOR, 0, 0));
     SendMessage(hWndItemsList, TVM_SETIMAGELIST, TVSIL_NORMAL, (LPARAM)hImageList);
 
@@ -819,6 +838,9 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     //SubClass listbox
     OldTreeViewProc=(WNDPROC)GetWindowLongPtrWide(hWndItemsList, GWLP_WNDPROC);
     SetWindowLongPtrWide(hWndItemsList, GWLP_WNDPROC, (UINT_PTR)NewTreeViewProc);
+
+    if (nDialogType == DLGT_MODELESS)
+      SendMessage(hMainWnd, AKD_SETMODELESS, (WPARAM)hDlg, MLA_ADD);
   }
   else if (uMsg == AKDLL_SETUP)
   {
@@ -934,6 +956,172 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (PtInRect(&rc, pt))
       PostMessage(hDlg, AKDLL_SETUP, 0, 0);
   }
+  else if (uMsg == WM_NOTIFY)
+  {
+    if (wParam == IDC_ITEMS_LIST)
+    {
+      if (((NMHDR *)lParam)->code == (UINT)NM_CUSTOMDRAW)
+      {
+        NMTVCUSTOMDRAW *lptvcd=(NMTVCUSTOMDRAW *)lParam;
+        LRESULT lResult;
+
+        if (lptvcd->nmcd.dwDrawStage == CDDS_PREPAINT)
+        {
+          lResult=CDRF_NOTIFYITEMDRAW;
+        }
+        else if (lptvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
+        {
+          if (bDragging)
+          {
+            if (siDraggingCursor && siDraggingCursor == (SESSIONITEM *)lptvcd->nmcd.lItemlParam)
+            {
+              lptvcd->clrTextBk=AE_ColorBrightness(GetSysColor(COLOR_HIGHLIGHT), 80);
+            }
+          }
+          lResult=CDRF_DODEFAULT;
+        }
+        else lResult=CDRF_DODEFAULT;
+
+        SetWindowLongPtrWide(hDlg, DWLP_MSGRESULT, lResult);
+        return TRUE;
+      }
+      else if (((NMTREEVIEWW *)lParam)->hdr.code == TVN_SELCHANGEDA ||
+               ((NMTREEVIEWW *)lParam)->hdr.code == TVN_SELCHANGEDW)
+      {
+        if (!bDragging)
+        {
+          NMTREEVIEWW *pnmtv=(NMTREEVIEWW *)lParam;
+
+          if (lpVirtualSession)
+          {
+            //Multi-selection
+            SESSIONITEM *lpOldItem=(SESSIONITEM *)pnmtv->itemOld.lParam;
+            SESSIONITEM *lpNewItem=(SESSIONITEM *)pnmtv->itemNew.lParam;
+            SESSIONITEM *lpCount;
+
+            if (lpOldItem && GetKeyState(VK_CONTROL) < 0)
+            {
+              if (lpOldItem->dwState & TVIS_SELECTED)
+                SelectItem(hWndItemsList, lpOldItem, TRUE);
+              if (lpNewItem)
+              {
+                if (lpNewItem->dwState & TVIS_SELECTED)
+                  SelectItem(hWndItemsList, lpNewItem, FALSE);
+                else
+                  SelectItem(hWndItemsList, lpNewItem, TRUE);
+              }
+            }
+            else if (lpOldItem && GetKeyState(VK_SHIFT) < 0)
+            {
+              SESSIONITEM *lpStartItem;
+              SESSIONITEM *lpEndItem;
+              SESSIONITEM *lpSwitchItem=NULL;
+              SESSIONITEM *lpFirstSelItem;
+              SESSIONITEM *lpLastSelItem;
+              int nOldIndex;
+              int nNewIndex;
+              int nFirstSelIndex;
+              int nLastSelIndex;
+              BOOL bSelect;
+
+              if ((nOldIndex=StackItemIndex(lpVirtualSession, lpOldItem)) &&
+                  (nNewIndex=StackItemIndex(lpVirtualSession, lpNewItem)))
+              {
+                if (StackFindSelRange(lpVirtualSession, lpOldItem, &lpFirstSelItem, &nFirstSelIndex, &lpLastSelItem, &nLastSelIndex))
+                {
+                  if (nNewIndex < nOldIndex && nNewIndex < nFirstSelIndex)
+                    lpStartItem=lpNewItem;
+                  else if (nFirstSelIndex < nOldIndex)
+                    lpStartItem=lpFirstSelItem;
+                  else
+                    lpStartItem=lpOldItem;
+
+                  if (nNewIndex >= nOldIndex && nNewIndex >= nLastSelIndex)
+                    lpEndItem=lpNewItem;
+                  else if (nLastSelIndex >= nOldIndex)
+                    lpEndItem=lpLastSelItem;
+                  else
+                    lpEndItem=lpOldItem;
+
+                  if (lpFirstSelItem == lpLastSelItem ?
+                      nNewIndex > nOldIndex :
+                      hItemCaretPrev == lpLastSelItem->hItem)
+                  {
+                    if (nOldIndex < nNewIndex)
+                      bSelect=TRUE;
+                    else
+                    {
+                      if (nFirstSelIndex <= nNewIndex)
+                        lpSwitchItem=lpNewItem;
+                      else
+                        lpSwitchItem=lpFirstSelItem;
+                      bSelect=TRUE;
+                    }
+                  }
+                  else
+                  {
+                    if (nOldIndex >= nNewIndex)
+                      bSelect=TRUE;
+                    else
+                    {
+                      if (nLastSelIndex >= nNewIndex)
+                        lpSwitchItem=lpNewItem;
+                      else
+                        lpSwitchItem=lpLastSelItem;
+                      bSelect=FALSE;
+                    }
+                  }
+
+                  //Select range
+                  for (lpCount=lpStartItem; lpCount; lpCount=StackNextItem(lpCount, NULL))
+                  {
+                    if (lpCount == lpSwitchItem && !bSelect)
+                    {
+                      lpSwitchItem=NULL;
+                      bSelect=!bSelect;
+                    }
+                    SelectItem(hWndItemsList, lpCount, bSelect);
+                    if (lpCount == lpSwitchItem && bSelect)
+                    {
+                      lpSwitchItem=NULL;
+                      bSelect=!bSelect;
+                    }
+                    if (lpCount == lpEndItem)
+                      break;
+                  }
+                }
+              }
+            }
+            else
+            {
+              //Reset selection
+              for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+              {
+                if ((lpCount->dwState & TVIS_SELECTED) && lpCount != lpNewItem)
+                  SelectItem(hWndItemsList, lpCount, FALSE);
+              }
+              if (lpNewItem)
+                SelectItem(hWndItemsList, lpNewItem, TRUE);
+            }
+
+            //Update selection for Win7
+            for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+            {
+              if ((lpCount->dwState & TVIS_SELECTED) && lpCount != lpNewItem)
+                SelectItem(hWndItemsList, lpCount, TRUE);
+            }
+            PostMessage(hDlg, AKDLL_GETCARETITEM, 0, 0);
+          }
+          bSelChanged=TRUE;
+        }
+      }
+      else if (((NMHDR *)lParam)->code == (UINT)NM_DBLCLK)
+      {
+        if (TreeCursorItem(hWndItemsList))
+          PostMessage(hDlg, WM_COMMAND, IDC_ITEM_OPEN, 0);
+      }
+    }
+  }
   else if (uMsg == WM_COMMAND)
   {
     if (LOWORD(wParam) == IDC_SESSION_ACTION)
@@ -1007,9 +1195,11 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         lpVirtualSession=NULL;
         lpRealSession=NULL;
 
+        SendMessage(hWndItemsList, WM_SETREDRAW, FALSE, 0);
+        SendMessage(hWndItemsList, TVM_DELETEITEM, 0, (LPARAM)NULL);
+
         if (!(nCurrentSessionIndex=(int)SendMessage(hWndSessionList, CB_GETCURSEL, 0, 0)))
         {
-          ClearTreeView(hWndItemsList, FALSE);
           TreeFillItemsCurrent(hWndItemsList);
 
           if (nDialogType != DLGT_DOCKABLE)
@@ -1028,7 +1218,6 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else
         {
-          ClearTreeView(hWndItemsList, FALSE);
           ComboBox_GetLBTextWide(hWndSessionList, nCurrentSessionIndex, wszBuffer);
 
           if (lpRealSession=GetSession(&hSessionStack, wszBuffer))
@@ -1057,6 +1246,11 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             EnableWindow(hWndDeleteButton, TRUE);
           }
         }
+        SendMessage(hWndItemsList, WM_SETREDRAW, TRUE, 0);
+        //SetScrollRange(hWndItemsList, SB_HORZ, 0, 0, TRUE);
+        //SetScrollRange(hWndItemsList, SB_VERT, 0, 0, TRUE);
+        //InvalidateRect(hWndItemsList, NULL, TRUE);
+
         PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
       }
     }
@@ -1069,24 +1263,12 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     else if (LOWORD(wParam) == IDC_SESSION_CLOSE)
     {
-      if (nDialogType != DLGT_DOCKABLE)
-      {
-        if (nDialogType == DLGT_MODAL) EnableWindow(hMainWnd, TRUE);
-        ShowWindow(hDlg, FALSE);
-      }
-
       if (!lpVirtualSession)
       {
         SendMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSEALL, 0);
         SendMessage(hDlg, WM_COMMAND, MAKELONG(IDC_SESSION_LIST, CBN_SELCHANGE), (LPARAM)hWndSessionList);
       }
       else CloseSession(&lpVirtualSession->hItemsStack);
-
-      if (nDialogType != DLGT_DOCKABLE)
-      {
-        ShowWindow(hDlg, TRUE);
-        if (nDialogType == DLGT_MODAL) EnableWindow(hMainWnd, FALSE);
-      }
     }
     else if (LOWORD(wParam) == IDC_SESSION_SAVE ||
              LOWORD(wParam) == IDC_SESSION_COPY)
@@ -1157,23 +1339,11 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       if (lpVirtualSession)
       {
-        if (nDialogType != DLGT_DOCKABLE)
-        {
-          if (nDialogType == DLGT_MODAL) EnableWindow(hMainWnd, TRUE);
-          ShowWindow(hDlg, FALSE);
-        }
-
         if (EditSessionFile(lpVirtualSession->wszSessionName))
         {
           if (nDialogType != DLGT_DOCKABLE)
             PostMessage(hDlg, WM_COMMAND, IDCANCEL, 0);
           return TRUE;
-        }
-
-        if (nDialogType != DLGT_DOCKABLE)
-        {
-          ShowWindow(hDlg, TRUE);
-          if (nDialogType == DLGT_MODAL) EnableWindow(hMainWnd, FALSE);
         }
       }
     }
@@ -1310,7 +1480,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           ofn.lpstrFile    =wszBuffer;
           ofn.lpstrFilter  =GetLangStringW(wLangModule, STRID_FILTER);
           ofn.nFilterIndex =2;
-          ofn.nMaxFile     =BUFFER_SIZE;
+          ofn.nMaxFile     =FILELIST_SIZE;
           ofn.Flags        =OFN_ALLOWMULTISELECT|OFN_HIDEREADONLY|OFN_PATHMUSTEXIST|OFN_EXPLORER|OFN_ENABLESIZING;
           bAddFiles=GetOpenFileNameWide(&ofn);
         }
@@ -1607,16 +1777,20 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         SaveOptions(dwSaveFlags);
         dwSaveFlags=0;
       }
+      if (!(lParam & DKT_ONMAINFINISH))
+      {
+        if (SaveSessionPrompt() == IDCANCEL)
+          return 0;
+      }
+
       //Change dialog type
-      if (nNewDialogType)
+      if ((nCurDialogType == DLGT_MODAL || nCurDialogType == DLGT_MODELESS) &&
+          (nNewDialogType == DLGT_MODAL || nNewDialogType == DLGT_MODELESS))
       {
         nDialogType=nNewDialogType;
         nNewDialogType=0;
         xmemset(&rcMainCurrentDialog, 0, sizeof(RECT));
       }
-
-      if (SaveSessionPrompt() == IDCANCEL)
-        return 0;
       if (lpVirtualSession)
         StackFreeItems(lpVirtualSession);
       lpVirtualSession=NULL;
@@ -1645,183 +1819,14 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       else
       {
         //Close dialog
-        if (!IsWindowEnabled(hMainWnd))
-          EnableWindow(hMainWnd, TRUE);
-        DestroyWindow(hWndMainDlg);
+        if (nCurDialogType == DLGT_MODAL)
+          EndDialog(hWndMainDlg, 0);
+        else
+        {
+          SendMessage(hMainWnd, AKD_SETMODELESS, (WPARAM)hDlg, MLA_DELETE);
+          DestroyWindow(hWndMainDlg);
+        }
         hWndMainDlg=NULL;
-
-        //Close thread
-        if (!bInMemory)
-          PostMessage(hMainWnd, AKD_DLLUNLOAD, (WPARAM)hInstanceDLL, (LPARAM)NULL);
-        CloseHandle(hThread);
-        hThread=NULL;
-        ExitThread(0);
-      }
-    }
-  }
-  else if (uMsg == WM_NOTIFY)
-  {
-    if (wParam == IDC_ITEMS_LIST)
-    {
-      if (((NMHDR *)lParam)->code == (UINT)NM_CUSTOMDRAW)
-      {
-        NMTVCUSTOMDRAW *lptvcd=(NMTVCUSTOMDRAW *)lParam;
-        LRESULT lResult;
-
-        if (lptvcd->nmcd.dwDrawStage == CDDS_PREPAINT)
-        {
-          lResult=CDRF_NOTIFYITEMDRAW;
-        }
-        else if (lptvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
-        {
-          if (bDragging)
-          {
-            if (siDraggingCursor && siDraggingCursor == (SESSIONITEM *)lptvcd->nmcd.lItemlParam)
-            {
-              lptvcd->clrTextBk=AE_ColorBrightness(GetSysColor(COLOR_HIGHLIGHT), 80);
-            }
-          }
-          lResult=CDRF_DODEFAULT;
-        }
-        else lResult=CDRF_DODEFAULT;
-
-        SetWindowLongPtrWide(hDlg, DWLP_MSGRESULT, lResult);
-        return TRUE;
-      }
-      else if (((NMTREEVIEWW *)lParam)->hdr.code == TVN_SELCHANGEDA ||
-               ((NMTREEVIEWW *)lParam)->hdr.code == TVN_SELCHANGEDW)
-      {
-        if (!bDragging)
-        {
-          NMTREEVIEWW *pnmtv=(NMTREEVIEWW *)lParam;
-
-          if (lpVirtualSession)
-          {
-            //Multi-selection
-            SESSIONITEM *lpOldItem=(SESSIONITEM *)pnmtv->itemOld.lParam;
-            SESSIONITEM *lpNewItem=(SESSIONITEM *)pnmtv->itemNew.lParam;
-            SESSIONITEM *lpCount;
-
-            if (lpOldItem && GetKeyState(VK_CONTROL) < 0)
-            {
-              if (lpOldItem->dwState & TVIS_SELECTED)
-                SelectItem(hWndItemsList, lpOldItem, TRUE);
-              if (lpNewItem)
-              {
-                if (lpNewItem->dwState & TVIS_SELECTED)
-                  SelectItem(hWndItemsList, lpNewItem, FALSE);
-                else
-                  SelectItem(hWndItemsList, lpNewItem, TRUE);
-              }
-            }
-            else if (lpOldItem && GetKeyState(VK_SHIFT) < 0)
-            {
-              SESSIONITEM *lpStartItem;
-              SESSIONITEM *lpEndItem;
-              SESSIONITEM *lpSwitchItem=NULL;
-              SESSIONITEM *lpFirstSelItem;
-              SESSIONITEM *lpLastSelItem;
-              int nOldIndex;
-              int nNewIndex;
-              int nFirstSelIndex;
-              int nLastSelIndex;
-              BOOL bSelect;
-
-              if ((nOldIndex=StackItemIndex(lpVirtualSession, lpOldItem)) &&
-                  (nNewIndex=StackItemIndex(lpVirtualSession, lpNewItem)))
-              {
-                if (StackFindSelRange(lpVirtualSession, lpOldItem, &lpFirstSelItem, &nFirstSelIndex, &lpLastSelItem, &nLastSelIndex))
-                {
-                  if (nNewIndex < nOldIndex && nNewIndex < nFirstSelIndex)
-                    lpStartItem=lpNewItem;
-                  else if (nFirstSelIndex < nOldIndex)
-                    lpStartItem=lpFirstSelItem;
-                  else
-                    lpStartItem=lpOldItem;
-
-                  if (nNewIndex >= nOldIndex && nNewIndex >= nLastSelIndex)
-                    lpEndItem=lpNewItem;
-                  else if (nLastSelIndex >= nOldIndex)
-                    lpEndItem=lpLastSelItem;
-                  else
-                    lpEndItem=lpOldItem;
-
-                  if (lpFirstSelItem == lpLastSelItem ?
-                      nNewIndex > nOldIndex :
-                      hItemCaretPrev == lpLastSelItem->hItem)
-                  {
-                    if (nOldIndex < nNewIndex)
-                      bSelect=TRUE;
-                    else
-                    {
-                      if (nFirstSelIndex <= nNewIndex)
-                        lpSwitchItem=lpNewItem;
-                      else
-                        lpSwitchItem=lpFirstSelItem;
-                      bSelect=TRUE;
-                    }
-                  }
-                  else
-                  {
-                    if (nOldIndex >= nNewIndex)
-                      bSelect=TRUE;
-                    else
-                    {
-                      if (nLastSelIndex >= nNewIndex)
-                        lpSwitchItem=lpNewItem;
-                      else
-                        lpSwitchItem=lpLastSelItem;
-                      bSelect=FALSE;
-                    }
-                  }
-
-                  //Select range
-                  for (lpCount=lpStartItem; lpCount; lpCount=StackNextItem(lpCount, NULL))
-                  {
-                    if (lpCount == lpSwitchItem && !bSelect)
-                    {
-                      lpSwitchItem=NULL;
-                      bSelect=!bSelect;
-                    }
-                    SelectItem(hWndItemsList, lpCount, bSelect);
-                    if (lpCount == lpSwitchItem && bSelect)
-                    {
-                      lpSwitchItem=NULL;
-                      bSelect=!bSelect;
-                    }
-                    if (lpCount == lpEndItem)
-                      break;
-                  }
-                }
-              }
-            }
-            else
-            {
-              //Reset selection
-              for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
-              {
-                if ((lpCount->dwState & TVIS_SELECTED) && lpCount != lpNewItem)
-                  SelectItem(hWndItemsList, lpCount, FALSE);
-              }
-              if (lpNewItem)
-                SelectItem(hWndItemsList, lpNewItem, TRUE);
-            }
-
-            //Update selection for Win7
-            for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
-            {
-              if ((lpCount->dwState & TVIS_SELECTED) && lpCount != lpNewItem)
-                SelectItem(hWndItemsList, lpCount, TRUE);
-            }
-            PostMessage(hDlg, AKDLL_GETCARETITEM, 0, 0);
-          }
-          bSelChanged=TRUE;
-        }
-      }
-      else if (((NMHDR *)lParam)->code == (UINT)NM_DBLCLK)
-      {
-        if (TreeCursorItem(hWndItemsList))
-          PostMessage(hDlg, WM_COMMAND, IDC_ITEM_OPEN, 0);
       }
     }
   }
@@ -1833,12 +1838,12 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Dialog resize messages
   {
-    DIALOGRESIZEMSG drsm={&drs[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, (nDialogType == DLGT_DOCKABLE?0:DRM_PAINTSIZEGRIP), hDlg, uMsg, wParam, lParam};
+    RESIZEDIALOGMSG rdsm={&rds[0], &rcMainMinMaxDialog, &rcMainCurrentDialog, (nDialogType == DLGT_DOCKABLE?0:RDM_PAINTSIZEGRIP), hDlg, uMsg, wParam, lParam};
 
-    if (SendMessage(hMainWnd, AKD_DIALOGRESIZE, 0, (LPARAM)&drsm))
+    if (SendMessage(hMainWnd, AKD_RESIZEDIALOG, 0, (LPARAM)&rdsm))
     {
       if (dkSessionsDlg)
-        GetWindowPos(hWndTitleText, hDlg, &dkSessionsDlg->rcDragDrop);
+        GetWindowSize(hWndTitleText, hDlg, &dkSessionsDlg->rcDragDrop);
       else
         dwSaveFlags|=OF_RECT;
     }
@@ -2014,6 +2019,9 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
   static HWND hWndSaveOnExit;
   static HWND hWndSaveName;
   static HWND hWndShowPath;
+  static HWND hWndSaveRelative;
+  static HWND hWndDlgSystemFont;
+  static HWND hWndDlgCoderTheme;
   static HWND hWndDlgTypeModal;
   static HWND hWndDlgTypeModeless;
   static HWND hWndDlgTypeDockable;
@@ -2041,6 +2049,9 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     hWndSaveOnExit=GetDlgItem(hDlg, IDC_SETTINGS_SAVEONEXIT);
     hWndSaveName=GetDlgItem(hDlg, IDC_SETTINGS_SAVENAME);
     hWndShowPath=GetDlgItem(hDlg, IDC_SETTINGS_SHOWPATH);
+    hWndSaveRelative=GetDlgItem(hDlg, IDC_SETTINGS_SAVERELATIVE);
+    hWndDlgSystemFont=GetDlgItem(hDlg, IDC_SETTINGS_SYSTEMFONT);
+    hWndDlgCoderTheme=GetDlgItem(hDlg, IDC_SETTINGS_CODERTHEME);
     hWndDlgTypeModal=GetDlgItem(hDlg, IDC_SETTINGS_DLGTYPE_MODAL);
     hWndDlgTypeModeless=GetDlgItem(hDlg, IDC_SETTINGS_DLGTYPE_MODELESS);
     hWndDlgTypeDockable=GetDlgItem(hDlg, IDC_SETTINGS_DLGTYPE_DOCKABLE);
@@ -2064,6 +2075,9 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_OPENONSTART, GetLangStringW(wLangModule, STRID_OPENONSTART));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_SAVEONEXIT, GetLangStringW(wLangModule, STRID_SAVEONEXIT));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_SHOWPATH, GetLangStringW(wLangModule, STRID_SHOWPATH));
+    SetDlgItemTextWide(hDlg, IDC_SETTINGS_SAVERELATIVE, GetLangStringW(wLangModule, STRID_SAVERELATIVE));
+    SetDlgItemTextWide(hDlg, IDC_SETTINGS_SYSTEMFONT, GetLangStringW(wLangModule, STRID_SYSTEMFONT));
+    SetDlgItemTextWide(hDlg, IDC_SETTINGS_CODERTHEME, GetLangStringW(wLangModule, STRID_CODERTHEME));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_DLGTYPE_GROUP, GetLangStringW(wLangModule, STRID_DIALOGTYPE));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_DLGTYPE_MODAL, GetLangStringW(wLangModule, STRID_MODALDIALOG));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_DLGTYPE_MODELESS, GetLangStringW(wLangModule, STRID_MODELESSDIALOG));
@@ -2096,17 +2110,21 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     if (bOpenOnStart) SendMessage(hWndOpenOnStart, BM_SETCHECK, BST_CHECKED, 0);
     if (bSaveOnExit) SendMessage(hWndSaveOnExit, BM_SETCHECK, BST_CHECKED, 0);
     if (bShowPath) SendMessage(hWndShowPath, BM_SETCHECK, BST_CHECKED, 0);
-    if (nDialogType == DLGT_MODAL)
+    if (bSaveRelative) SendMessage(hWndSaveRelative, BM_SETCHECK, BST_CHECKED, 0);
+    if (bListSystemFont) SendMessage(hWndDlgSystemFont, BM_SETCHECK, BST_CHECKED, 0);
+    if (bCoderTheme) SendMessage(hWndDlgCoderTheme, BM_SETCHECK, BST_CHECKED, 0);
+
+    if ((nNewDialogType? nNewDialogType : nDialogType) == DLGT_MODAL)
     {
       SendMessage(hWndDlgTypeModal, BM_SETCHECK, BST_CHECKED, 0);
       EnableWindow(hWndDlgDockAutoload, FALSE);
     }
-    else if (nDialogType == DLGT_MODELESS)
+    else if ((nNewDialogType? nNewDialogType : nDialogType) == DLGT_MODELESS)
     {
       SendMessage(hWndDlgTypeModeless, BM_SETCHECK, BST_CHECKED, 0);
       EnableWindow(hWndDlgDockAutoload, FALSE);
     }
-    else if (nDialogType == DLGT_DOCKABLE)
+    else if ((nNewDialogType? nNewDialogType : nDialogType) == DLGT_DOCKABLE)
     {
       SendMessage(hWndDlgTypeDockable, BM_SETCHECK, BST_CHECKED, 0);
       EnableWindow(hWndDlgDockAutoload, TRUE);
@@ -2161,6 +2179,39 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
         bRestart=TRUE;
       }
 
+      nState=(BOOL)SendMessage(hWndShowPath, BM_GETCHECK, 0, 0);
+      if (bShowPath != nState)
+      {
+        bShowPath=nState;
+        PostMessage(hWndMainDlg, WM_COMMAND, MAKELONG(IDC_SESSION_LIST, CBN_SELCHANGE), (LPARAM)0);
+      }
+      bSaveRelative=(BOOL)SendMessage(hWndSaveRelative, BM_GETCHECK, 0, 0);
+
+      nState=(BOOL)SendMessage(hWndDlgSystemFont, BM_GETCHECK, 0, 0);
+      if (nState != bListSystemFont)
+      {
+        bListSystemFont=nState;
+        if (!bListSystemFont)
+        {
+          HFONT hFontEdit;
+
+          hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
+          SendMessage(hWndItemsList, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
+        }
+        else SendMessage(hWndItemsList, WM_SETFONT, (WPARAM)NULL, FALSE);
+      }
+      nState=(BOOL)SendMessage(hWndDlgCoderTheme, BM_GETCHECK, 0, 0);
+      if (nState != bCoderTheme)
+      {
+        bCoderTheme=nState;
+        if (!bCoderTheme)
+        {
+          SendMessage(hWndItemsList, TVM_SETTEXTCOLOR, 0, (LPARAM)(DWORD)-1);
+          SendMessage(hWndItemsList, TVM_SETBKCOLOR, 0, (LPARAM)(DWORD)-1);
+        }
+        else SetListColors(NULL, hWndItemsList);
+      }
+
       //Dialog type
       nState=0;
       if (SendMessage(hWndDlgTypeModal, BM_GETCHECK, 0, 0) == BST_CHECKED)
@@ -2178,8 +2229,6 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
         }
         else if (!hWndDockDlg)
         {
-          EnableWindow(hMainWnd, nState == DLGT_MODELESS);
-          nDialogType=nState;
           nNewDialogType=nState;
         }
       }
@@ -2216,12 +2265,6 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
       GetWindowTextWide(hWndSaveName, wszSaveOnExit, MAX_PATH);
       bOpenOnStart=(BOOL)SendMessage(hWndOpenOnStart, BM_GETCHECK, 0, 0);
       bSaveOnExit=(BOOL)SendMessage(hWndSaveOnExit, BM_GETCHECK, 0, 0);
-      nState=(BOOL)SendMessage(hWndShowPath, BM_GETCHECK, 0, 0);
-      if (bShowPath != nState)
-      {
-        bShowPath=nState;
-        PostMessage(hWndMainDlg, WM_COMMAND, MAKELONG(IDC_SESSION_LIST, CBN_SELCHANGE), (LPARAM)0);
-      }
 
       dwSaveFlags|=OF_SETTINGS;
       EndDialog(hDlg, 0);
@@ -2597,12 +2640,25 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       dkSessionsDlg->dwFlags&=~DKF_HIDDEN;
     }
   }
-  else if (uMsg == WM_CLOSE)
+  else if (uMsg == AKDN_DLLCODER)
+  {
+    NCODERUPDATE *ncu=(NCODERUPDATE *)lParam;
+
+    if (ncu->dwFlags & SAE_RESETLIST)
+      SetListColors(NULL, hWndItemsList);
+  }
+  else if (uMsg == WM_CLOSE ||
+           uMsg == WM_QUERYENDSESSION)
   {
     if (bSaveOnExit)
     {
       if (*wszSaveOnExit)
         SaveCurrentSession(wszSaveOnExit);
+    }
+    if (hWndMainDlg)
+    {
+      if (SaveSessionPrompt() == IDCANCEL)
+        return FALSE;
     }
   }
   else if (uMsg == AKDN_MAIN_ONFINISH)
@@ -2620,6 +2676,20 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   //Call next procedure
   return NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
+}
+
+LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+  if (uMsg == WM_SETFONT)
+  {
+    if (hWndMainDlg && !bListSystemFont)
+    {
+      SendMessage(hWndItemsList, WM_SETFONT, wParam, FALSE);
+    }
+  }
+
+  //Call next procedure
+  return NewEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 }
 
 BOOL LoadSessionFile(SESSION *ss)
@@ -2991,9 +3061,10 @@ BOOL EditSessionFile(const wchar_t *wpSessionName)
   xprintfW(wszSessionFile, L"%s\\%s.session", wszSessionsDir, wpSessionName);
   od.pFile=wszSessionFile;
   od.pWorkDir=NULL;
-  od.dwFlags=OD_ADT_DETECT_BOM|OD_ADT_DETECT_CODEPAGE;
+  od.dwFlags=OD_ADT_DETECTBOM|OD_ADT_DETECTCODEPAGE;
   od.nCodePage=0;
   od.bBOM=0;
+  od.hDoc=NULL;
   return !SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
 }
 
@@ -3063,6 +3134,11 @@ void SaveSessionFile(SESSION *ss)
         else
         {
           //File
+          if (bSaveRelative)
+          {
+            if (!xstrcmpinW(wszExeDir, si->wszItemFile, (UINT_PTR)-1))
+              xprintfW(si->wszItemFile, L"%%a%s", si->wszItemFile + xstrlenW(wszExeDir));
+          }
           nDataSize=xprintfW(wszData, L"%s%.%ds%s\r\n%.%ds/Name=\"%s\" /Active=%d /Codepage=%d /Selection=%Id-%Id /FirstVisChar=%Id /WordWrap=%d /ReadOnly=%d /Overtype=%d /Bookmarks=%s /CoderAlias=%s /Folds=%s /Marks=%s\r\n",
                                       (si->prev && !si->prev->dwFolderFlags)?L"\r\n":L"", nLevel * 2, wszSpacesIndent, si->wszItemFile, nLevel * 2, wszSpacesIndent, si->wszName, si->nTabActive, si->nCodePage, si->nSelStart, si->nSelEnd, si->nFirstVisChar, si->bWordWrap, si->bReadOnly, si->bOvertypeMode, si->wszBookmarks, wszCoderAlias, si->wszCoderFolds, si->wszCoderMarks);
         }
@@ -3176,7 +3252,7 @@ void LoadSessions(STACKSESSION *hStack)
     {
       if (wfd.cFileName[0] == L'.' && (wfd.cFileName[1] == L'\0' || (wfd.cFileName[1] == L'.' && wfd.cFileName[2] == L'\0'))) continue;
 
-      GetBaseName(wfd.cFileName, wszBaseName, MAX_PATH);
+      GetBaseName(wfd.cFileName, -1, wszBaseName, MAX_PATH);
 
       if (ss=AddEmptySession(hStack, wszBaseName))
       {
@@ -3897,9 +3973,10 @@ void OpenItem(SESSIONITEM *si)
 
     od.pFile=si->wszItemExpFile;
     od.pWorkDir=NULL;
-    od.dwFlags=OD_ADT_DETECT_BOM|((!si->nCodePage || !(dwSaveData & SSD_CODEPAGE))?OD_ADT_DETECT_CODEPAGE:0)|(dwSaveData & SSD_SELECTION?OD_NOSCROLL:0);
+    od.dwFlags=OD_ADT_DETECTBOM|((!si->nCodePage || !(dwSaveData & SSD_CODEPAGE))?OD_ADT_DETECTCODEPAGE:0)|(dwSaveData & SSD_SELECTION?OD_NOSCROLL:0);
     od.nCodePage=si->nCodePage;
     od.bBOM=0;
+    od.hDoc=NULL;
     SendMessage(hMainWnd, AKD_OPENDOCUMENTW, (WPARAM)NULL, (LPARAM)&od);
 
     SendMessage(hMainWnd, AKD_SETCMDLINEOPTIONS, dwCmdLineOptions, 0);
@@ -4022,6 +4099,8 @@ void OpenItem(SESSIONITEM *si)
           dehm.dwFlags|=MARKFLAG_MATCHCASE;
         if (dwHLFlags & AEHLF_REGEXP)
           dehm.dwFlags|=MARKFLAG_REGEXP;
+        if (dwHLFlags & AEHLF_WHOLEWORD)
+          dehm.dwFlags|=MARKFLAG_WHOLEWORD;
 
         if (!GetEscapeParam(wpText, &wpParamStart, &wpParamEnd, &wpText))
           break;
@@ -4080,31 +4159,12 @@ void OpenItem(SESSIONITEM *si)
 
 BOOL CloseItem(FRAMEDATA *lpFrame, BOOL bSingle)
 {
-  BOOL bModified;
   BOOL bResult=TRUE;
 
   if (lpFrame)
   {
     SendMessage(hMainWnd, AKD_FRAMEACTIVATE, 0, (LPARAM)lpFrame);
-    bModified=lpFrame->ei.bModified;
-
-    if (bSingle && bModified)
-    {
-      if (nDialogType != DLGT_DOCKABLE)
-      {
-        if (nDialogType == DLGT_MODAL) EnableWindow(hMainWnd, TRUE);
-        ShowWindow(hWndMainDlg, FALSE);
-      }
-    }
     bResult=(BOOL)SendMessage(hMainWnd, WM_COMMAND, IDM_WINDOW_FRAMECLOSE, 0);
-    if (bSingle && bModified)
-    {
-      if (nDialogType != DLGT_DOCKABLE)
-      {
-        ShowWindow(hWndMainDlg, TRUE);
-        if (nDialogType == DLGT_MODAL) EnableWindow(hMainWnd, FALSE);
-      }
-    }
   }
   return bResult;
 }
@@ -4399,12 +4459,49 @@ HTREEITEM TreeCursorItem(HWND hWndTreeView)
   return NULL;
 }
 
-void ClearTreeView(HWND hWndTreeView, BOOL bRedraw)
+void GetCoderColors(HWND hWnd)
 {
-  SendMessage(hWndTreeView, WM_SETREDRAW, FALSE, 0);
-  TreeDeleteItem(hWndTreeView, NULL);
-  SendMessage(hWndTreeView, WM_SETREDRAW, TRUE, 0);
-  if (bRedraw) InvalidateRect(hWndTreeView, NULL, TRUE);
+  int i;
+
+  //Default colors
+  for (i=0; cti[i].wpVarName; ++i)
+  {
+    *(COLORREF *)cti[i].nVarValue=(COLORREF)-1;
+  }
+
+  if (bCoderTheme)
+  {
+    PLUGINFUNCTION *pfCoder;
+    PLUGINCALLSENDW pcs;
+    DLLEXTCODERFILLVARLIST decfvl;
+
+    if ((pfCoder=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::HighLight", 0)) && pfCoder->bRunning)
+    {
+      decfvl.dwStructSize=sizeof(DLLEXTCODERFILLVARLIST);
+      decfvl.nAction=DLLA_CODER_FILLVARLIST;
+      decfvl.hWndEdit=hWnd;
+      decfvl.hDocEdit=NULL;
+      decfvl.cti=cti;
+
+      pcs.pFunction=L"Coder::Settings";
+      pcs.lParam=(LPARAM)&decfvl;
+      pcs.dwSupport=PDS_STRWIDE;
+      SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+    }
+  }
+}
+
+void SetListColors(HWND hWndEdit, HWND hWndList)
+{
+  if (bCoderTheme && hWndList)
+  {
+    if (!hWndEdit) hWndEdit=(HWND)SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_WNDEDIT, 0);
+    GetCoderColors(hWndEdit);
+    if ((DWORD)SendMessage(hWndList, TVM_GETTEXTCOLOR, 0, 0) != crListTextColor)
+      SendMessage(hWndList, TVM_SETTEXTCOLOR, 0, (LPARAM)crListTextColor);
+    if ((DWORD)SendMessage(hWndList, TVM_GETBKCOLOR, 0, 0) != crListBkColor)
+      SendMessage(hWndList, TVM_SETBKCOLOR, 0, (LPARAM)crListBkColor);
+  }
 }
 
 int GetCollapsedFoldsString(HSTACK *hFoldsStack, wchar_t *wszString)
@@ -4413,11 +4510,11 @@ int GetCollapsedFoldsString(HSTACK *hFoldsStack, wchar_t *wszString)
   int nFoldCount=0;
   int nSize=0;
 
-  for (lpFold=(AEFOLD *)hFoldsStack->first; lpFold; lpFold=AEC_NextFold(lpFold, !lpFold->bCollapse))
+  for (lpFold=(AEFOLD *)hFoldsStack->first; lpFold; lpFold=AEC_NextFold(lpFold, !(lpFold->dwFlags & AEFOLDF_COLLAPSED)))
   {
     ++nFoldCount;
 
-    if (lpFold->bCollapse)
+    if (lpFold->dwFlags & AEFOLDF_COLLAPSED)
     {
       nSize+=xitoaW(nFoldCount, wszString?wszString + nSize:NULL);
 
@@ -4443,7 +4540,7 @@ int SetCollapsedFoldsString(HWND hWnd, HSTACK *hFoldsStack, const wchar_t *wpStr
   int nFoldNumber=0;
   int nCollapsed=0;
 
-  for (lpFold=(AEFOLD *)hFoldsStack->first; lpFold; lpFold=AEC_NextFold(lpFold, !lpFold->bCollapse))
+  for (lpFold=(AEFOLD *)hFoldsStack->first; lpFold; lpFold=AEC_NextFold(lpFold, !(lpFold->dwFlags & AEFOLDF_COLLAPSED)))
   {
     ++nFoldCount;
 
@@ -4475,7 +4572,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
   wchar_t *wszSource;
   wchar_t *wpSource;
   wchar_t *wpTarget=wszBuffer;
-  wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
+  wchar_t *wpTargetMax=(wszBuffer ? (wszBuffer + nBufferSize) : (wchar_t *)MAXUINT_PTR);
   int nStringLen;
   BOOL bStringStart=TRUE;
 
@@ -4607,11 +4704,12 @@ INT_PTR GetEscapeParam(const wchar_t *wpText, const wchar_t **wpParamStart, cons
   return *wpParamEnd - *wpParamStart;
 }
 
-BOOL NextLine(const wchar_t **wppText)
+BOOL NextLine(const wchar_t **wpText)
 {
-  while (**wppText != L'\r' && **wppText != L'\0') ++*wppText;
-  if (**wppText == L'\0') return FALSE;
-  if (*++*wppText == L'\n') ++*wppText;
+  while (**wpText != L'\r' && **wpText != L'\n' && **wpText != L'\0') ++*wpText;
+  if (**wpText == L'\0') return FALSE;
+  if (**wpText == L'\r') ++*wpText;
+  if (**wpText == L'\n') ++*wpText;
   return TRUE;
 }
 
@@ -4633,7 +4731,7 @@ const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen)
 
   if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
 
-  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
     if (*wpCount == L'\\')
       return wpCount + 1;
@@ -4641,29 +4739,23 @@ const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen)
   return wpFile;
 }
 
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen)
+int GetBaseName(const wchar_t *wpFile, int nFileLen, wchar_t *wszBaseName, int nBaseNameMax)
 {
-  int nFileLen=(int)xstrlenW(wpFile);
-  int nEndOffset=-1;
-  int i;
+  const wchar_t *wpCount;
+  const wchar_t *wpExt=NULL;
 
-  for (i=nFileLen - 1; i >= 0; --i)
+  if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
+
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
-    if (wpFile[i] == L'\\')
+    if (*wpCount == L'\\')
       break;
-
-    if (nEndOffset == -1)
-    {
-      if (wpFile[i] == L'.')
-        nEndOffset=i;
-    }
+    if (!wpExt && *wpCount == L'.')
+      wpExt=wpCount;
   }
-  ++i;
-  if (nEndOffset == -1) nEndOffset=nFileLen;
-  nBaseNameMaxLen=min(nEndOffset - i + 1, nBaseNameMaxLen);
-  xstrcpynW(wszBaseName, wpFile + i, nBaseNameMaxLen);
-
-  return nBaseNameMaxLen;
+  ++wpCount;
+  if (!wpExt) wpExt=wpFile + nFileLen;
+  return (int)xstrcpynW(wszBaseName, wpCount, min(nBaseNameMax, wpExt - wpCount + 1));
 }
 
 BOOL CreateDirectoryRecursive(const wchar_t *wpPath)
@@ -4820,7 +4912,7 @@ COLORREF AE_ColorBrightness(COLORREF crColor, int nPercent)
   return RGB(r, g, b);
 }
 
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc)
+BOOL GetWindowSize(HWND hWnd, HWND hWndOwner, RECT *rc)
 {
   if (GetWindowRect(hWnd, rc))
   {
@@ -4863,6 +4955,9 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"SaveOnExitEnable", PO_DWORD, (LPBYTE)&bSaveOnExit, sizeof(DWORD));
     WideOption(hOptions, L"SaveOnExitSession", PO_STRING, (LPBYTE)wszSaveOnExit, sizeof(wszSaveOnExit));
     WideOption(hOptions, L"ShowPath", PO_DWORD, (LPBYTE)&bShowPath, sizeof(DWORD));
+    WideOption(hOptions, L"SaveRelative", PO_DWORD, (LPBYTE)&bSaveRelative, sizeof(DWORD));
+    WideOption(hOptions, L"ListSystemFont", PO_DWORD, (LPBYTE)&bListSystemFont, sizeof(DWORD));
+    WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
     WideOption(hOptions, L"SaveData", PO_DWORD, (LPBYTE)&dwSaveData, sizeof(DWORD));
     WideOption(hOptions, L"DockAutoload", PO_DWORD, (LPBYTE)&bDockAutoload, sizeof(DWORD));
     WideOption(hOptions, L"DialogType", PO_DWORD, (LPBYTE)&nDialogType, sizeof(DWORD));
@@ -4892,6 +4987,9 @@ void SaveOptions(DWORD dwFlags)
       WideOption(hOptions, L"SaveOnExitEnable", PO_DWORD, (LPBYTE)&bSaveOnExit, sizeof(DWORD));
       WideOption(hOptions, L"SaveOnExitSession", PO_STRING, (LPBYTE)wszSaveOnExit, ((int)xstrlenW(wszSaveOnExit) + 1) * sizeof(wchar_t));
       WideOption(hOptions, L"ShowPath", PO_DWORD, (LPBYTE)&bShowPath, sizeof(DWORD));
+      WideOption(hOptions, L"SaveRelative", PO_DWORD, (LPBYTE)&bSaveRelative, sizeof(DWORD));
+      WideOption(hOptions, L"ListSystemFont", PO_DWORD, (LPBYTE)&bListSystemFont, sizeof(DWORD));
+      WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
       WideOption(hOptions, L"SaveData", PO_DWORD, (LPBYTE)&dwSaveData, sizeof(DWORD));
       WideOption(hOptions, L"DockAutoload", PO_DWORD, (LPBYTE)&bDockAutoload, sizeof(DWORD));
       if (nNewDialogType)
@@ -4988,6 +5086,12 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0421\x043E\x0445\x0440\x0430\x043D\x0438\x0442\x044C\x0020\x043D\x0430\x0020\x0432\x044B\x0445\x043E\x0434\x0435\x003A";
     if (nStringID == STRID_SHOWPATH)
       return L"\x041F\x043E\x043A\x0430\x0437\x044B\x0432\x0430\x0442\x044C\x0020\x043F\x0443\x0442\x044C\x0020\x0444\x0430\x0439\x043B\x043E\x0432";
+    if (nStringID == STRID_SAVERELATIVE)
+      return L"\x0421\x043E\x0445\x0440\x0430\x043D\x044F\x0442\x044C\x0020\x043F\x0443\x0442\x044C\x0020\x0041\x006B\x0065\x006C\x0050\x0061\x0064\x0027\x0430\x0020\x043A\x0430\x043A\x0020\x0025\x0061";
+    if (nStringID == STRID_SYSTEMFONT)
+      return L"\x0421\x0438\x0441\x0442\x0435\x043C\x043D\x044B\x0439\x0020\x0448\x0440\x0438\x0444\x0442\x0020\x0432\x0020\x0441\x043F\x0438\x0441\x043A\x0435";
+    if (nStringID == STRID_CODERTHEME)
+      return L"\x0418\x0441\x043F\x043E\x043B\x044C\x0437\x043E\x0432\x0430\x0442\x044C\x0020\x0442\x0435\x043C\x044B Coder";
     if (nStringID == STRID_DIALOGTYPE)
       return L"\x0422\x0438\x043F\x0020\x0434\x0438\x0430\x043B\x043E\x0433\x0430";
     if (nStringID == STRID_MODALDIALOG)
@@ -5113,6 +5217,12 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Save on exit:";
     if (nStringID == STRID_SHOWPATH)
       return L"Show files path";
+    if (nStringID == STRID_SAVERELATIVE)
+      return L"Save AkelPad path as %a";
+    if (nStringID == STRID_SYSTEMFONT)
+      return L"System font in list";
+    if (nStringID == STRID_CODERTHEME)
+      return L"Use Coder themes";
     if (nStringID == STRID_DIALOGTYPE)
       return L"Dialog type";
     if (nStringID == STRID_MODALDIALOG)
@@ -5249,6 +5359,12 @@ void InitMain()
   NewMainProcData=NULL;
   SendMessage(hMainWnd, AKD_SETMAINPROC, (WPARAM)NewMainProc, (LPARAM)&NewMainProcData);
 
+  if (nDialogType == DLGT_DOCKABLE)
+  {
+    NewEditProcData=NULL;
+    SendMessage(hMainWnd, AKD_SETEDITPROC, (WPARAM)NewEditProc, (LPARAM)&NewEditProcData);
+  }
+
   //Create image list
   {
     HICON hIcon;
@@ -5279,6 +5395,11 @@ void UninitMain()
   {
     SendMessage(hMainWnd, AKD_SETMAINPROC, (WPARAM)NULL, (LPARAM)&NewMainProcData);
     NewMainProcData=NULL;
+  }
+  if (NewEditProcData)
+  {
+    SendMessage(hMainWnd, AKD_SETEDITPROC, (WPARAM)NULL, (LPARAM)&NewEditProcData);
+    NewEditProcData=NULL;
   }
 
   FreeSessions(&hSessionStack);

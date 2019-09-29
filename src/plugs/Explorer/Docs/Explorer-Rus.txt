@@ -1,8 +1,8 @@
 *****************************************************************
-***                Explorer AkelPad plugin v5.9               ***
+***                Explorer AkelPad plugin v6.3               ***
 *****************************************************************
 
-2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2008-2016 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***
@@ -52,3 +52,10 @@ Call("Explorer::Main", 3, *WINDOW)
       }
       return hWnd;
     }
+
+Call("Explorer::Main", 4, "PATH")
+  Параметры:
+    4
+      Установить корневой каталог.
+    "PATH"
+      Каталог, например: "C:\Program Files". Если "-1", то установить корневым каталогом "Мой компьютер".

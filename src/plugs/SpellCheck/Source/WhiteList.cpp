@@ -216,7 +216,7 @@ static void CALLCONV ParseLine(LPCWSTR pCont, SIZE_T beg, SIZE_T end)
 	{
 		e = FindWS(pCont, beg+1, end);
 		WCHAR* string = make_string(pCont, beg+1, e);
-		CharUpperBuff(string,e-beg-1);
+		CharUpperBuffW(string,e-beg-1);
 		AddWordToOperative(string, e-beg-1,FALSE);
 		free_string(string);
 	}
@@ -235,7 +235,7 @@ static void CALLCONV ParseRule(LPCWSTR pFile, BOOL bFile)
 	LPCWSTR content = NULL;
 	if(bFile)
 	{
-		DETECTFILEW	dc = {pFile,1024,ADT_BINARY_ERROR|ADT_DETECT_BOM|ADT_DETECT_CODEPAGE,0,FALSE};
+		DETECTFILEW	dc = {pFile,1024,ADT_BINARYERROR|ADT_DETECTBOM|ADT_DETECTCODEPAGE,0,FALSE};
 		if(EDT_SUCCESS != SendMessageW(rt.cmn_hMainWindow, AKD_DETECTFILEW,0,(LPARAM)&dc))
 			return;
 

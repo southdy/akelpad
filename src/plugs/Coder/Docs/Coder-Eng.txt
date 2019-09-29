@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Coder AkelPad plugin v14.2                ***
+***                 Coder AkelPad plugin v20.0                ***
 *****************************************************************
 
-2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2007-2017 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -63,6 +63,7 @@ Call("Coder::HighLight", 2, "#RRGGBB", "#RRGGBB", FLAGS, FONTSTYLE, ID, "TEXT", 
     FLAGS (sum of the following):
       1  case sensitive (default).
       2  regular expressions in "TEXT" parameter.
+      4  whole word.
          Default: 1.
     FONTSTYLE (one of the following):
       0  ignored (default).
@@ -138,6 +139,11 @@ Call("Coder::CodeFold", 1, *WINDOW)
       return hWnd;
     }
 
+Call("Coder::CodeFold", 2)
+  Parameters:
+    2
+      Go to rule.
+
 
 *** External call Coder::Settings ***
 
@@ -149,10 +155,15 @@ Call("Coder::Settings", 1, "EXTENSION")
       Extension, for example: "html". Manual theme setting will be canceled if the extension parameter is ommited.
       If extension parameter equal to "?", then the document is defined as having no theme.
 
-Call("Coder::Settings", 2)
+Call("Coder::Settings", 2, *USECACHE)
   Parameters:
     2
       Update cache.
+    *USECACHE
+      Optional parameter. Pointer to a variable, that receives cache type. One of the following:
+      0  //UC_NONE   Without cache.
+      1  //UC_FAST   Fast cache.
+      2  //UC_SMART  Smart cache.
 
 Call("Coder::Settings", 3, PAGE)
   Parameters:
@@ -360,68 +371,6 @@ Call("Coder::Settings", 22, WINDOW, DOCUMENT, "VARNAME", *VARVALUE, *VARVALUELEN
     }
 
 
-*** Menu for ContextMenu plugin ***
-
-"Mark" Icon("%a\AkelFiles\Plugs\Coder.dll", 0)
-{
-  "Cyan" Call("Coder::HighLight", 2, 0, "#9BFFFF", 1, 0, 11) Icon("%a\AkelFiles\Plugs\Coder.dll", 6)
-  "Orange" Call("Coder::HighLight", 2, 0, "#FFCD9B", 1, 0, 12) Icon("%a\AkelFiles\Plugs\Coder.dll", 7)
-  "Yellow" Call("Coder::HighLight", 2, 0, "#FFFF9B", 1, 0, 13) Icon("%a\AkelFiles\Plugs\Coder.dll", 8)
-  "Violet" Call("Coder::HighLight", 2, 0, "#BE7DFF", 1, 0, 14) Icon("%a\AkelFiles\Plugs\Coder.dll", 9)
-  "Green" Call("Coder::HighLight", 2, 0, "#88E188", 1, 0, 15) Icon("%a\AkelFiles\Plugs\Coder.dll", 10)
-  SEPARATOR
-  -"Remove all marks" Call("Coder::HighLight", 3, 0) Icon("%a\AkelFiles\Plugs\Coder.dll", 11)
-}
-"Syntax theme" Icon("%a\AkelFiles\Plugs\Coder.dll", 4)
-{
-  "1s" Call("Coder::Settings", 1, "1s")
-  "Assembler" Call("Coder::Settings", 1, "asm")
-  "AutoIt" Call("Coder::Settings", 1, "au3")
-  "Bat" Call("Coder::Settings", 1, "bat")
-  "C++" Call("Coder::Settings", 1, "cpp")
-  "Sharp" Call("Coder::Settings", 1, "cs")
-  "CSS" Call("Coder::Settings", 1, "css")
-  "HTML" Call("Coder::Settings", 1, "html")
-  "Ini" Call("Coder::Settings", 1, "ini")
-  "Inno" Call("Coder::Settings", 1, "iss")
-  "JScript" Call("Coder::Settings", 1, "js")
-  "Lua" Call("Coder::Settings", 1, "lua")
-  "NSIS" Call("Coder::Settings", 1, "nsi")
-  "Pascal" Call("Coder::Settings", 1, "dpr")
-  "Perl" Call("Coder::Settings", 1, "pl")
-  "PHP" Call("Coder::Settings", 1, "php")
-  "Python" Call("Coder::Settings", 1, "py")
-  "Resource" Call("Coder::Settings", 1, "rc")
-  "SQL" Call("Coder::Settings", 1, "sql")
-  "VBScript" Call("Coder::Settings", 1, "vbs")
-  "XML" Call("Coder::Settings", 1, "xml")
-  SEPARATOR
-  "None" Call("Coder::Settings", 1, "?")
-}
-"Color theme" Icon("%a\AkelFiles\Plugs\Coder.dll", 5)
-{
-  "Default" Call("Coder::Settings", 5, "Default")
-  SEPARATOR
-  "Active4D" Call("Coder::Settings", 5, "Active4D")
-  "Bespin" Call("Coder::Settings", 5, "Bespin")
-  "Cobalt" Call("Coder::Settings", 5, "Cobalt")
-  "Dawn" Call("Coder::Settings", 5, "Dawn")
-  "Earth" Call("Coder::Settings", 5, "Earth")
-  "iPlastic" Call("Coder::Settings", 5, "iPlastic")
-  "Lazy" Call("Coder::Settings", 5, "Lazy")
-  "Mac Classic" Call("Coder::Settings", 5, "Mac Classic")
-  "Monokai" Call("Coder::Settings", 5, "Monokai")
-  "Solarized Light" Call("Coder::Settings", 5, "Solarized Light")
-  "Solarized Dark" Call("Coder::Settings", 5, "Solarized Dark")
-  "SpaceCadet" Call("Coder::Settings", 5, "SpaceCadet")
-  "Sunburst" Call("Coder::Settings", 5, "Sunburst")
-  "Twilight" Call("Coder::Settings", 5, "Twilight")
-  "Zenburn" Call("Coder::Settings", 5, "Zenburn")
-  SEPARATOR
-  "Settings..." Call("Coder::Settings")
-}
-
-
 *** Structure of cache file ***
 
 [Cache]
@@ -436,3 +385,134 @@ DCD8500001CF30A3
   Optional manual parameter. If 1, then do not update file types information from cpp.coder.
 "*.cpp" "*.c"
   File types.
+
+
+*** Hierarchy description, that used in *.coder files ***
+
+Rule ID, Parent ID
+  In rule, which is the parent, specified identifier (Rule ID). In child rule,
+  which will work only inside parent, specified identifier of the parent (Parent ID).
+
+  For example, separator "/" will be found and highlighted "#FF0000", only if it is between "<" and ">".
+  Quotes:
+  ;===================================================================================
+  ;Flags  Font    Color   Color   Quote   Quote   Escape  Quote   Quote   Parent  Rule
+  ;       style   text    bkgrnd  start   end     char    include exclude ID      ID
+  ;===================================================================================
+  ;5=1+4
+  5       0       0       0       "<"     ">"     ""      ""      ""      0       123
+
+  Delimiters:
+  ;===============================================
+  ;Flags  Font    Color   Color   Char(s)   Parent
+  ;       style   text    bkgrnd            ID
+  ;===============================================
+  1       0       #FF0000 0       "/"       123
+
+  - Can be several rules with the same identifier (Rule ID). In this case, child rules,
+    for which specified this identifier (Parent ID), will work in any parent.
+  - Parent (Parent ID) for the section "Delimiters:" can be "Quotes:", "QuotesRE:", "Folds:".
+  - Parent (Parent ID) for the section "Words:" can be "Quotes:", "QuotesRE:", "Folds:".
+  - Parent (Parent ID) for the section "Quotes:" can be "Quotes:", "QuotesRE:", "Folds:".
+  - Parent (Parent ID) for the section "QuotesRE:" can be "Quotes:", "QuotesRE:", "Folds:".
+  - Parent (Parent ID) for the section "Folds:" can be "Folds:".
+  - If parent (Parent ID) is 0 (default):
+    - Inside non-styled quote ("Quotes:", "QuotesRE:"), rule processed.
+    - Inside styled quote ("Quotes:", "QuotesRE:"), rule ignored.
+    - Inside non-styled fold ("Folds:"), rule processed.
+    - Inside styled fold ("Folds:"), rule from "Folds:" processed, from other sections ignored.
+  - If parent (Parent ID) is -1, then rule must be without parent with identifier (Rule ID) > 0.
+  - If parent (Parent ID) is -2:
+    - Inside parent with identifier (Rule ID) == 0, rule ignored.
+    - Inside parent with identifier (Rule ID) > 0:
+      - Rule identifier (Rule ID) ommited, rule processed.
+      - Rule identifier (Rule ID) <> parent identifier (Rule ID), rule processed.
+      - Rule identifier (Rule ID) == parent identifier (Rule ID), rule ignored.
+  - If parent (Parent ID) is -3:
+    - Inside parent with identifier (Rule ID) == 0, see processing of parent (Parent ID) equal to 0.
+    - Inside parent with identifier (Rule ID) > 0:
+      - Rule identifier (Rule ID) ommited, rule processed.
+      - Rule identifier (Rule ID) <> parent identifier (Rule ID), rule processed.
+      - Rule identifier (Rule ID) == parent identifier (Rule ID), rule ignored.
+
+Rule file
+  Rule file - specifies that, for a given block, syntax rules are applied from the another .coder file.
+
+  - Captured text by the fold start and fold end expressions will be highlighted by the
+    current .coder file and the contents by the rule file.
+  - In string file rule specifies a particular .coder file, for example, "cpp.coder" or
+     alias in the format: "alias: .cpp".
+  - See html.coder for example.
+
+
+*** Several variables description, that used in Coder::Settings themes ***
+
+Automatic selection marking:
+  HighLight_AutoMarkFlags
+    Flags (sum of the following):
+    1  case sensitive (default).
+    2  whole word.
+       Default: 1.
+  HighLight_AutoMarkFontStyle
+    Font style (one of the following):
+    0  ignored (default).
+    1  normal.
+    2  bold.
+    3  italic.
+    4  bold italic.
+  HighLight_AutoMarkTextColor
+    Text color. If 0, default is used.
+  HighLight_AutoMarkBkColor
+    Background color. If 0, default is used.
+
+Variables for LineBoard plugin:
+  LineBoard_TextColor
+    Text color. If 0, not set.
+  LineBoard_BkColor
+    Text background. If 0, not set.
+  LineBoard_BorderColor
+    Border color. If 0, not set.
+  LineBoard_BookmarkTextColor
+    Bookmark text color. If 0, not set.
+  LineBoard_BookmarkBkColor
+    Bookmark background color. If 0, not set.
+  LineBoard_BookmarkBorderColor
+    Bookmark border color. If 0, not set.
+  LineBoard_LineUnsavedColor
+    Unsaved line color. If 0, not set.
+  LineBoard_LineSavedColor
+    Saved line color. If 0, not set.
+  LineBoard_RulerScaleColor
+    Ruler scale color. If 0, not set.
+  LineBoard_RulerCaretColor
+    Ruler caret color. If 0, not set.
+
+Variables for SpecialChar plugin:
+  SpecialChar_BasicFontStyle
+    Basic font style (one of the following):
+    0  ignored (default).
+    1  normal.
+    2  bold.
+    3  italic.
+    4  bold italic.
+  SpecialChar_BasicTextColor
+    Basic text color. If 0, not set.
+  SpecialChar_BasicBkColor
+    Basic background color. If 0, not set.
+  SpecialChar_SelFontStyle
+    Font style in selection (one of the following):
+    0  ignored (default).
+    1  normal.
+    2  bold.
+    3  italic.
+    4  bold italic.
+  SpecialChar_SelTextColor
+    Text color in selection. If 0, not set.
+  SpecialChar_SelBkColor
+    Background color in selection. If 0, not set.
+
+Variables for Sessions plugin:
+  Sessions_ListTextColor
+    List text color. If 0, not set.
+  Sessions_ListBkColor
+    List background color. If 0, not set.
