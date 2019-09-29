@@ -5,9 +5,9 @@
 //// Defines
 
 #ifdef _WIN64
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.9.0 (x64)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.9.9 (x64)"
 #else
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.9.0 (x86)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.9.9 (x86)"
 #endif
 #ifdef AKELPAD_DLLBUILD
   #define APP_MAIN_CLASSA            "AkelPad4 Library"
@@ -21,7 +21,6 @@
 #define APP_SDI_CLASSW              L"AkelPad SDI Class"
 #define APP_MDI_CLASSW              L"AkelPad MDI Class"
 #define APP_PRINTPREVIEW_CLASSW     L"AkelPad Print Preview"
-#define APP_MUTEXA                   "AkelPad Mutex"
 #define APP_REGHOMEW                L"Software\\Akelsoft\\AkelPad"
 #define APP_ABOUT_HOMEPAGEW         L"http://akelpad.sf.net"
 #define APP_ABOUT_EMAIL_SHENGALTSW  L"shengalts@mail.ru"
@@ -43,10 +42,10 @@
 #define STR_ASSOCIATE_OPENW         L"txt;log;ini;inf"
 #define STR_ASSOCIATE_EDITW         L"bat;cmd;reg;htm;html"
 #define STR_ASSOCIATE_PRINTW        L"txt;log;ini;inf"
-#define STR_WORD_DELIMITERSW        L" \t\n'`\"\\|[](){}<>,.;:+-=~!@#$%^&*/?"
-#define STR_WRAP_DELIMITERSW        L" \t"
-#define STR_URL_LEFTDELIMITERSW     L" \t\n'`\"(<{[="
-#define STR_URL_RIGHTDELIMITERSW    L" \t\n'`\")>}]"
+#define STR_WORD_DELIMITERSW        L" \t\n'`\"\\|[](){}<>,.;:+-=~!@#$%^&*/?\0\0"
+#define STR_WRAP_DELIMITERSW        L" \t\0\0"
+#define STR_URL_LEFTDELIMITERSW     L" \t\n'`\"(<{[=\0\0"
+#define STR_URL_RIGHTDELIMITERSW    L" \t\n'`\")>}]\0\0"
 #define STR_URL_PREFIXESW           L"http: https: www. ftp: file: mailto:"
 #define STR_SENTENCE_DELIMITERSW    L".?!"
 #define STR_PRINT_HEADERW           L"%l***%c<%f>%r***"
@@ -93,7 +92,6 @@
   #define mod(a)  (((a) < 0) ? (0 - (a)) : (a))
 #endif
 
-#define BUFFER_SIZE                1024
 #define OPENFILELIST_SIZE          32768
 #define TRANSLATE_BUFFER_SIZE      8192
 #define PREVIEW_SIZE               8188  //4094*2; -1 preview all file
@@ -111,6 +109,10 @@
 #define PCL_ONLOAD          0
 #define PCL_ONSHOW          1
 #define PCL_ONMESSAGE       2
+
+//Command line variable flags
+#define CLVF_SYSTEM          0x1
+#define CLVF_AKELPAD         0x2
 
 //Open file dialog
 #define IDC_OFN_LIST                   1120
@@ -132,17 +134,33 @@
 #define EXTACT_FONT       6
 #define EXTACT_RECODE     7
 #define EXTACT_INSERT     8
+#define EXTACT_IF         9
 
-//External parameters
-#define EXTPARAM_CHAR     1
-#define EXTPARAM_INT      2
+//Operators sign
+#define OS_ERROR     -1  // Wrong sign
+#define OS_NULL       0  // No sign
+#define OS_SET        1  // =
+#define OS_ADD        2  // +
+#define OS_SUB        3  // -
+#define OS_MUL        4  // *
+#define OS_DIV        5  // /
+#define OS_MOD        6  // %
+#define OS_BITAND     7  // &
+#define OS_BITOR      8  // |
+#define OS_BITXOR     9  // ^
+#define OS_GREATER    10 // >
+#define OS_LESS       11 // <
+#define OS_IFTRUE     12 // ?
+#define OS_IFFALSE    13 // :
+#define OS_EQU        14 // ==
+#define OS_NOTEQU     15 // !=
+#define OS_GREATEREQU 16 // >=
+#define OS_LESSEQU    17 // <=
+#define OS_AND        18 // &&
+#define OS_OR         19 // ||
 
-//Font styles
-#define FS_NONE            0
-#define FS_FONTNORMAL      1
-#define FS_FONTBOLD        2
-#define FS_FONTITALIC      3
-#define FS_FONTBOLDITALIC  4
+//Settings dialog
+#define PSM_CREATE                     (WM_USER + 1000)
 
 //File dialog notifications
 #define AKDLG_SETSTREAM                (WM_USER + 100)
@@ -370,6 +388,7 @@ typedef struct {
 typedef struct {
   //Save place
   int nSaveSettings;
+  int nSaveHistory;
 
   //Manual
   DWORD dwShowModify;
@@ -379,6 +398,7 @@ typedef struct {
   DWORD dwStatusUserFlags;
   DWORD dwWordBreakCustom;
   DWORD dwPaintOptions;
+  int nFixedCharWidth;
   DWORD dwEditStyle;
   BOOL bRichEditClass;
   BOOL bAkelAdminResident;
@@ -403,6 +423,7 @@ typedef struct {
   DWORD dwTabOptionsMDI;
 
   //Settings dialog
+  RECT rcPropCurrentDialog;
   wchar_t wszExecuteCommand[BUFFER_SIZE];
   wchar_t wszExecuteDirectory[MAX_PATH];
   int nDefaultCodePage;
@@ -426,15 +447,24 @@ typedef struct {
   BOOL bSaveInReadOnlyMsg;
   wchar_t wszDefaultSaveExt[MAX_PATH];
 
-  //Search dialog
-  DWORD dwSearchOptions;
-
-  //Open file dialog
-  wchar_t wszLastDir[MAX_PATH];
-  BOOL bShowPlacesBar;
+  //Modeless dialog
+  BOOL bModelessSavePos;
 
   //Recode dialog
   RECT rcRecodeCurrentDialog;
+
+  //Find/Replace dialog
+  RECT rcSearchCurrentDialog;
+  DWORD dwSearchOptions;
+
+  //Go to line dialog
+  RECT rcGotoCurrentDialog;
+  DWORD dwGotoOptions;
+
+  //Open file dialog
+  wchar_t wszOfnDir[MAX_PATH];
+  wchar_t wszLastDir[MAX_PATH];
+  BOOL bShowPlacesBar;
 
   //Print dialog
   RECT rcPrintMargins;
@@ -470,27 +500,14 @@ typedef struct {
   BOOL bForceWrite;
 } OPTIONHANDLE;
 
-typedef struct _EXTPARAM {
-  struct _EXTPARAM *next;
-  struct _EXTPARAM *prev;
-  DWORD dwType;            //See EXTPARAM_* defines.
-  INT_PTR nNumber;         //External parameter number.
-  char *pString;           //External parameter string (Ansi).
-  wchar_t *wpString;       //External parameter string (Unicode).
-  char *pExpanded;         //External parameter expanded string - without %variables% (Ansi).
-  int nExpandedAnsiLen;    //External parameter expanded ansi string length.
-  wchar_t *wpExpanded;     //External parameter expanded string - without %variables% (Unicode).
-  int nExpandedUnicodeLen; //External parameter expanded unicode string length.
-} EXTPARAM;
-
 typedef struct {
-  EXTPARAM *first;
-  EXTPARAM *last;
-  int nElements;
-} STACKEXTPARAM;
+  FRAMEDATA *first;
+  FRAMEDATA *last;
+} STACKFRAMEDATA;
 
 typedef struct _FILESTREAMDATA {
   HWND hWnd;
+  AEHDOC hDoc;
   HANDLE hFile;
   int nCodePage;
   DWORD dwMaxCharSize;
@@ -507,6 +524,11 @@ typedef struct _PRINTPAGE {
   AECHARRANGE crText;
 } PRINTPAGE;
 
+typedef struct {
+  PRINTPAGE *first;
+  PRINTPAGE *last;
+} STACKPRINTPAGE;
+
 typedef struct _COLORTHEME {
   struct _COLORTHEME *next;
   struct _COLORTHEME *prev;
@@ -521,12 +543,31 @@ typedef struct _COLORTHEME {
   int nBkImageAlpha;
 } COLORTHEME;
 
+typedef struct {
+  COLORTHEME *first;
+  COLORTHEME *last;
+} STACKCOLORTHEME;
+
 typedef struct _PLUGINHANDLE {
   struct _PLUGINHANDLE *next;
   struct _PLUGINHANDLE *prev;
+  wchar_t wszPlugin[MAX_PATH];
   HMODULE hModule;
-  int nCount;
+  int nLoadCount;
+  int nCallCount;
 } PLUGINHANDLE;
+
+typedef struct {
+  PLUGINHANDLE *first;
+  PLUGINHANDLE *last;
+} STACKPLUGINHANDLE;
+
+typedef struct {
+  PLUGINHANDLE *phElement;
+  int nCallCount;
+  HMODULE hModule;
+  HANDLE hThread;
+} PLUGINUNLOADPOST;
 
 typedef struct _PLUGINLISTDATA {
   HWND hWndList;
@@ -543,6 +584,11 @@ typedef struct _PLUGINLISTITEM {
   int nCallResult;
 } PLUGINLISTITEM;
 
+typedef struct {
+  PLUGINLISTITEM *first;
+  PLUGINLISTITEM *last;
+} STACKPLUGINLIST;
+
 typedef struct _REGHANDLE {
   DWORD dwType;
   HKEY hKey;
@@ -556,21 +602,13 @@ typedef struct _INIHANDLE {
 } INIHANDLE;
 
 typedef struct {
-  HWND hWndToFind;
-  HWND hWndResult;
-  HWND hWndNextResult;
-  HWND hWndNextNextResult;
-  BOOL bFound;
-  BOOL bNextNext;
-  int nCount;
-} ENUMDLG;
-
-typedef struct _HDOCK {
-  HSTACK hStack;
+  DOCK *first;
+  DOCK *last;
+  int nElements;
   BOOL bSizing;
   int nSizingSide;
   int nSizingType;
-} HDOCK;
+} STACKDOCK;
 
 typedef struct _BKIMAGEITEM {
   struct _BKIMAGEITEM *next;
@@ -578,6 +616,11 @@ typedef struct _BKIMAGEITEM {
   wchar_t wszBkImageFile[MAX_PATH];
   HBITMAP hBkImageBitmap;
 } BKIMAGEITEM;
+
+typedef struct {
+  BKIMAGEITEM *first;
+  BKIMAGEITEM *last;
+} STACKBKIMAGE;
 
 typedef struct _BUTTONDRAWITEM {
   struct _BUTTONDRAWITEM *next;
@@ -587,12 +630,22 @@ typedef struct _BUTTONDRAWITEM {
   BUTTONDRAW bd;
 } BUTTONDRAWITEM;
 
+typedef struct {
+  BUTTONDRAWITEM *first;
+  BUTTONDRAWITEM *last;
+} STACKBUTTONDRAW;
+
 typedef struct _FONTITEM {
   struct _FONTITEM *next;
   struct _FONTITEM *prev;
   LOGFONTW lfFont;
   HFONT hFont;
 } FONTITEM;
+
+typedef struct {
+  FONTITEM *first;
+  FONTITEM *last;
+} STACKFONT;
 
 typedef struct _STATUSPART {
   struct _STATUSPART *next;
@@ -639,12 +692,6 @@ typedef struct {
   HANDLE hThread;
   HDROP hDrop;
 } DROPFILESTHREAD;
-
-typedef struct {
-  int nCodePage;
-  BOOL bBOM;
-  BOOL bResult;
-} DIALOGCODEPAGE;
 
 //OPENFILENAMEW with _WIN32_WINNT >= 0x0500 members
 typedef struct {
@@ -701,7 +748,6 @@ void SaveFrameData(FRAMEDATA *lpFrame);
 void RestoreFrameData(FRAMEDATA *lpFrame, DWORD dwFlagsPMDI);
 BOOL CreateFrameWindow(RECT *rcRect);
 FRAMEDATA* ActivateFrameWindow(FRAMEDATA *lpFrame, DWORD dwFlags);
-FRAMEDATA* ActivateNextFrameWindow(FRAMEDATA *lpFrame, BOOL bPrev);
 FRAMEDATA* GetNextTabFrame(FRAMEDATA *lpFrame, BOOL bPrev);
 int DestroyFrameWindow(FRAMEDATA *lpFrame);
 BOOL FrameNoWindows();
@@ -722,11 +768,11 @@ BOOL DoFileSaveAllAs();
 BOOL DoFilePageSetup(HWND hWndOwner);
 int DoFilePrint(FRAMEDATA *lpFrame, BOOL bSilent);
 void DoFilePreview(HWND hWnd);
-void DoEditUndo(HWND hWnd);
-void DoEditRedo(HWND hWnd);
-void DoEditCut(HWND hWnd);
-void DoEditCopy(HWND hWnd);
-BOOL DoEditPaste(HWND hWnd, DWORD dwFlags);
+BOOL DoEditUndo(HWND hWnd);
+BOOL DoEditRedo(HWND hWnd);
+BOOL DoEditCut(HWND hWnd, DWORD dwFlags, int nNewLine);
+BOOL DoEditCopy(HWND hWnd, DWORD dwFlags, int nNewLine);
+INT_PTR DoEditPaste(HWND hWnd, DWORD dwFlags, int nNewLine);
 void DoEditClear(HWND hWnd);
 void DoEditSelectAll(HWND hWnd);
 void DoEditInsertDate(HWND hWnd);
@@ -737,7 +783,7 @@ BOOL DoEditDeleteFirstCharW(HWND hWnd);
 BOOL DoEditDeleteTrailingWhitespacesW(HWND hWnd);
 BOOL DoEditChangeCaseW(HWND hWnd, int nCase, BOOL bSelCurWord);
 void ConvertCase(wchar_t *wszText, INT_PTR nTextLen, int nCase);
-int DetectSelCase(HWND hWnd);
+int DetectCase(HWND hWnd, AECHARRANGE *lpcrRange);
 void DoEditFind();
 INT_PTR DoEditFindNextDown(FRAMEDATA *lpFrame);
 INT_PTR DoEditFindNextUp(FRAMEDATA *lpFrame);
@@ -746,11 +792,11 @@ void DoEditGoTo();
 BOOL DoViewFont(HWND hWndOwner, LOGFONTW *lfFont);
 BOOL DoViewColors();
 void DoViewFontSize(FRAMEDATA *lpFrame, int nAction);
-void DoViewReadOnly(FRAMEDATA *lpFrame, BOOL bState, BOOL bFirst);
-void DoViewWordWrap(FRAMEDATA *lpFrame, BOOL bState, BOOL bFirst);
+void DoViewReadOnly(FRAMEDATA *lpFrame, BOOL bState);
+void DoViewWordWrap(FRAMEDATA *lpFrame, BOOL bState);
 void DoViewSplitWindow(BOOL bState, WPARAM wParam);
-void DoViewOnTop(BOOL bState, BOOL bFirst);
-void DoViewShowStatusBar(BOOL bState, BOOL bFirst);
+void DoViewOnTop(BOOL bState);
+void DoViewShowStatusBar(BOOL bState);
 BOOL DoSettingsExec();
 void DoSettingsKeepSpace(BOOL bState);
 void DoSettingsWatchFile(BOOL bState);
@@ -759,51 +805,45 @@ void DoSettingsSingleOpenFile(BOOL bState);
 void DoSettingsSingleOpenProgram(DWORD dwState);
 void DoSettingsPlugins();
 void DoSettingsOptions();
-void DoWindowTabView(DWORD dwNewView, BOOL bFirst);
-void DoWindowTabType(DWORD dwNewType, BOOL bFirst);
-void DoWindowTabSwitch(DWORD dwNewSwitch, BOOL bFirst);
+void DoWindowTabView(DWORD dwNewView, BOOL bInit);
+void DoWindowTabType(DWORD dwNewType, BOOL bInit);
+void DoWindowTabSwitch(DWORD dwNewSwitch, BOOL bInit);
 void DoWindowSelectWindow();
 void DoHelpAbout();
 void DoNonMenuDelLine(HWND hWnd, BOOL bAllWrap);
 BOOL DoNonMenuSelJumpCaret(HWND hWnd);
 
-BOOL OpenIniA(INIFILE *hIniFile, const char *pFile, BOOL bCreate);
-BOOL OpenIniW(INIFILE *hIniFile, const wchar_t *wpFile, BOOL bCreate);
-BOOL SaveIniA(INIFILE *hIniFile, const char *pFile);
-BOOL SaveIniW(INIFILE *hIniFile, const wchar_t *wpFile);
+BOOL OpenIni(INIFILE *hIniFile, const wchar_t *wpFile, BOOL bCreate);
+BOOL SaveIni(INIFILE *hIniFile, const wchar_t *wpFile);
 BOOL ReadIni(INIFILE *hIniFile, HANDLE hFile);
 BOOL WriteIni(INIFILE *hIniFile, HANDLE hFile);
-INISECTION* StackOpenIniSectionA(INIFILE *hIniFile, const char *pSection, int nSectionLen, BOOL bCreate);
-INISECTION* StackOpenIniSectionW(INIFILE *hIniFile, const wchar_t *wpSection, int nSectionLen, BOOL bCreate);
-INIKEY* StackOpenIniKeyA(INISECTION *lpIniSection, const char *pKey, int nKeyLen, BOOL bCreate);
-INIKEY* StackOpenIniKeyW(INISECTION *lpIniSection, const wchar_t *wpKey, int nKeyLen, BOOL bCreate);
+INISECTION* StackOpenIniSection(INIFILE *hIniFile, const wchar_t *wpSection, int nSectionLen, BOOL bCreate);
+INIKEY* StackOpenIniKey(INISECTION *lpIniSection, const wchar_t *wpKey, int nKeyLen, BOOL bCreate);
+INIKEY* StackEnumIniKey(INISECTION *lpIniSection, int nIndex);
 int StackGetIniData(INIKEY *lpIniKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
 BOOL StackSetIniData(INIKEY *lpIniKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
 BOOL StackDeleteIniKey(INISECTION *lpIniSection, INIKEY *lpIniKey);
 BOOL StackDeleteIniSection(INIFILE *hIniFile, INISECTION *lpIniSection, BOOL bOnlyClear);
 void StackFreeIni(INIFILE *hIniFile);
-INIKEY* IniOpenKeyA(INIFILE *hIniFile, const char *pSection, const char *pKey, BOOL bCreate, INISECTION **lppIniSection);
-INIKEY* IniOpenKeyW(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey, BOOL bCreate, INISECTION **lppIniSection);
-int IniGetValueA(INIFILE *hIniFile, const char *pSection, const char *pKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
-int IniGetValueW(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
-BOOL IniSetValueA(INIFILE *hIniFile, const char *pSection, const char *pKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
-BOOL IniSetValueW(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
-BOOL IniDelKeyA(INIFILE *hIniFile, const char *pSection, const char *pKey);
-BOOL IniDelKeyW(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey);
+INIKEY* IniOpenKey(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey, BOOL bCreate, INISECTION **lppIniSection);
+int IniEnumKey(INIFILE *hIniFile, const wchar_t *wpSection, int nIndex, unsigned char *lpData, DWORD dwDataBytes);
+int IniGetValue(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
+BOOL IniSetValue(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey, int nType, unsigned char *lpData, DWORD dwDataBytes);
+BOOL IniDelKey(INIFILE *hIniFile, const wchar_t *wpSection, const wchar_t *wpKey);
 
 DWORD ReadOption(OPTIONHANDLE *oh, const wchar_t *wpParam, DWORD dwType, void *lpData, DWORD dwSize);
 DWORD SaveOption(OPTIONHANDLE *oh, const wchar_t *wpParam, DWORD dwType, void *lpData, DWORD dwSize);
-void ReadOptions(MAINOPTIONS *mo, FRAMEDATA *fd);
+HANDLE ReadOptions(MAINOPTIONS *mo, FRAMEDATA *fd, int nType, HANDLE hHandle);
 BOOL SaveOptions(MAINOPTIONS *mo, FRAMEDATA *fd, int nSaveSettings, BOOL bForceWrite);
 BOOL SetOption(LPARAM lParam, void *lpData, int nDataSize, int nType);
 
-int OpenDocument(HWND hWnd, const wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM);
+int OpenDocument(HWND hWnd, AEHDOC hDoc, const wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM);
 void FileStreamIn(FILESTREAMDATA *lpData);
 DWORD CALLBACK InputStreamCallback(UINT_PTR dwCookie, wchar_t *wszBuf, DWORD dwBufBytesLen, DWORD *dwBufBytesDone);
-UINT_PTR ReadFileContent(HANDLE hFile, UINT_PTR dwBytesMax, int nCodePage, BOOL bBOM, wchar_t **wpContent);
+UINT_PTR ReadFileContent(HANDLE hFile, UINT_PTR dwBytesMax, int nCodePage, BOOL bBOM, wchar_t **wppContent);
 int WriteFileContent(HANDLE hFile, const wchar_t *wpContent, INT_PTR nContentLen, int nCodePage, BOOL bBOM);
-BOOL OpenDocumentSend(HWND hWnd, HWND hWndEditCtrl, const wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, BOOL bOtherProcess);
-int SaveDocument(HWND hWnd, const wchar_t *wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags);
+BOOL OpenDocumentSend(HWND hWnd, HWND hWndEditCtrl, AEHDOC hDocEditCtrl, const wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, BOOL bOtherProcess);
+int SaveDocument(HWND hWnd, AEHDOC hDoc, const wchar_t *wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags);
 void FileStreamOut(FILESTREAMDATA *lpData);
 DWORD CALLBACK OutputStreamCallback(UINT_PTR dwCookie, wchar_t *wszBuf, DWORD dwBufBytesLen, DWORD *dwBufBytesDone);
 BOOL OpenDirectory(wchar_t *wpPath, BOOL bSubDir);
@@ -831,10 +871,10 @@ void PreviewScrollUpdate(HWND hWnd);
 BOOL FitInside(int nWidth, int nHeight, int nMaxWidth, int nMaxHeight, SIZE *s);
 int RectW(const RECT *rc);
 int RectH(const RECT *rc);
-PRINTPAGE* StackPageInsert(HSTACK *hStack);
-PRINTPAGE* StackPageGet(HSTACK *hStack, int nPage);
-int StackPageFind(HSTACK *hStack, const AECHARINDEX *ciPos);
-void StackPageFree(HSTACK *hStack);
+PRINTPAGE* StackPageInsert(STACKPRINTPAGE *hStack);
+PRINTPAGE* StackPageGet(STACKPRINTPAGE *hStack, int nPage);
+int StackPageFind(STACKPRINTPAGE *hStack, const AECHARINDEX *ciPos);
+void StackPageFree(STACKPRINTPAGE *hStack);
 
 UINT_PTR CALLBACK FileDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewFilePreviewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -855,7 +895,7 @@ int CodepageListLen(int *lpCodepageList);
 int CodepageListFind(int *lpCodepageList, int nCodePage);
 void CodepageListFree(int **lpCodepageList);
 void GetCodePageName(int nCodePage, wchar_t *wszCodePage, int nLen);
-int FilePreview(HWND hWnd, wchar_t *wpFile, UINT_PTR dwPreviewBytes, DWORD dwFlags, int *nCodePage, BOOL *bBOM);
+int FilePreview(HWND hWnd, AEHDOC hDoc, wchar_t *wpFile, UINT_PTR dwPreviewBytes, DWORD dwFlags, int *nCodePage, BOOL *bBOM);
 int AutodetectCodePage(const wchar_t *wpFile, HANDLE hFile, UINT_PTR dwBytesToCheck, DWORD dwFlags, int *nCodePage, BOOL *bBOM);
 BOOL AutodetectMultibyte(DWORD dwLangID, const unsigned char *pBuffer, UINT_PTR dwBytesToCheck, UINT_PTR dwCharsRequired, int *nCodePage);
 BOOL AutodetectWideChar(DWORD dwLangID, const wchar_t *wpText, INT_PTR nTextLen, INT_PTR nMinChars, int *nCodePageFrom, int *nCodePageTo);
@@ -871,19 +911,27 @@ BOOL IsCodePageUnicode(int nCodePage);
 BOOL IsCodePageValid(int nCodePage);
 unsigned int TranslateNewLinesToUnixW(wchar_t *wszWideString, unsigned int nWideStringLen);
 
-void RegReadSearch();
+SEARCHITEM* SearchInsert(STACKSEARCH *hStack, int nIndex);
+void SearchDelete(STACKSEARCH *hStack, SEARCHITEM *lpSearchItem);
+void SearchMove(STACKSEARCH *hStack, SEARCHITEM *lpSearchItem, int nIndex);
+void SearchZero(STACKSEARCH *hStack);
+SEARCHITEM* SearchFindByName(STACKSEARCH *hStack, const wchar_t *wpString, int nStringLen, int *lpIndex);
+SEARCHITEM* SearchUpdate(STACKSEARCH *hStack, wchar_t *wpString, int nStringLen, int *lpIndex);
+void SearchFreeLast();
+int SearchRead(MAINOPTIONS *mo);
+BOOL SearchSave(int nSaveHistory);
 BOOL CALLBACK FindAndReplaceDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewComboboxEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void FillComboboxSearch(HWND hWndFind, HWND hWndReplace);
-int GetComboboxSearchText(HWND hWnd, wchar_t **wszText, int nNewLine);
-void SaveComboboxSearch(HWND hWndFind, HWND hWndReplace);
+void FillComboboxSearch(STACKSEARCH *hStack, HWND hWnd);
+int GetComboboxSearchText(STACKSEARCH *hStack, HWND hWnd, wchar_t **wszText);
 INT_PTR TextFindW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt, int nFindItLen);
-INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt, int nFindItLen, const wchar_t *wpReplaceWith, int nReplaceWithLen, BOOL bAll, INT_PTR *nReplaceCount);
-INT_PTR StrReplaceW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpIt, int nItLen, const wchar_t *wpWith, int nWithLen, DWORD dwFlags, wchar_t *wszResult, INT_PTR *nResultLen, INT_PTR *nMin, INT_PTR *nMax, INT_PTR *nFirstVis);
-INT_PTR EscapeStringToEscapeDataW(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput, int nNewLine);
-void EscapeDataToEscapeStringW(const wchar_t *wpInput, wchar_t *wszOutput);
-BOOL SetDefButtonStyle(HWND hWnd, HWND hWndNewDef);
+INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFindFlags, const wchar_t *wpFindIt, int nFindItLen, const wchar_t *wpReplaceWith, int nReplaceWithLen, DWORD dwReplaceFlags, INT_PTR *lpnReplaceCount, int *lpnReplaceFiles);
+INT_PTR StrReplace(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpIt, int nItLen, const wchar_t *wpWith, int nWithLen, DWORD dwFlags, wchar_t *wszResult, wchar_t **wppResult, INT_PTR *nResultLen, PATREPLACEPOINT *lpPointArray, int nPointCount);
+INT_PTR EscapeStringToEscapeData(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput, int nNewLine);
+void EscapeDataToEscapeString(const wchar_t *wpInput, int nInputLen, wchar_t *wszOutput);
+BOOL SetDefButton(HWND hWnd, HWND hWndNewDef);
 
+LRESULT SendToDoc(AEHDOC hDocEdit, HWND hWndEdit, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL GetSel(HWND hWnd, AECHARRANGE *crSel, BOOL *bColumnSel, AECHARINDEX *ciCaret);
 void SetSel(HWND hWnd, AECHARRANGE *crSel, DWORD dwFlags, AECHARINDEX *ciCaret);
 void SetSelRE(HWND hWnd, INT_PTR nSelStart, INT_PTR nSelEnd);
@@ -903,22 +951,25 @@ INT_PTR ExGetRangeTextW(HWND hWnd, AECHARINDEX *ciMin, AECHARINDEX *ciMax, BOOL 
 BOOL FreeText(LPVOID pText);
 BOOL PasteInEditAsRichEdit(HWND hWnd, int nMaxLenght);
 int PasteCase(HWND hWnd, BOOL bAnsi);
+INT_PTR GetClipboardText(BOOL bAnsi, wchar_t **wppData, INT_PTR nMaxData);
+INT_PTR SetClipboardText(const wchar_t *wpText, INT_PTR nUnicodeLen);
 void ShowStandardViewMenu(HWND hWnd, HMENU hMenu, BOOL bMouse);
 
 BOOL CALLBACK GoToDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL GoTo(DWORD dwGotoType, const wchar_t *wpString);
+BOOL GoTo(DWORD dwGotoOptions, const wchar_t *wpString);
 
-RECENTFILE* RecentFilesInsert(RECENTFILESTACK *hStack, int nIndex);
-void RecentFilesDelete(RECENTFILESTACK *hStack, RECENTFILE *lpRecentFile);
-void RecentFilesZero(RECENTFILESTACK *hStack);
+RECENTFILE* RecentFilesInsert(STACKRECENTFILE *hStack, int nIndex);
+void RecentFilesDelete(STACKRECENTFILE *hStack, RECENTFILE *lpRecentFile);
+void RecentFilesZero(STACKRECENTFILE *hStack);
 RECENTFILE* RecentFilesFindByName(const wchar_t *wpFile, int *lpIndex);
 RECENTFILE* RecentFilesFindByIndex(int nIndex);
 RECENTFILE* RecentFilesUpdate(const wchar_t *wpFile);
-void RecentFilesRefresh(RECENTFILESTACK *hStack);
-int RecentFilesDeleteOld(RECENTFILESTACK *hStack);
-int RecentFilesRead(RECENTFILESTACK *hStack);
-void RecentFilesSave(RECENTFILESTACK *hStack);
-void RecentFilesSaveFile(FRAMEDATA *lpFrame);
+BOOL RecentFilesCut(STACKRECENTFILE *hStack);
+int RecentFilesDeleteOld(STACKRECENTFILE *hStack);
+int RecentFilesRead(MAINOPTIONS *mo, STACKRECENTFILE *hStack);
+void RecentFilesParseData(STACKRECENTFILE *hStack, const wchar_t *wszData);
+BOOL RecentFilesSave(STACKRECENTFILE *hStack, int nSaveSettings);
+void RecentFilesFrameUpdate(FRAMEDATA *lpFrame);
 void RecentFilesMenu();
 RECENTFILEPARAM* StackRecentFileParamAdd(RECENTFILE *lpRecentFile);
 RECENTFILEPARAM* StackRecentFileParamGetByName(RECENTFILE *lpRecentFile, const wchar_t *wpParamName);
@@ -937,35 +988,35 @@ BOOL CALLBACK RecodeDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 BOOL CALLBACK ColorsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void FillComboboxThemes(HWND hWnd);
-COLORTHEME* StackThemeAdd(HSTACK *hStack, const wchar_t *wpName, AECOLORS *aec, const wchar_t *wpFile, int nBkImageAlpha, int nIndex);
-COLORTHEME* StackThemeGetByName(HSTACK *hStack, const wchar_t *wpName);
-COLORTHEME* StackThemeGetByData(HSTACK *hStack, AECOLORS *aec, const wchar_t *wpBkImageFile, int nBkImageAlpha);
-void StackThemeDelete(HSTACK *hStack, COLORTHEME *ctElement);
-void StackThemeFree(HSTACK *hStack);
+COLORTHEME* StackThemeAdd(STACKCOLORTHEME *hStack, const wchar_t *wpName, AECOLORS *aec, const wchar_t *wpFile, int nBkImageAlpha, int nIndex);
+COLORTHEME* StackThemeGetByName(STACKCOLORTHEME *hStack, const wchar_t *wpName);
+COLORTHEME* StackThemeGetByData(STACKCOLORTHEME *hStack, AECOLORS *aec, const wchar_t *wpBkImageFile, int nBkImageAlpha);
+void StackThemeDelete(STACKCOLORTHEME *hStack, COLORTHEME *ctElement);
+void StackThemeFree(STACKCOLORTHEME *hStack);
 void ReadThemes(MAINOPTIONS *mo);
 BOOL SaveThemes(int nSaveSettings);
 
-BKIMAGEITEM* StackBkImageInsert(HSTACK *hStack, const wchar_t *wpFile);
-BKIMAGEITEM* StackBkImageGet(HSTACK *hStack, const wchar_t *wpFile);
-void StackBkImageFree(HSTACK *hStack);
+BKIMAGEITEM* StackBkImageInsert(STACKBKIMAGE *hStack, const wchar_t *wpFile);
+BKIMAGEITEM* StackBkImageGet(STACKBKIMAGE *hStack, const wchar_t *wpFile);
+void StackBkImageFree(STACKBKIMAGE *hStack);
 BOOL SetBkImage(FRAMEDATA *lpFrame, const wchar_t *wpFile, int nBkImageAlpha);
 HBITMAP LoadPictureFile(wchar_t *wpFile);
 
 void RegisterPluginsHotkeys(MAINOPTIONS *mo);
-PLUGINFUNCTION* StackPluginFind(HSTACK *hStack, const wchar_t *wpPluginFunction, int nPluginFunctionLen);
-PLUGINFUNCTION* StackHotkeyFind(HSTACK *hStack, WORD wHotkey);
-PLUGINFUNCTION* StackPluginAdd(HSTACK *hStack, const wchar_t *wpString, int nStringLen, WORD wHotkey, BOOL bOnStart, PLUGINPROC PluginProc, void *lpParameter);
-void StackPluginDelete(HSTACK *hStack, PLUGINFUNCTION *pfElement);
-BOOL StackPluginSave(HSTACK *hStack, int nSaveSettings);
-void StackPluginCleanUp(HSTACK *hStack, BOOL bDeleteNonExistentDLL);
-void StackPluginFree(HSTACK *hStack);
-void CallPluginsOnStart(HSTACK *hStack);
-int CallPluginSend(PLUGINFUNCTION **ppfElement, PLUGINCALLSENDW *pcs, DWORD dwFlags);
-int CallPlugin(PLUGINFUNCTION *lpPluginFunction, PLUGINCALLSENDW *pcs, DWORD dwFlags);
+PLUGINFUNCTION* StackPluginFind(STACKPLUGINFUNCTION *hStack, const wchar_t *wpPluginFunction, int nPluginFunctionLen);
+PLUGINFUNCTION* StackHotkeyFind(STACKPLUGINFUNCTION *hStack, WORD wHotkey);
+PLUGINFUNCTION* StackPluginAdd(STACKPLUGINFUNCTION *hStack, const wchar_t *wpString, int nStringLen, WORD wHotkey, BOOL bOnStart, PLUGINPROC PluginProc, void *lpParameter);
+BOOL StackPluginDelete(STACKPLUGINFUNCTION *hStack, PLUGINFUNCTION *pfElement);
+BOOL StackPluginSave(STACKPLUGINFUNCTION *hStack, int nSaveSettings);
+void StackPluginCleanUp(STACKPLUGINFUNCTION *hStack, BOOL bDeleteNonExistentDLL);
+void StackPluginFree(STACKPLUGINFUNCTION *hStack);
+void CallPluginsOnStart(STACKPLUGINFUNCTION *hStack);
+int CallPluginSend(PLUGINFUNCTION **ppfElement, wchar_t *wpFunction, PLUGINCALLSENDW *pcs, DWORD dwFlags);
+int CallPlugin(PLUGINFUNCTION *lpPluginFunction, wchar_t *wpFunction, PLUGINCALLSENDW *pcs, DWORD dwFlags);
 DWORD TranslateMessageAll(DWORD dwType, LPMSG lpMsg);
 BOOL TranslateMessageGlobal(LPMSG lpMsg);
 BOOL TranslateMessagePlugin(LPMSG lpMsg);
-int TranslateMessageHotkey(HSTACK *hStack, LPMSG lpMsg);
+int TranslateMessageHotkey(STACKPLUGINFUNCTION *hStack, LPMSG lpMsg);
 BOOL ParsePluginNameW(const wchar_t *wpFullName, wchar_t *wszPlugin, wchar_t *wszFunction);
 BOOL IsMainFunctionW(const wchar_t *wpFunction);
 int CheckHotkey(WORD wHotkey, wchar_t *wszHotkeyOwner);
@@ -974,13 +1025,15 @@ BOOL CALLBACK PluginsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT CALLBACK GetMsgProc(int code, WPARAM wParam, LPARAM lParam);
 void FillPluginList(HWND hWnd);
 BOOL CALLBACK FillPluginListProc(char *pExportName, LPARAM lParam);
-PLUGINLISTITEM* GetPluginListItem(HSTACK *hStack, int nIndex);
-void FreePluginList(HSTACK *hStack);
+PLUGINLISTITEM* GetPluginListItem(STACKPLUGINLIST *hStack, int nIndex);
+void FreePluginList(STACKPLUGINLIST *hStack);
 BOOL GetExportNames(HMODULE hInstance, EXPORTNAMESPROC lpExportNamesProc, LPARAM lParam);
 int GetHotkeyString(WORD wHotkey, wchar_t *wszString);
 
 LRESULT CALLBACK CBTPropertySheetProc(int iCode, WPARAM wParam, LPARAM lParam);
 int CALLBACK PropSheetProc(HWND hDlg, UINT uMsg, LPARAM lParam);
+LRESULT CALLBACK NewPropProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+void FitToPropTab(HWND hDlg);
 BOOL CALLBACK OptionsGeneralDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int CALLBACK BrowseCallbackProc(HWND hWnd, UINT uMsg, LPARAM lParam, LPARAM lpData);
 BOOL CALLBACK OptionsGeneralFilterDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -1002,51 +1055,63 @@ void FreeListBoxSelItems(int **lpSelItems);
 BOOL CALLBACK AboutDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int GetUserManual(wchar_t *wszManual, int nManualLen);
 
+void NotifyInitDialogBegin(int nType, HWND hDlg, LPARAM lParam);
+void NotifyInitDialogEnd(int nType, HWND hDlg, LPARAM lParam);
+
 int MessageBoxCustom(HWND hWndParent, const wchar_t *wpText, const wchar_t *wpCaption, UINT uType, HICON hIcon, BUTTONMESSAGEBOX *bmb);
 BOOL CALLBACK MessageBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL ScaleInit(HDC hDC, HWND hWnd);
+BOOL GetDialogUnits(HDC hDC, HFONT hFont, POINT *ptUnitCur, POINT *ptUnit96);
 int ScaleX(int x);
 int ScaleY(int y);
 
-DOCK* StackDockAdd(HDOCK *hDocks, DOCK *dkData);
-int DockSetSide(HDOCK *hDocks, DOCK *dkData, int nSide);
-void StackDockDelete(HDOCK *hDocks, DOCK *dkData);
-DOCK* StackDockFindWindow(HDOCK *hDocks, HWND hWnd, BOOL bChild);
-HWND StackDockNextWindow(HDOCK *hDocks, DOCK *dkData, BOOL bPrevious);
-DOCK* StackDockFromPoint(HDOCK *hDocks, POINT *ptScreen);
-void StackDockSize(HDOCK *hDocks, int nSide, NSIZE *ns);
-BOOL StackDockUpdateCheck(HDOCK *hDocks);
-void StackDockFree(HDOCK *hDocks);
-BOOL TranslateMessageDialog(HDOCK *hDocks, LPMSG lpMsg);
+DOCK* StackDockAdd(STACKDOCK *hDocks, DOCK *dkData);
+int DockSetSide(STACKDOCK *hDocks, DOCK *dkData, int nSide);
+BOOL StackDockIsValid(STACKDOCK *hDocks, DOCK *lpCheckIt);
+DOCK* StackDockFindWindow(STACKDOCK *hDocks, HWND hWnd, BOOL bChild);
+HWND StackDockNextWindow(STACKDOCK *hDocks, DOCK *dkData, BOOL bPrevious);
+DOCK* StackDockFromPoint(STACKDOCK *hDocks, POINT *ptScreen);
+HDWP StackDockSize(HDWP hDwp, STACKDOCK *hDocks, NSIZE *ns);
+void StackDockDelete(STACKDOCK *hDocks, DOCK *dkData);
+void StackDockFree(STACKDOCK *hDocks);
+BOOL TranslateMessageDialog(LPMSG lpMsg);
+
+MODELESS* StackModelessAdd(STACKMODELESS *hStack, HWND hWnd);
+MODELESS* StackModelessGet(STACKMODELESS *hStack, HWND hWnd);
+BOOL StackModelessIsValid(STACKMODELESS *hStack, MODELESS *lpCheckIt);
+BOOL StackModelessMembers(STACKMODELESS *hStack1, STACKMODELESS *hStack2);
+BOOL StackModelessDelete(STACKMODELESS *hStack, HWND hWnd);
+void StackModelessFree(STACKMODELESS *hStack);
 
 int StackProcGet(HSTACK *hStack, int nIndex, WNDPROCDATA **ProcData);
 int StackProcSet(HSTACK *hStack, WNDPROC NewProc, WNDPROCDATA **NewProcData, WNDPROC *FirstProc);
 void StackProcFree(HSTACK *hStack);
 
-PLUGINHANDLE* StackHandleIncrease(HSTACK *hStack, HMODULE hModule);
-PLUGINHANDLE* StackHandleDecrease(HSTACK *hStack, HMODULE hModule);
-void StackHandleFree(HSTACK *hStack);
+PLUGINHANDLE* StackHandleGet(STACKPLUGINHANDLE *hStack, HMODULE hModule, const wchar_t *wpPlugin);
+PLUGINHANDLE* StackHandleIncrease(STACKPLUGINHANDLE *hStack, HMODULE hModule, const wchar_t *wpPlugin, BOOL bLoad);
+PLUGINHANDLE* StackHandleDecrease(STACKPLUGINHANDLE *hStack, HMODULE hModule);
+void StackHandleFree(STACKPLUGINHANDLE *hStack);
 
-FRAMEDATA* StackFrameInsert(HSTACK *hStack);
-FRAMEDATA* StackFrameGetByIndex(HSTACK *hStack, int nIndex);
-FRAMEDATA* StackFrameGetByHandle(HSTACK *hStack, AEHDOC hDataHandle);
-FRAMEDATA* StackFrameGetByName(HSTACK *hStack, const wchar_t *wpFileName, int nFileNameLen);
-FRAMEDATA* StackFrameGetNext(HSTACK *hStack, FRAMEDATA *lpFrame, BOOL bPrev);
-DWORD StackFrameGetIndex(HSTACK *hStack, FRAMEDATA *lpFramePointer);
-FRAMEDATA* StackFrameIsValid(HSTACK *hStack, FRAMEDATA *lpFramePointer);
-void StackFrameMove(HSTACK *hStack, FRAMEDATA *lpFrame, int nIndex);
-void StackFrameDelete(HSTACK *hStack, FRAMEDATA *lpFrame);
-void StackFramesFree(HSTACK *hStack);
+FRAMEDATA* StackFrameInsert(STACKFRAMEDATA *hStack);
+FRAMEDATA* StackFrameGetByIndex(STACKFRAMEDATA *hStack, int nIndex);
+FRAMEDATA* StackFrameGetByHandle(STACKFRAMEDATA *hStack, AEHDOC hDataHandle);
+FRAMEDATA* StackFrameGetByName(STACKFRAMEDATA *hStack, const wchar_t *wpFileName, int nFileNameLen);
+FRAMEDATA* StackFrameGetNext(STACKFRAMEDATA *hStack, FRAMEDATA *lpFrame, BOOL bPrev);
+DWORD StackFrameGetIndex(STACKFRAMEDATA *hStack, FRAMEDATA *lpFramePointer);
+FRAMEDATA* StackFrameIsValid(STACKFRAMEDATA *hStack, FRAMEDATA *lpFramePointer);
+void StackFrameMove(STACKFRAMEDATA *hStack, FRAMEDATA *lpFrame, int nIndex);
+void StackFrameDelete(STACKFRAMEDATA *hStack, FRAMEDATA *lpFrame);
+void StackFramesFree(STACKFRAMEDATA *hStack);
 
-BUTTONDRAWITEM* StackButtonDrawInsert(HSTACK *hStack);
-BUTTONDRAWITEM* StackButtonDrawGet(HSTACK *hStack, HWND hWnd);
-void StackButtonDrawDelete(HSTACK *hStack, BUTTONDRAWITEM *lpButtonDraw);
-void StackButtonDrawFree(HSTACK *hStack);
+BUTTONDRAWITEM* StackButtonDrawInsert(STACKBUTTONDRAW *hStack);
+BUTTONDRAWITEM* StackButtonDrawGet(STACKBUTTONDRAW *hStack, HWND hWnd);
+void StackButtonDrawDelete(STACKBUTTONDRAW *hStack, BUTTONDRAWITEM *lpButtonDraw);
+void StackButtonDrawFree(STACKBUTTONDRAW *hStack);
 void SetButtonDraw(HWND hWndButton, BUTTONDRAW *bd);
 
 RECENTCARETITEM* StackRecentCaretInsert(STACKRECENTCARET *hStack);
 void StackRecentCaretFree(STACKRECENTCARET *hStack);
 void RecentCaretSet(AENSELCHANGE *aensc);
+BOOL RecentCaretGo(BOOL bNext);
 
 void SetSelectionStatus(AEHDOC hDocEdit, HWND hWndEdit, AECHARRANGE *cr, AECHARINDEX *ci);
 void SetModifyStatus(FRAMEDATA *lpFrame, BOOL bState);
@@ -1060,16 +1125,18 @@ int* SetStatusParts(STACKSTATUSPART *lpStatusStack);
 STATUSPART* StackStatusPartInsert(STACKSTATUSPART *hStack);
 void StackStatusPartFree(STACKSTATUSPART *hStack);
 
-const wchar_t* GetAssociatedIconW(const wchar_t *wpFile, wchar_t *wszIconFile, int *nIconIndex, HICON *phiconLarge, HICON *phiconSmall);
+const wchar_t* GetAssociatedIconW(const wchar_t *wpFile, wchar_t *wszIconFile, int *nIconIndex, HICON *phiconSmall);
 void AssociateFileTypesW(HINSTANCE hInstance, const wchar_t *wpFileTypes, DWORD dwFlags);
 ASSOCICON* StackIconInsert(STACKASSOCICON *hStack, const wchar_t *wpFile, int nFileLen);
 ASSOCICON* StackIconGet(STACKASSOCICON *hStack, const wchar_t *wpFile, int nFileLen, const wchar_t *wpExt);
 void StackIconsFree(STACKASSOCICON *hStack);
 
 HFONT SetChosenFont(HWND hWnd, const LOGFONTW *lfFont);
-FONTITEM* StackFontItemInsert(HSTACK *hStack, const LOGFONTW *lfFont);
-FONTITEM* StackFontItemGet(HSTACK *hStack, const LOGFONTW *lfFont);
-void StackFontItemsFree(HSTACK *hStack);
+FONTITEM* StackFontItemInsert(STACKFONT *hStack, const LOGFONTW *lfFont);
+FONTITEM* StackFontItemGet(STACKFONT *hStack, const LOGFONTW *lfFont);
+void StackFontItemsFree(STACKFONT *hStack);
+LOGFONTW* LogFontAtoW(const LOGFONTA *lfA, LOGFONTW *lfW);
+LOGFONTA* LogFontWtoA(const LOGFONTW *lfW, LOGFONTA *lfA);
 
 HANDLE MemCreate(const char *pName, DWORD dwSize);
 void* MemMap(HANDLE hMem, DWORD dwSize);
@@ -1086,17 +1153,21 @@ wchar_t* GetCommandLineParamsW();
 int GetCommandLineArg(const wchar_t *wpCmdLine, wchar_t *wszArg, int nArgMax, const wchar_t **wpNextArg, BOOL bParseAsNotepad);
 int ParseCmdLine(const wchar_t **wppCmdLine, int nType);
 void SendCmdLine(HWND hWnd, const wchar_t *wpCmdLine, BOOL bPost, BOOL bQuitAsEnd);
-DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink);
-void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, const wchar_t **wppText);
-void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, const wchar_t *wpExeDir, const wchar_t *wpUrlLink);
-int StructMethodParameters(STACKEXTPARAM *hParamStack, unsigned char *lpStruct);
-EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex);
-void FreeMethodParameters(STACKEXTPARAM *hParamStack);
+void MethodExpandParameters(STACKEXTPARAM *hParamStack, const EXPPARAM *ep);
+int CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink);
 INT_PTR TranslateEscapeString(FRAMEDATA *lpFrame, const wchar_t *wpInput, wchar_t *wszOutput, DWORD *lpdwCaret);
+
+INT_PTR IfExpression(const wchar_t *wpIn, const wchar_t **wppOut, int *lpnError);
+INT_PTR IfGroup(const wchar_t *wpIn, const wchar_t **wppOut, int *lpnSign, INT_PTR *lpnResultVar, int *lpnError);
+INT_PTR IfValue(const wchar_t *wpIn, const wchar_t **wppOut, INT_PTR *lpnResultVar, int *lpnError);
+INT_PTR IfOperate(INT_PTR nValue1, int nSign, INT_PTR nValue2, int *lpnError);
+int IfSign(const wchar_t *wpSign, const wchar_t **wppSign);
+void IfComment(const wchar_t *wpText, const wchar_t **wppText);
 
 BOOL SetFrameInfo(FRAMEDATA *lpFrame, int nType, UINT_PTR dwData);
 BOOL GetEditInfo(HWND hWnd, EDITINFO *ei);
 DWORD IsEditActive(HWND hWnd);
+DWORD IsDocActive(AEHDOC hDoc);
 void UpdateShowHScroll(FRAMEDATA *lpFrame);
 int SaveLineScroll(HWND hWnd);
 void RestoreLineScroll(HWND hWnd, int nBeforeLine);
@@ -1114,10 +1185,10 @@ BOOL IsReadOnly(HWND hWnd);
 int IsFile(const wchar_t *wpFile);
 BOOL IsPathFull(const wchar_t *wpPath);
 BOOL GetFileWin32Data(const wchar_t *wpFile, WIN32_FIND_DATAW *wfd);
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirMax);
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, int nFileDirMax);
 BOOL GetFullName(const wchar_t *wpFile, wchar_t *wszFileFullName, int nFileMax, int *lpnFileLen);
 const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen);
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
+int GetBaseName(const wchar_t *wpFile, int nFileLen, wchar_t *wszBaseName, int nBaseNameMax);
 const wchar_t* GetFileExt(const wchar_t *wpFile, int nFileLen);
 int GetFileStreamOffset(const wchar_t *wpFile, int nFileLen);
 const wchar_t* GetNewLineString(int nNewLine);
@@ -1125,7 +1196,7 @@ void GetTimeString(const wchar_t *wpFormat, wchar_t *wszOutput, BOOL bWithoutSec
 BOOL GetFileWriteTimeWide(const wchar_t *wpFile, FILETIME *ft);
 BOOL GetFileVersionA(const char *pFile, int *nMajor, int *nMinor, int *nRelease, int *nBuild, DWORD *dwLanguage);
 BOOL GetFileVersionW(const wchar_t *wpFile, int *nMajor, int *nMinor, int *nRelease, int *nBuild, DWORD *dwLanguage);
-int VersionCompare(DWORD dwVersion1, DWORD dwVersion2);
+int IdentifierCompare(DWORD dwVersion1, DWORD dwVersion2);
 int TranslateFileString(const wchar_t *wpCommand, wchar_t *wszBuffer, int nBufferSize);
 void TrimModifyState(wchar_t *wszFile, int nFileLen);
 void UpdateAsterisk(FRAMEDATA *lpFrame, BOOL bModified);
@@ -1142,16 +1213,15 @@ HWND NextDialog(BOOL bPrevious);
 BOOL CALLBACK EnumDialogsProc(HWND hWnd, LPARAM lParam);
 HWND NextClone(BOOL bPrevious);
 void UpdateSize();
-BOOL DialogResizeMessages(DIALOGRESIZE *drs, RECT *rcInit, RECT *rcCurrent, DWORD dwFlags, HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void GetMovingRect(DOCK *dkData, POINT *ptScreen, MINMAXINFO *mmi, RECT *rcScreen);
 void DrawMovingRect(RECT *rcScreen);
 int GetMouseEdge(HWND hWnd, POINT *ptScreen);
 void SetEdgeCursor(int nEdge);
 int GetOppEdge(int nEdge);
 BOOL IsCursorOnWindow(HWND hWnd);
-BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
-BOOL ScreenToClientRect(HWND hWnd, RECT *rc);
-BOOL ClientToScreenRect(HWND hWnd, RECT *rc);
+BOOL ScreenRectToClientSize(HWND hWnd, RECT *rc);
+BOOL ClientSizeToScreenRect(HWND hWnd, RECT *rc);
+BOOL SmoothWindowPos(RECT *lprcWindowSize, HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy, UINT uFlags);
 BOOL EnsureWindowInMonitor(RECT *rcWindow);
 void UpdateTitle(FRAMEDATA *lpFrame);
 void UpdateTabs(HWND hWnd);
@@ -1163,11 +1233,11 @@ int GetTabItemForDrop(HWND hWnd, POINT *rcScreen);
 int SelectTabItem(HWND hWnd, int nIndex);
 int MoveTabItem(HWND hWnd, int nIndexOld, int nIndexNew);
 BOOL DeleteTabItem(HWND hWnd, int nIndex);
-void FreeMemorySearch();
 int BytesInString(const wchar_t *wpString);
 const wchar_t* FindArrayByIndex(const wchar_t *wpString, int nIndex);
 char* AKD_strchr(const char *s, int c);
 wchar_t* AKD_wcschr(const wchar_t *s, wchar_t c);
+BOOL IsInDelimiterList(const wchar_t *wpList, int nListLen, wchar_t c);
 
 HMENU API_LoadMenuA(HINSTANCE hLoadInstance, char *lpMenuName);
 HMENU API_LoadMenuW(HINSTANCE hLoadInstance, wchar_t *lpMenuName);
@@ -1177,18 +1247,16 @@ HICON API_LoadIconA(HINSTANCE hLoadInstance, char *lpIconName);
 HICON API_LoadIconW(HINSTANCE hLoadInstance, wchar_t *lpIconName);
 HANDLE API_LoadImageA(HINSTANCE hLoadInstance, char *lpszName, UINT uType, int cxDesired, int cyDesired, UINT fuLoad);
 HANDLE API_LoadImageW(HINSTANCE hLoadInstance, wchar_t *lpszName, UINT uType, int cxDesired, int cyDesired, UINT fuLoad);
-int API_LoadStringA(HINSTANCE hLoadInstance, UINT uID, char *lpBuffer, int nBufferMax);
-int API_LoadStringW(HINSTANCE hLoadInstance, UINT uID, wchar_t *lpBuffer, int nBufferMax);
+int API_LoadString(HINSTANCE hLoadInstance, UINT uID, wchar_t *lpBuffer, int nBufferMax);
 int API_MessageBox(HWND hWnd, const wchar_t *lpText, const wchar_t *lpCaption, UINT uType);
 HWND API_CreateDialog(HINSTANCE hLoadInstance, wchar_t *lpTemplateName, HWND hWndParent, DLGPROC lpDialogFunc);
 INT_PTR API_DialogBox(HINSTANCE hLoadInstance, wchar_t *lpTemplateName, HWND hWndParent, DLGPROC lpDialogFunc);
 INT_PTR API_DialogBoxParam(HINSTANCE hLoadInstance, wchar_t *lpTemplateName, HWND hWndParent, DLGPROC lpDialogFunc, LPARAM dwInitParam);
-HANDLE API_CreateFileA(const char *lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
-HANDLE API_CreateFileW(const wchar_t *lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+HANDLE API_CreateFile(const wchar_t *lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
 BOOL API_WriteFile(HANDLE hFile, LPCVOID lpBuffer, UINT_PTR nNumberOfBytesToWrite, UINT_PTR *lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
 LPVOID API_HeapAlloc(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes);
 BOOL API_HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem);
-wchar_t* AllocWideStr(SIZE_T dwSize);
-BOOL FreeWideStr(wchar_t *wpVar);
+wchar_t* API_AllocWide(SIZE_T dwSize);
+BOOL API_FreeWide(wchar_t *wpVar);
 
 #endif

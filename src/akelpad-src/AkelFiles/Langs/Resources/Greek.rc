@@ -13,8 +13,8 @@
   #else
     #define RC_VERSIONDESCRIPTION "AkelPad (x86) language module"
   #endif
-  #define RC_VERSIONCOPYRIGHT "(c) 2014 cnnnc"
-  #define RC_VERSIONNAME "Chinese (Simplified).dll"
+  #define RC_VERSIONCOPYRIGHT "© 2015 Γιάννης Κ."
+  #define RC_VERSIONNAME "Greek.dll"
 #endif
 #include "winresrc.h"
 #include "staticedit.h"
@@ -25,12 +25,12 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Chinese (P.R.C.) resources
+// English (U.S.) resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 #ifdef _WIN32
-LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
-#pragma code_page(936)
+LANGUAGE LANG_GREEK, 0x1
+#pragma code_page(1253)
 #endif //_WIN32
 
 /////////////////////////////////////////////////////////////////////////////
@@ -40,159 +40,161 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
 IDM_MENU_MAIN MENU DISCARDABLE 
 BEGIN
-    POPUP "ΞΔΌώ(&F)"
+    POPUP "&Αρχείο"
     BEGIN
-        MENUITEM "ΠΒ½¨(&N)\tCtrl+N",            IDM_FILE_NEW
-        MENUITEM "ΠΒ½¨΄°ΏΪ(&W)\tCtrl+Shift+N",  IDM_FILE_CREATENEW
-        MENUITEM "΄ςΏª(&O)...\tCtrl+O",         IDM_FILE_OPEN
-        MENUITEM "ΦΨΠΒ΄ςΏª(&R)\tF5",            IDM_FILE_REOPEN
+        MENUITEM "&Νέο\tCtrl+N",                IDM_FILE_NEW
+        MENUITEM "Νέο &παράθυρο\tCtrl+Shift+N",   IDM_FILE_CREATENEW
+        MENUITEM "Άν&οιγμα...\tCtrl+O",            IDM_FILE_OPEN
+        MENUITEM "&Επαναφόρτωση\tF5",                 IDM_FILE_REOPEN
         MENUITEM SEPARATOR
-        MENUITEM "±£΄ζ(&S)\tCtrl+S",            IDM_FILE_SAVE
-        MENUITEM "Αν΄ζΞª(&A)...\tCtrl+Shift+S", IDM_FILE_SAVEAS
-        MENUITEM "Θ«²Ώ±£΄ζ(&L)\tCtrl+Alt+F2",   IDM_FILE_SAVEALL
-        MENUITEM "Θ«²ΏΑν΄ζΞª...",               IDM_FILE_SAVEALLAS
+        MENUITEM "&Αποθήκευση\tCtrl+S",               IDM_FILE_SAVE
+        MENUITEM "Αποθήκευση &ως...\tCtrl+Shift+S",   IDM_FILE_SAVEAS
+        MENUITEM "Αποθήκευση όλ&ων\tCtrl+Alt+F2",      IDM_FILE_SAVEALL
+        MENUITEM "Αποθήκευση ό&λων ως...",             IDM_FILE_SAVEALLAS
         MENUITEM SEPARATOR
-        MENUITEM "Ò³ΓζΙθΦΓ(&G)...",             IDM_FILE_PAGESETUP
-        MENUITEM "΄ςΣ΅Τ¤ΐΐ(&V)...",             IDM_FILE_PRINTPREVIEW
-        MENUITEM "΄ςΣ΅(&P)...\tCtrl+P",         IDM_FILE_PRINT
+        MENUITEM "&Διαμόρφωση σελίδας...",              IDM_FILE_PAGESETUP
+        MENUITEM "Προεπ&ισκόπηση...",                 IDM_FILE_PRINTPREVIEW
+        MENUITEM "Ε&κτύπωση...\tCtrl+P",           IDM_FILE_PRINT
         MENUITEM SEPARATOR
-        POPUP "Χξ½όΞΔΌώ(&F)"
+        POPUP "Πρόσ&φατα αρχεία"
         BEGIN
             MENUITEM "_",                           IDM_RECENT_FILES
         END
         MENUITEM SEPARATOR
-        MENUITEM "ΝΛ³φ(&X)\tEsc",               IDM_FILE_EXIT
+        MENUITEM "Έ&ξοδος\tEsc",                  IDM_FILE_EXIT
     END
-    POPUP "±ΰΌ­(&E)"
+    POPUP "&Επεξεργασία"
     BEGIN
-        MENUITEM "³·Οϋ(&N)\tCtrl+Z",            IDM_EDIT_UNDO
-        MENUITEM "»ΦΈ΄(&E)\tCtrl+Shift+Z",      IDM_EDIT_REDO
+        MENUITEM "&Αναίρεση\tCtrl+Z",               IDM_EDIT_UNDO
+        MENUITEM "Επαναφο&ρά\tCtrl+Shift+Z",         IDM_EDIT_REDO
         MENUITEM SEPARATOR
-        MENUITEM "ΌτΗΠ(&C)\tCtrl+X",            IDM_EDIT_CUT
-        MENUITEM "Έ΄ΦΖ(&O)\tCtrl+C",            IDM_EDIT_COPY
-        MENUITEM "Υ³Μω(&P)\tCtrl+V",            IDM_EDIT_PASTE
-        MENUITEM "ΙΎ³ύ(&D)\tDel",               IDM_EDIT_CLEAR
-        MENUITEM "Θ«Ρ΅(&A)\tCtrl+A",            IDM_EDIT_SELECTALL
+        MENUITEM "Απο&κοπή\tCtrl+X",                IDM_EDIT_CUT
+        MENUITEM "Αν&τιγραφή\tCtrl+C",               IDM_EDIT_COPY
+        MENUITEM "Επικό&λληση\tCtrl+V",              IDM_EDIT_PASTE
+        MENUITEM "&Διαγραφή\tDel",                IDM_EDIT_CLEAR
+        MENUITEM "&Επιλογή όλων\tCtrl+A",         IDM_EDIT_SELECTALL
         MENUITEM SEPARATOR
-        MENUITEM "²ιΥÒ(&F)...\tCtrl+F",         IDM_EDIT_FIND
-        MENUITEM "ΟςΟΒ²ιΥÒΟΒÒ»Έφ(&W)\tF3",      IDM_EDIT_FINDNEXTDOWN
-        MENUITEM "ΟςΙΟ²ιΥÒΟΒÒ»Έφ(&U)\tShift+F3", IDM_EDIT_FINDNEXTUP
-        MENUITEM "Μζ»»(&R)...\tCtrl+R",         IDM_EDIT_REPLACE
-        MENUITEM "Χªµ½(&G)...\tCtrl+G",         IDM_EDIT_GOTO
+        MENUITEM "Εύρε&ση...\tCtrl+F",            IDM_EDIT_FIND
+        MENUITEM "Εύρεση επόμενου &κάτω\tF3",         IDM_EDIT_FINDNEXTDOWN
+        MENUITEM "Εύρεση επόμενου &πάνω\tShift+F3",     IDM_EDIT_FINDNEXTUP
+        MENUITEM "Α&ντικατάσταση...\tCtrl+R",         IDM_EDIT_REPLACE
+        MENUITEM "&Μετάβαση...\tCtrl+G",           IDM_EDIT_GOTO
         MENUITEM SEPARATOR
-        MENUITEM "²εΘλ·ϋΊΕ(&H)\tCtrl+I",        IDM_EDIT_INSERTCHAR
-        MENUITEM "²εΘλΘΥΖΪ(&T)\tCtrl+D",        IDM_EDIT_INSERTDATE
-        POPUP "Ρ΅Τρ(&S)"
+        MENUITEM "Εισαγωγή &χαρακτήρα\tCtrl+I",   IDM_EDIT_INSERTCHAR
+        MENUITEM "Εισαγωγή &ημερομηνίας\tCtrl+D",        IDM_EDIT_INSERTDATE
+        POPUP "&Επιλεγμένο"
         BEGIN
-            MENUITEM "ΑΠΥ³Μω\tAlt+V",               IDM_EDIT_PASTECOLUMN
+            MENUITEM "Στήλης επικόλληση\tAlt+V",       IDM_EDIT_PASTECOLUMN
             MENUITEM SEPARATOR
-            MENUITEM "ΦΖ±ν·ϋΛυ½ψ(&B)\tTab",         IDM_EDIT_INSERT_TAB_MENU
-            MENUITEM "ΦΖ±ν·ϋ·΄Λυ½ψ(&T)\tShift+Tab", IDM_EDIT_DELETE_TAB_MENU
-            MENUITEM "ΏΥΈρΛυ½ψ(&C)\tSpace",         IDM_EDIT_INSERT_SPACE_MENU
+            MENUITEM "Ta&b εσοχή\tTab",            IDM_EDIT_INSERT_TAB_MENU
+            MENUITEM "&Tab όχι-εσοχή\tShift+Tab",    IDM_EDIT_DELETE_TAB_MENU
+            MENUITEM "Spa&ce εσοχή\tSpace",        IDM_EDIT_INSERT_SPACE_MENU
 
-            MENUITEM "ΏΥΈρ·΄Λυ½ψ(&A)\tShift+Space", IDM_EDIT_DELETE_SPACE_MENU
+            MENUITEM "Sp&ace όχι-εσοχή\tShift+Space", 
+                                                    IDM_EDIT_DELETE_SPACE_MENU
 
-            MENUITEM "ΙΎ³ύµΪÒ»ΈφΧΦ·ϋ(&F)\tShift+Backspace", 
+            MENUITEM "&Διαγραφή πρώτου χαρακτήρα\tShift+Backspace", 
                                                     IDM_EDIT_DELETE_FIRST_CHAR_MENU
 
-            MENUITEM "Θ¥³ύΞ²²ΏµΔΏΥΈρ(&W)\tAlt+Backspace", 
+            MENUITEM "Αφαίρεση κενών στο &τέλος των γραμμών\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
-            MENUITEM "Delete selection whitespaces",
+
+            MENUITEM "Αφαίρεση &κενών στο επιλεγμένο", 
                                                     IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
-            MENUITEM "΄σΠ΄(&U)\tCtrl+6",            IDM_EDIT_UPPERCASE
-            MENUITEM "Π΅Π΄(&L)\tCtrl+7",            IDM_EDIT_LOWERCASE
-            MENUITEM "ΎδΧΣ΄σΠ΅Π΄(&N)\tCtrl+8",      IDM_EDIT_SENTENCECASE
-            MENUITEM "±κΜβ΄σΠ΅Π΄(&I)\tCtrl+9",      IDM_EDIT_TITLECASE
-            MENUITEM "·΄Χª΄σΠ΅Π΄(&V)\tCtrl+0",      IDM_EDIT_INVERTCASE
+            MENUITEM "&ΚΕΦΑΛΑΙΑ\tCtrl+6",          IDM_EDIT_UPPERCASE
+            MENUITEM "&πεζά\tCtrl+7",          IDM_EDIT_LOWERCASE
+            MENUITEM "Μορφοποίηση σε &Πρόταση\tCtrl+8",     IDM_EDIT_SENTENCECASE
+            MENUITEM "Μορφοποίηση σε &Τίτλο\tCtrl+9",         IDM_EDIT_TITLECASE
+            MENUITEM "&αΝΤΙΣΤΡΟΦΗ μΟΡΦΟΠΟΙΗΣΗΣ\tCtrl+0",        IDM_EDIT_INVERTCASE
             MENUITEM SEPARATOR
-            MENUITEM "ΦΨ±ΰΒλ...\tAlt+R",            IDM_EDIT_RECODE
+            MENUITEM "Μετατροπή κ&ωδικοποίησης...\tAlt+R",            IDM_EDIT_RECODE
         END
-        POPUP "»»ΠΠ·ϋΈρΚ½(&M)"
+        POPUP "Μορφή νέας &γραμμής"
         BEGIN
             MENUITEM "DOS/Windows (0Dh, 0Ah)",      IDM_EDIT_NEWLINE_WIN
             MENUITEM "Unix (0Ah)",                  IDM_EDIT_NEWLINE_UNIX
             MENUITEM "Mac (0Dh)",                   IDM_EDIT_NEWLINE_MAC
         END
     END
-    POPUP "²ιΏ΄(&V)"
+    POPUP "&Προβολή"
     BEGIN
-        MENUITEM "ΧΦΜε(&F)...",                 IDM_VIEW_FONT
-        MENUITEM "ΡΥΙ«(&C)...",                 IDM_VIEW_COLORS
+        MENUITEM "&Γραμματοσειρά...",                    IDM_VIEW_FONT
+        MENUITEM "&Χρώματα...",                  IDM_VIEW_COLORS
         MENUITEM SEPARATOR
-        MENUITEM "Φ»¶Α(&R)",                    IDM_VIEW_READONLY
-        MENUITEM "ΧΤ¶―»»ΠΠ(&W)\tCtrl+U",        IDM_VIEW_WORDWRAP
-        MENUITEM "²π·Φ΄°Έρ(&P)",                IDM_VIEW_SPLIT_WINDOW_ONOFF
-        MENUITEM "ΧάΤΪΧξΗ°(&A)\tCtrl+T",        IDM_VIEW_ONTOP
-        MENUITEM "Χ΄Μ¬ΐΈ(&S)",                  IDM_VIEW_SHOW_STATUSBAR
+        MENUITEM "&Μόνο για ανάγνωση",                  IDM_VIEW_READONLY
+        MENUITEM "&Αναδίπλωση λέξεων\tCtrl+U",         IDM_VIEW_WORDWRAP
+        MENUITEM "&Διαίρεση παραθύρου",               IDM_VIEW_SPLIT_WINDOW_ONOFF
+        MENUITEM "&Πάντα στην κορυφή\tCtrl+T",      IDM_VIEW_ONTOP
+        MENUITEM "&Γραμμή κατάστασης",                 IDM_VIEW_SHOW_STATUSBAR
         MENUITEM SEPARATOR
-        POPUP "ΣοΡΤ / &Language"
+        POPUP "Γ&λώσσα"
         BEGIN
             MENUITEM "_",                           IDM_LANGUAGE
         END
     END
-    POPUP "Ρ΅Οξ(&O)"
+    POPUP "Επι&λογές"
     BEGIN
-        MENUITEM "²εΌώ(&N)...\tAlt+P",          IDM_OPTIONS_PLUGINS
-        MENUITEM "Φ΄ΠΠ(&E)\tCtrl+F5",           IDM_OPTIONS_EXEC
+        MENUITEM "&Πρόσθετα...\tAlt+P",         IDM_OPTIONS_PLUGINS
+        MENUITEM "Ε&κτέλεση\tCtrl+F5",           IDM_OPTIONS_EXEC
         MENUITEM SEPARATOR
-        MENUITEM "±£ΑτΧσ±ίΏΥΈρ(&K)\tCtrl+L",    IDM_OPTIONS_KEEPSPACE
-        MENUITEM "ΌΰΚΣΞΔΌώΈόΈΔ(&C)",            IDM_OPTIONS_WATCHFILE
-        MENUITEM "±£΄ζΞΔΌώΚ±Όδ(&T)",            IDM_OPTIONS_SAVETIME
-        MENUITEM "Ν¬Ò»ΞΔΌώΦ»΄ςΏªÒ»΄Ξ(&F)",      IDM_OPTIONS_SINGLEOPEN_FILE
-        MENUITEM "Ν¬Ò»³ΜΠςΦ»΄ςΏªÒ»΄Ξ(&P)",      IDM_OPTIONS_SINGLEOPEN_PROGRAM
+        MENUITEM "&Διατήρηση αριστερών κενών\tCtrl+L",   IDM_OPTIONS_KEEPSPACE
+        MENUITEM "Παρακολούθηση &αλλαγών αρχείου",          IDM_OPTIONS_WATCHFILE
+        MENUITEM "Αποθήκευση &ημερομηνίας αρχείου",             IDM_OPTIONS_SAVETIME
+        MENUITEM "Αποφυγή ανοίγματος αρχείου δυο &φορές",    IDM_OPTIONS_SINGLEOPEN_FILE
+        MENUITEM "Απ&οφυγή ανοίγματος ενός προγράμματος δυο φορές", IDM_OPTIONS_SINGLEOPEN_PROGRAM
 
         MENUITEM SEPARATOR
-        POPUP "΄°ΏΪΔ£Κ½(&W)"
+        POPUP "Κατάσταση παρα&θύρου"
         BEGIN
-            MENUITEM "µ¥΄°ΏΪ (&SDI)",               IDM_OPTIONS_SDI
-            MENUITEM "¶ΰ΄°ΏΪ (&MDI)",               IDM_OPTIONS_MDI
-            MENUITEM "Ξ±¶ΰ΄°ΏΪ (&PMDI)",            IDM_OPTIONS_PMDI
+            MENUITEM "&Μονό παράθυρο (SDI)",        IDM_OPTIONS_SDI
+            MENUITEM "&Πολλαπλό παράθυρο (MDI)",         IDM_OPTIONS_MDI
+            MENUITEM "&Ψευτο-πολλαπλό παράθυρο (PMDI)", IDM_OPTIONS_PMDI
         END
         MENUITEM SEPARATOR
-        MENUITEM "ΙθΦΓ(&S)...",                 IDM_OPTIONS
+        MENUITEM "&Επιλογές...",                IDM_OPTIONS
     END
-    POPUP "΄°ΏΪ(&W)"
+    POPUP "&Παράθυρο"
     BEGIN
-        POPUP "±κΗ©(&T)"
+        POPUP "&Καρτέλες"
         BEGIN
-            MENUITEM "¶¥²Ώ(&T)",                    IDM_WINDOW_TABVIEW_TOP
-            MENUITEM "µΧ²Ώ(&B)",                    IDM_WINDOW_TABVIEW_BOTTOM
+            MENUITEM "&Πάνω",                        IDM_WINDOW_TABVIEW_TOP
+            MENUITEM "&Κάτω",                     IDM_WINDOW_TABVIEW_BOTTOM
 
-            MENUITEM "Òώ²Ψ(&H)",                    IDM_WINDOW_TABVIEW_NONE
+            MENUITEM "&Απόκρυψη",                       IDM_WINDOW_TABVIEW_NONE
             MENUITEM SEPARATOR
-            MENUITEM "±κΧΌ(&S)",                    IDM_WINDOW_TABTYPE_STANDARD
+            MENUITEM "Κα&νονικά",                   IDM_WINDOW_TABTYPE_STANDARD
 
-            MENUITEM "°΄Ε¥(&U)",                    IDM_WINDOW_TABTYPE_BUTTONS
+            MENUITEM "Κου&μπιά",                    IDM_WINDOW_TABTYPE_BUTTONS
 
-            MENUITEM "Ζ½Γζ°΄Ε¥(&F)",                IDM_WINDOW_TABTYPE_FLATBUTTONS
+            MENUITEM "Επίπε&δα κουμπιά",               IDM_WINDOW_TABTYPE_FLATBUTTONS
 
             MENUITEM SEPARATOR
-            MENUITEM "ΟΒΈφ-ΙΟΈφ(&N)",               IDM_WINDOW_TABSWITCH_NEXTPREV
+            MENUITEM "Επόμενο=Προ&ηγούμενο\tCtrl+F6",              IDM_WINDOW_TABSWITCH_NEXTPREV
 
-            MENUITEM "ΣÒ-Χσ(&R)",                   IDM_WINDOW_TABSWITCH_RIGHTLEFT
+            MENUITEM "&Επόμενο\tCtrl+F6",                 IDM_WINDOW_TABSWITCH_RIGHTLEFT
 
         END
         MENUITEM SEPARATOR
-        MENUITEM "Λ®Ζ½Ζ½ΖΜ(&H)",                IDM_WINDOW_TILEHORIZONTAL
-        MENUITEM "΄ΉΦ±Ζ½ΖΜ(&V)",                IDM_WINDOW_TILEVERTICAL
-        MENUITEM "²γµώ(&C)",                    IDM_WINDOW_CASCADE
-        MENUITEM "ΉΨ±Υ",                        IDM_WINDOW_FRAMECLOSE
-        MENUITEM "Θ«²ΏΉΨ±Υ",                    IDM_WINDOW_FRAMECLOSEALL
-        MENUITEM "³ύ»ξ¶―ΝβΘ«²ΏΉΨ±Υ",            IDM_WINDOW_FRAMECLOSEALL_BUTACTIVE
+        MENUITEM "&Οριζόντια παράθεση",            IDM_WINDOW_TILEHORIZONTAL
+        MENUITEM "Κα&τακόρυφη παράθεση",              IDM_WINDOW_TILEVERTICAL
+        MENUITEM "&Σε σειρά",                    IDM_WINDOW_CASCADE
+        MENUITEM "Κλείσιμο",                       IDM_WINDOW_FRAMECLOSE
+        MENUITEM "Κλείσιμο όλων",                   IDM_WINDOW_FRAMECLOSEALL
+        MENUITEM "Κλείσιμο όλων εκτός του ενεργού",        IDM_WINDOW_FRAMECLOSEALL_BUTACTIVE
 
         MENUITEM SEPARATOR
-        MENUITEM "Clo&ne",                      IDM_WINDOW_FRAMECLONE
-        MENUITEM "Co&py path",                  IDM_WINDOW_COPYPATH
-        MENUITEM "Ρ΅Τρ΄°ΏΪ...",                 IDM_WINDOW_MDILIST
+        MENUITEM "Κ&λωνοποίηση",                      IDM_WINDOW_FRAMECLONE
+        MENUITEM "Αντιγραφή &διαδρομής",                  IDM_WINDOW_COPYPATH
+        MENUITEM "&Επιλογή Παραθύρου...",           IDM_WINDOW_MDILIST
     END
-    POPUP "°οΦϊ(&H)"
+    POPUP "&Βοήθεια"
     BEGIN
-        MENUITEM "ΣΓ»§ΚΦ²α(&M)",                IDM_MANUAL
-        MENUITEM "°ζ±ΎΈόΠΒ(&U)...",                  IDM_UPDATE
+        MENUITEM "&Εγχειρίδιο",                     IDM_MANUAL
+        MENUITEM "Ε&νημέρωση...",                  IDM_UPDATE
         MENUITEM SEPARATOR
-        MENUITEM "ΉΨΣΪ(&A)",                    IDM_ABOUT
+        MENUITEM "&Σχετικά",                      IDM_ABOUT
     END
 END
 
@@ -200,49 +202,50 @@ IDM_MENU_POPUP MENU DISCARDABLE
 BEGIN
     POPUP "EditPopup"
     BEGIN
-        MENUITEM "³·Οϋ(&U)",                    IDM_EDIT_UNDO
-        MENUITEM "»ΦΈ΄(&R)",                    IDM_EDIT_REDO
+        MENUITEM "&Αναίρεση",                       IDM_EDIT_UNDO
+        MENUITEM "&Επαναφορά",                       IDM_EDIT_REDO
         MENUITEM SEPARATOR
-        MENUITEM "ΌτΗΠ(&C)",                    IDM_EDIT_CUT
-        MENUITEM "Έ΄ΦΖ(&O)",                    IDM_EDIT_COPY
-        MENUITEM "Υ³Μω(&P)",                    IDM_EDIT_PASTE
-        MENUITEM "ΙΎ³ύ(&D)",                    IDM_EDIT_CLEAR
+        MENUITEM "Απο&κοπή",                        IDM_EDIT_CUT
+        MENUITEM "Αν&τιγραφή",                       IDM_EDIT_COPY
+        MENUITEM "Επικό&λληση",                      IDM_EDIT_PASTE
+        MENUITEM "&Διαγραφή",                     IDM_EDIT_CLEAR
         MENUITEM SEPARATOR
-        MENUITEM "Θ«Ρ΅(&A)",                    IDM_EDIT_SELECTALL
+        MENUITEM "Ε&πιλογή όλων",                 IDM_EDIT_SELECTALL
     END
     POPUP "ViewPopup"
     BEGIN
-        MENUITEM "Έ΄ΦΖ(&O)",                    IDM_EDIT_COPY
+        MENUITEM "Αν&τιγραφή",                       IDM_EDIT_COPY
         MENUITEM SEPARATOR
-        MENUITEM "Θ«Ρ΅(&A)",                    IDM_EDIT_SELECTALL
+        MENUITEM "Ε&πιλογή όλων",                 IDM_EDIT_SELECTALL
     END
     POPUP "CodepagePopup"
     BEGIN
-        POPUP "΄ςΏªΞª"
+        POPUP "Άνοιγμα ως"
         BEGIN
             MENUITEM "_",                           IDM_POPUP_OPENAS
         END
         MENUITEM SEPARATOR
-        POPUP "Αν΄ζΞª"
+        POPUP "Αποθήκευση ως"
         BEGIN
             MENUITEM "_",                           IDM_POPUP_SAVEAS
         END
         MENUITEM SEPARATOR
-        MENUITEM "ΦΨΠΒΌμ²β",                    IDM_FILE_REDETECT
+        MENUITEM "Επανανίχνευση",                    IDM_FILE_REDETECT
     END
     POPUP "HeadlinePopup"
     BEGIN
-        MENUITEM "Ò³Βλ[µΪÒ»Ò³]\t%n[1]",         IDM_POPUP_HEADLINE_PAGE_NUMBER
+        MENUITEM "Αριθμός σελίδας[πρώτη σελίδα]\t%n[1]", 
+                                                IDM_POPUP_HEADLINE_PAGE_NUMBER
 
-        MENUITEM "ΞΔΌώΓϋ³Ζ\t%f",                IDM_POPUP_HEADLINE_FILENAME
-        MENUITEM "ΞΔΌώΛωΤΪΔΏΒΌ\t%d",            IDM_POPUP_HEADLINE_FILEDIR
-        MENUITEM "·ϋΊΕ %\t%%",                  IDM_POPUP_HEADLINE_SYMBOL
+        MENUITEM "Όνομα αρχείου\t%f",               IDM_POPUP_HEADLINE_FILENAME
+        MENUITEM "Όνομα φακέλου\t%d",          IDM_POPUP_HEADLINE_FILEDIR
+        MENUITEM "Σύμβολο %\t%%",                IDM_POPUP_HEADLINE_SYMBOL
         MENUITEM SEPARATOR
-        MENUITEM "ΎΣΦΠ\t%c",                    IDM_POPUP_HEADLINE_ALIGN_CENTER
+        MENUITEM "Στοίχιση κέντρο\t%c",            IDM_POPUP_HEADLINE_ALIGN_CENTER
 
-        MENUITEM "Χσ¶ΤΖλ\t%l",                  IDM_POPUP_HEADLINE_ALIGN_LEFT
+        MENUITEM "Στοίχιση αριστερά\t%l",              IDM_POPUP_HEADLINE_ALIGN_LEFT
 
-        MENUITEM "ΣÒ¶ΤΖλ\t%r",                  IDM_POPUP_HEADLINE_ALIGN_RIGHT
+        MENUITEM "Στοίχιση δεξιά\t%r",             IDM_POPUP_HEADLINE_ALIGN_RIGHT
 
     END
 END
@@ -331,7 +334,6 @@ BEGIN
                                                     NOINVERT
     VK_BACK,        IDM_EDIT_DELETE_FIRST_CHAR, VIRTKEY, SHIFT, NOINVERT
     VK_DELETE,      IDM_EDIT_CUT,           VIRTKEY, SHIFT, NOINVERT
-    VK_MULTIPLY,    IDM_VIEW_FONTSIZE_RESTORE, VIRTKEY, CONTROL, NOINVERT
     VK_ESCAPE,      IDM_FILE_EXIT,          VIRTKEY, NOINVERT
     VK_F10,         IDM_SELECTWINDOW,       VIRTKEY, NOINVERT
     VK_F12,         IDM_FILE_CODEPAGEMENU,  VIRTKEY, NOINVERT
@@ -358,6 +360,7 @@ BEGIN
     VK_INSERT,      IDM_EDIT_PASTE,         VIRTKEY, SHIFT, NOINVERT
     VK_INSERT,      IDM_EDIT_PASTEANSI,     VIRTKEY, SHIFT, CONTROL, 
                                                     NOINVERT
+    VK_MULTIPLY,    IDM_VIEW_FONTSIZE_RESTORE, VIRTKEY, CONTROL, NOINVERT
     VK_RETURN,      IDM_EDIT_AUTOINDENT,    VIRTKEY, CONTROL, NOINVERT
     VK_RETURN,      IDM_WINDOW_CHANGESIZE,  VIRTKEY, ALT, NOINVERT
     VK_SPACE,       IDM_EDIT_INSERT_SPACE,  VIRTKEY, NOINVERT
@@ -389,9 +392,9 @@ END
 
 IDD_OFN DIALOGEX 0, 0, 275, 120
 STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
-FONT 9, "ΛΞΜε", 400, 0, 0x86
+FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "΄ϊΒλÒ³(&C):",IDC_OFN_CODEPAGE_LABEL,8,3,40,8
+    LTEXT           "&Κωδικοποίηση:",IDC_OFN_CODEPAGE_LABEL,8,3,40,8
     COMBOBOX        IDC_OFN_CODEPAGE,53,1,145,130,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
     CONTROL         "",IDC_OFN_AUTODETECT,"Button",BS_AUTOCHECKBOX | 
@@ -404,17 +407,17 @@ END
 IDD_SAVEALLAS DIALOG DISCARDABLE  70, 70, 200, 135
 STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | 
     WS_CAPTION | WS_SYSMENU
-CAPTION "Θ«²ΏΑν΄ζΞª"
-FONT 9, "ΛΞΜε"
+CAPTION "Αποθήκευση όλων ως"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    CONTROL         "΄ϊΒλÒ³(&C):",IDC_SAVEALLAS_CODEPAGE_CHECK,"Button",
+    CONTROL         "&Κωδικοποίηση:",IDC_SAVEALLAS_CODEPAGE_CHECK,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,10,9,101,8
     GROUPBOX        "",IDC_STATIC,9,16,182,35
     COMBOBOX        IDC_SAVEALLAS_CODEPAGE_LIST,18,29,131,82,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "BOM",IDC_SAVEALLAS_BOM,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,155,31,27,10
-    CONTROL         "»»ΠΠ·ϋΈρΚ½(&F):",IDC_SAVEALLAS_NEWLINE_CHECK,"Button",
+    CONTROL         "&Μορφή νέας γραμμής:",IDC_SAVEALLAS_NEWLINE_CHECK,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,10,62,101,8
     GROUPBOX        "",IDC_STATIC,9,69,182,35
     CONTROL         "Windows",IDC_SAVEALLAS_NEWLINE_WIN,"Button",
@@ -423,45 +426,45 @@ BEGIN
                     BS_AUTORADIOBUTTON,84,85,50,8
     CONTROL         "Mac",IDC_SAVEALLAS_NEWLINE_MAC,"Button",
                     BS_AUTORADIOBUTTON,140,85,40,8
-    DEFPUSHBUTTON   "Θ·¶¨",IDOK,47,115,50,14,BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,102,115,50,14,BS_CENTER
+    DEFPUSHBUTTON   "Εντάξει",IDOK,47,115,50,14,BS_CENTER
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,102,115,50,14,BS_CENTER
 END
 
 IDD_MDILIST DIALOG DISCARDABLE  0, 0, 262, 264
 STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
-CAPTION "Ρ΅Τρ΄°ΏΪ"
-FONT 9, "ΛΞΜε"
+CAPTION "Επιλογή Παραθύρου"
+FONT 8, "MS Shell Dlg"
 BEGIN
     LISTBOX         IDC_MDILIST_LIST,6,9,178,219,LBS_SORT | 
                     LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_VSCROLL | 
                     WS_TABSTOP
     RTEXT           "",IDC_MDILIST_STATS,92,232,89,8
     EDITTEXT        IDC_MDILIST_SEARCH,6,243,178,14,ES_AUTOHSCROLL
-    DEFPUSHBUTTON   "Θ·¶¨",IDOK,198,10,50,14
-    GROUPBOX        "ΕΕΑΠ",IDC_MDILIST_ARRANGE_GROUP,191,31,64,50
-    PUSHBUTTON      "Λ®Ζ½",IDC_MDILIST_HORZ,198,45,50,14
-    PUSHBUTTON      "΄ΉΦ±",IDC_MDILIST_VERT,198,60,50,14
-    GROUPBOX        "±κΗ©",IDC_MDILIST_TABS_GROUP,191,86,64,72
-    PUSHBUTTON      "ΟςΙΟ",IDC_MDILIST_UP,198,100,50,14
-    PUSHBUTTON      "ΟςΟΒ",IDC_MDILIST_DOWN,198,115,50,14
-    PUSHBUTTON      "ΕΕΠς",IDC_MDILIST_SORT,198,138,50,14
-    GROUPBOX        "ΞΔΌώ",IDC_MDILIST_FILES_GROUP,191,163,64,49
-    PUSHBUTTON      "±£΄ζ",IDC_MDILIST_SAVE,198,177,50,14
-    PUSHBUTTON      "ΉΨ±Υ",IDC_MDILIST_CLOSE,198,192,50,14
-    CONTROL         "½φΓϋ³Ζ",IDC_MDILIST_ONLYNAMES,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,191,219,67,10
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,198,243,50,14
+    DEFPUSHBUTTON   "Εντάξει",IDOK,198,10,50,14
+    GROUPBOX        "Τακτοποίηση",IDC_MDILIST_ARRANGE_GROUP,191,31,64,50
+    PUSHBUTTON      "Οριζόντια",IDC_MDILIST_HORZ,198,45,50,14
+    PUSHBUTTON      "Κάθετη",IDC_MDILIST_VERT,198,60,50,14
+    GROUPBOX        "Καρτέλες",IDC_MDILIST_TABS_GROUP,191,86,64,72
+    PUSHBUTTON      "Πάνω",IDC_MDILIST_UP,198,100,50,14
+    PUSHBUTTON      "Κάτω",IDC_MDILIST_DOWN,198,115,50,14
+    PUSHBUTTON      "Ταξινόμηση",IDC_MDILIST_SORT,198,138,50,14
+    GROUPBOX        "Αρχεία",IDC_MDILIST_FILES_GROUP,191,163,64,49
+    PUSHBUTTON      "Αποθήκευση",IDC_MDILIST_SAVE,198,177,50,14
+    PUSHBUTTON      "Κλείσιμο",IDC_MDILIST_CLOSE,198,192,50,14
+    CONTROL         "Μόνο ονόματα",IDC_MDILIST_ONLYNAMES,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,191,219,67,10
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,198,243,50,14
 END
 
 IDD_PRINTPREVIEW DIALOGEX 0, 0, 447, 300
 STYLE DS_3DLOOK | DS_CENTER | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | 
     WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_CLIENTEDGE
-CAPTION "Τ¤ΐΐ"
-FONT 9, "ΛΞΜε", 400, 0, 0x86
+CAPTION "Προεπισκόπηση"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "΄ςΣ΅(&P)...",IDC_PREVIEW_PRINT,9,9,50,14
-    PUSHBUTTON      "Ò³ΓζΙθΦΓ(&G)...",IDC_PREVIEW_PAGESETUP,62,9,62,14
+    DEFPUSHBUTTON   "&Εκτύπωση...",IDC_PREVIEW_PRINT,9,9,50,14
+    PUSHBUTTON      "&Σελίδα...",IDC_PREVIEW_PAGESETUP,62,9,50,14
     GROUPBOX        "",IDC_STATIC,131,2,121,24
     PUSHBUTTON      "<",IDC_PREVIEW_PREVPAGE,139,10,20,12
     EDITTEXT        IDC_PREVIEW_PAGECOUNT,164,10,53,12,ES_CENTER | 
@@ -469,122 +472,122 @@ BEGIN
     PUSHBUTTON      ">",IDC_PREVIEW_NEXTPAGE,223,10,20,12
     COMBOBOX        IDC_PREVIEW_ZOOM,267,10,48,200,CBS_DROPDOWN | WS_VSCROLL | 
                     WS_TABSTOP
-    CONTROL         "Ρ΅¶¨ΗψΣς(&S)",IDC_PREVIEW_SELECTION,"Button",
+    CONTROL         "Ε&πιλεγμένο",IDC_PREVIEW_SELECTION,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,325,12,61,10
-    PUSHBUTTON      "ΉΨ±Υ(&C)",IDC_PREVIEW_CLOSE,390,9,50,14
+    PUSHBUTTON      "&Κλείσιμο",IDC_PREVIEW_CLOSE,390,9,50,14
 END
 
-IDD_FIND DIALOGEX 70, 70, 270, 108
+IDD_FIND DIALOGEX 70, 70, 257, 108
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
-CAPTION "²ιΥÒ"
-FONT 9, "ΛΞΜε", 400, 0, 0x86
+CAPTION "Εύρεση"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    COMBOBOX        IDC_SEARCH_FIND,41,9,160,100,CBS_DROPDOWN | 
+    COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Ηψ·Φ΄σΠ΅Π΄",IDC_SEARCH_MATCHCASE,"Button",
+    CONTROL         "&Ταίριασμα κεφαλαίων-πεζών",IDC_SEARCH_MATCHCASE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,29,109,12
-    CONTROL         "ΥϋΧΦΖ¥Εδ",IDC_SEARCH_WHOLEWORD,"Button",
+    CONTROL         "&Ολόκληρη λέξη",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,41,109,12
-    CONTROL         "ΥύΤς±ν΄οΚ½",IDC_SEARCH_REGEXP,"Button",
+    CONTROL         "&Κανονικές εκφράσεις",IDC_SEARCH_REGEXP,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,53,95,12
     CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
                     WS_TABSTOP,106,55,10,9
-    CONTROL         "ΧªÒε·ϋΠςΑΠ",IDC_SEARCH_ESCAPESEQ,"Button",
+    CONTROL         "&Esc-αλληλουχίες",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,65,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,77,96,12,NOT 
                     WS_GROUP
-    GROUPBOX        "·½Ος",IDC_STATIC,135,27,66,58
-    CONTROL         "ΟςΟΒ",IDC_SEARCH_FORWARD,"Button",BS_AUTORADIOBUTTON,
-                    141,37,50,10
-    CONTROL         "ΟςΙΟ",IDC_SEARCH_BACKWARD,"Button",BS_AUTORADIOBUTTON,
-                    141,48,50,10
-    CONTROL         "ΏªΚΌ",IDC_SEARCH_BEGINNING,"Button",BS_AUTORADIOBUTTON,
-                    141,59,50,10
-    CONTROL         "Ρ΅¶¨ΗψΣς",IDC_SEARCH_INSEL,"Button",BS_AUTORADIOBUTTON,
-                    141,70,50,10
-    CONTROL         "ΛωΣΠΞΔΌώ",IDC_SEARCH_ALLFILES,"Button",
-                    BS_AUTORADIOBUTTON,141,87,50,10
-    GROUPBOX        "",IDC_SEARCH_ALLFILES_GROUP,135,80,66,19
-    DEFPUSHBUTTON   "²ιΥÒΟΒÒ»Έφ(&F)",IDC_SEARCH_FIND_BUTTON,206,6,58,14,
+    GROUPBOX        "Κατεύθυνση",IDC_STATIC,121,27,66,58
+    CONTROL         "&Κάτω",IDC_SEARCH_FORWARD,"Button",BS_AUTORADIOBUTTON,
+                    126,37,60,10
+    CONTROL         "&Πάνω",IDC_SEARCH_BACKWARD,"Button",BS_AUTORADIOBUTTON,
+                    126,48,60,10
+    CONTROL         "&Από την αρχή",IDC_SEARCH_BEGINNING,"Button",
+                    BS_AUTORADIOBUTTON,126,59,60,10
+    CONTROL         "&Στο επιλεγμένο",IDC_SEARCH_INSEL,"Button",
+                    BS_AUTORADIOBUTTON,126,70,60,10
+    CONTROL         "Όλα &τα αρχεία",IDC_SEARCH_ALLFILES,"Button",
+                    BS_AUTORADIOBUTTON,126,87,60,10
+    GROUPBOX        "",IDC_SEARCH_ALLFILES_GROUP,121,80,66,19
+    DEFPUSHBUTTON   "&Εύρεση",IDC_SEARCH_FIND_BUTTON,196,6,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,206,23,58,14,BS_CENTER
-    LTEXT           "²ιΥÒΔΪΘέ:",IDC_STATIC,4,11,37,8,NOT WS_GROUP
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,196,23,54,14,BS_CENTER
+    LTEXT           "Κείμενο:",IDC_STATIC,4,11,22,12,NOT WS_GROUP
 END
 
-IDD_REPLACE DIALOGEX 70, 70, 270, 122
+IDD_REPLACE DIALOGEX 70, 70, 257, 122
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
-CAPTION "Μζ»»"
-FONT 9, "ΛΞΜε", 400, 0, 0x86
+CAPTION "Αντικατάσταση"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    COMBOBOX        IDC_SEARCH_FIND,41,9,160,100,CBS_DROPDOWN | 
+    COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_SEARCH_REPLACE,41,23,160,100,CBS_DROPDOWN | 
+    COMBOBOX        IDC_SEARCH_REPLACE,27,23,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Ηψ·Φ΄σΠ΅Π΄",IDC_SEARCH_MATCHCASE,"Button",
+    CONTROL         "&Ταίριασμα κεφαλαίων-πεζών",IDC_SEARCH_MATCHCASE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,43,109,12
-    CONTROL         "ΥϋΧΦΖ¥Εδ",IDC_SEARCH_WHOLEWORD,"Button",
+    CONTROL         "&Ολόκληρη λέξη",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,55,109,12
-    CONTROL         "ΥύΤς±ν΄οΚ½",IDC_SEARCH_REGEXP,"Button",
+    CONTROL         "&Κανονικές εκφράσεις",IDC_SEARCH_REGEXP,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,67,95,12
     CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
                     WS_TABSTOP,106,69,10,9
-    CONTROL         "ΧªÒε·ϋΠςΑΠ",IDC_SEARCH_ESCAPESEQ,"Button",
+    CONTROL         "&Esc-αλληλουχίες",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,79,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,91,96,12,NOT 
                     WS_GROUP
-    GROUPBOX        "·½Ος",IDC_STATIC,135,41,66,58
-    CONTROL         "ΟςΟΒ",IDC_SEARCH_FORWARD,"Button",BS_AUTORADIOBUTTON,
-                    141,51,50,10
-    CONTROL         "ΟςΙΟ",IDC_SEARCH_BACKWARD,"Button",BS_AUTORADIOBUTTON,
-                    141,62,50,10
-    CONTROL         "ΏªΚΌ",IDC_SEARCH_BEGINNING,"Button",BS_AUTORADIOBUTTON,
-                    141,73,50,10
-    CONTROL         "Ρ΅¶¨ΗψΣς",IDC_SEARCH_INSEL,"Button",BS_AUTORADIOBUTTON,
-                    141,84,50,10
-    CONTROL         "ΛωΣΠΞΔΌώ",IDC_SEARCH_ALLFILES,"Button",
-                    BS_AUTORADIOBUTTON,141,101,50,10
-    GROUPBOX        "",IDC_SEARCH_ALLFILES_GROUP,135,94,66,19
-    DEFPUSHBUTTON   "²ιΥÒΟΒÒ»Έφ(&F)",IDC_SEARCH_FIND_BUTTON,206,6,58,14,
+    GROUPBOX        "Κατεύθυνση",IDC_STATIC,121,41,66,58
+    CONTROL         "&Κάτω",IDC_SEARCH_FORWARD,"Button",BS_AUTORADIOBUTTON,
+                    126,51,60,10
+    CONTROL         "&Πάνω",IDC_SEARCH_BACKWARD,"Button",BS_AUTORADIOBUTTON,
+                    126,62,60,10
+    CONTROL         "&Από την αρχή",IDC_SEARCH_BEGINNING,"Button",
+                    BS_AUTORADIOBUTTON,126,73,60,10
+    CONTROL         "&Στο επιλεγμένο",IDC_SEARCH_INSEL,"Button",
+                    BS_AUTORADIOBUTTON,126,84,60,10
+    CONTROL         "Όλα &τα αρχεία",IDC_SEARCH_ALLFILES,"Button",
+                    BS_AUTORADIOBUTTON,126,101,60,10
+    GROUPBOX        "",IDC_SEARCH_ALLFILES_GROUP,121,94,66,19
+    DEFPUSHBUTTON   "&Εύρεση",IDC_SEARCH_FIND_BUTTON,196,6,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Μζ»»(&R)",IDC_SEARCH_REPLACE_BUTTON,206,23,58,14,
+    PUSHBUTTON      "&Αντικατάσταση",IDC_SEARCH_REPLACE_BUTTON,196,23,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Θ«²ΏΜζ»»(&A)",IDC_SEARCH_ALL_BUTTON,206,39,58,14,
+    PUSHBUTTON      "Αντικατ. ό&λων",IDC_SEARCH_ALL_BUTTON,196,39,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,206,55,58,14,BS_CENTER
-    LTEXT           "²ιΥÒΔΪΘέ:",IDC_STATIC,4,11,37,8,NOT WS_GROUP
-    LTEXT           "Μζ»»Ξª:",IDC_STATIC,12,25,29,8,NOT WS_GROUP
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,196,55,54,14,BS_CENTER
+    LTEXT           "Του:",IDC_STATIC,4,11,22,12,NOT WS_GROUP
+    LTEXT           "Με:",IDC_STATIC,4,25,22,12,NOT WS_GROUP
 END
 
 IDD_GOTO DIALOG DISCARDABLE  70, 70, 151, 85
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "Χªµ½"
-FONT 9, "ΛΞΜε"
+CAPTION "Μετάβαση"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "ΜψΧªµ½:",IDC_STATIC,17,8,97,8,NOT WS_GROUP
+    LTEXT           "Αριθμός:",IDC_STATIC,17,8,97,8,NOT WS_GROUP
     EDITTEXT        IDC_GOTO_NUMBER,14,20,122,13
-    CONTROL         "ΠΠ:ΑΠ",IDC_GOTO_LINE,"Button",BS_AUTORADIOBUTTON,14,41,
-                    70,10
-    CONTROL         "Ζ«ÒΖΑΏ",IDC_GOTO_OFFSET,"Button",BS_AUTORADIOBUTTON,86,
+    CONTROL         "Γραμμή:Στήλη",IDC_GOTO_LINE,"Button",BS_AUTORADIOBUTTON,
+                    14,41,70,10
+    CONTROL         "Θέση",IDC_GOTO_OFFSET,"Button",BS_AUTORADIOBUTTON,86,
                     41,50,10
-    PUSHBUTTON      "Θ·¶¨",IDOK,23,63,50,14,BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,77,63,50,14,BS_CENTER
+    PUSHBUTTON      "Εντάξει",IDOK,23,63,50,14,BS_CENTER
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,77,63,50,14,BS_CENTER
 END
 
 IDD_RECODE DIALOGEX 70, 70, 278, 214
 STYLE DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | 
     WS_THICKFRAME
-CAPTION "ΦΨ±ΰΒλ"
-FONT 9, "ΛΞΜε", 0, 0, 0x1
+CAPTION "Αλλαγή κωδικοποίησης"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    RTEXT           "΄Σ:",IDC_RECODE_CODEPAGEFROM_LABEL,6,11,35,8
+    RTEXT           "Από:",IDC_RECODE_CODEPAGEFROM_LABEL,6,11,35,8
     COMBOBOX        IDC_RECODE_CODEPAGEFROM_LIST,45,9,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    RTEXT           "µ½:",IDC_RECODE_CODEPAGETO_LABEL,6,29,35,8
+    RTEXT           "Σε:",IDC_RECODE_CODEPAGETO_LABEL,6,29,35,8
     COMBOBOX        IDC_RECODE_CODEPAGETO_LIST,45,27,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "",IDC_RECODE_AUTODETECT,"Button",BS_AUTOCHECKBOX | 
@@ -592,83 +595,83 @@ BEGIN
     CONTROL         "",IDC_RECODE_PREVIEW,"AkelEditA",WS_VSCROLL | 
                     WS_HSCROLL | WS_TABSTOP | 0x2904,6,50,263,134,
                     WS_EX_CLIENTEDGE
-    PUSHBUTTON      "Θ·¶¨",IDOK,165,193,50,14,BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,219,193,50,14,BS_CENTER
+    PUSHBUTTON      "Εντάξει",IDOK,165,193,50,14,BS_CENTER
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,219,193,50,14,BS_CENTER
 END
 
 IDD_COLORS DIALOG DISCARDABLE  0, 0, 260, 246
 STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU | WS_THICKFRAME
-CAPTION "ΡΥΙ«"
-FONT 9, "ΛΞΜε"
+CAPTION "Χρώματα"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "ΡΥΙ«·½°Έ:",IDC_COLORS_THEMENAME_LABEL,11,6,103,8
+    LTEXT           "Χρωματικός συνδιασμός:",IDC_COLORS_THEMENAME_LABEL,11,6,103,8
     COMBOBOX        IDC_COLORS_THEMENAME_COMBO,9,17,129,83,CBS_DROPDOWN | 
                     WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "±£΄ζ",IDC_COLORS_THEMESAVE,145,16,50,14
-    PUSHBUTTON      "ΙΎ³ύ",IDC_COLORS_THEMEDELETE,197,16,50,14
+    PUSHBUTTON      "Αποθήκευση",IDC_COLORS_THEMESAVE,145,16,50,14
+    PUSHBUTTON      "Διαγραφή",IDC_COLORS_THEMEDELETE,197,16,50,14
     CONTROL         "List1",IDC_COLORS_LIST,"SysListView32",LVS_REPORT | 
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | 
                     WS_BORDER | WS_TABSTOP,9,40,239,144
-    LTEXT           "±³Ύ°ΝΌΟρ (%a akelpad ΔΏΒΌ):",
+    LTEXT           "Εικόνα φόντου (%a akelpad φάκελος):",
                     IDC_COLORS_BKIMAGEFILE_LABEL,14,189,190,8,NOT WS_GROUP
     EDITTEXT        IDC_COLORS_BKIMAGEFILE_EDIT,10,200,177,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_COLORS_BKIMAGEFILE_BROWSE,190,200,14,13
-    LTEXT           "ΝΈΓχ¶Θ:",IDC_COLORS_BKIMAGEALPHA_LABEL,211,189,40,8
+    LTEXT           "Άλφα:",IDC_COLORS_BKIMAGEALPHA_LABEL,211,189,40,8
     EDITTEXT        IDC_COLORS_BKIMAGEALPHA_EDIT,211,200,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_COLORS_BKIMAGEALPHA_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,233,
                     200,11,13
-    PUSHBUTTON      "Θ·¶¨",IDOK,145,224,50,14,BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,198,224,50,14,BS_CENTER
+    PUSHBUTTON      "Εντάξει",IDOK,145,224,50,14,BS_CENTER
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,198,224,50,14,BS_CENTER
 END
 
 IDD_PLUGINS DIALOG DISCARDABLE  0, 0, 340, 230
 STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU | WS_THICKFRAME
-CAPTION "²εΌώ"
-FONT 9, "ΛΞΜε"
+CAPTION "Πρόσθετα"
+FONT 8, "MS Shell Dlg"
 BEGIN
     CONTROL         "List1",IDC_PLUGINS_LIST,"SysListView32",LVS_REPORT | 
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SORTASCENDING | 
                     LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,9,11,265,178
-    LTEXT           "Ή΄Ρ΅µΔ²εΌώΏΙΧΤ¶―ΌΣΤΨ΅£",IDC_PLUGINS_LIST_INFO,11,192,
-                    264,8
-    LTEXT           "ΘΘΌό:",IDC_PLUGINS_HOTKEY_LABEL,284,13,37,8
+    LTEXT           "Τα τσεκαρισμένα πρόσθετα φορτώνονται αυτόματα.",
+                    IDC_PLUGINS_LIST_INFO,11,192,264,8
+    LTEXT           "Συντόμευση:",IDC_PLUGINS_HOTKEY_LABEL,284,13,46,8
     CONTROL         "HotKey1",IDC_PLUGINS_HOTKEY,"msctls_hotkey32",WS_BORDER | 
                     WS_TABSTOP,282,24,50,14
-    PUSHBUTTON      "ΦΈ¶¨",IDC_PLUGINS_ASSIGN,282,42,50,14
-    DEFPUSHBUTTON   "µχΣΓ",IDC_PLUGINS_CALL,9,209,50,14
-    PUSHBUTTON      "Θ·¶¨",IDOK,228,209,50,14,BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,282,209,50,14,BS_CENTER
+    PUSHBUTTON      "Αντιστοίχιση",IDC_PLUGINS_ASSIGN,282,42,50,14
+    DEFPUSHBUTTON   "Κλήση",IDC_PLUGINS_CALL,9,209,50,14
+    PUSHBUTTON      "Εντάξει",IDOK,228,209,50,14,BS_CENTER
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,282,209,50,14,BS_CENTER
 END
 
 IDD_OPTIONS_GENERAL DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "³£Ήζ"
-FONT 9, "ΛΞΜε"
+CAPTION "Γενικά"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    GROUPBOX        "Φ΄ΠΠ",IDC_STATIC,9,6,200,90
-    LTEXT           "ΓόΑξ (%f ΞΔΌώ£¬%a akelpad ΔΏΒΌ):",IDC_STATIC,21,24,160,
-                    8,NOT WS_GROUP
+    GROUPBOX        "Εκτέλεση",IDC_STATIC,9,6,200,90
+    LTEXT           "Εντολή (%f αρχείο, %a akelpad φάκελος):",IDC_STATIC,21,
+                    24,160,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_EXECCOM,18,35,166,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_OPTIONS_EXECCOM_BROWSE,185,35,14,13
-    LTEXT           "Ή¤ΧχΔΏΒΌ (%d ΞΔΌώΛωΤΪΔΏΒΌ):",IDC_STATIC,21,59,160,8,NOT 
-                    WS_GROUP
+    LTEXT           "Φάκελος εργασίας (%d φάκελος αρχείου):",IDC_STATIC,21,
+                    59,160,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_EXECDIR,18,70,166,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_OPTIONS_EXECDIR_BROWSE,185,70,14,13
-    LTEXT           "΄ϊΒλÒ³Κ¶±π:",IDC_STATIC,12,107,150,8
+    LTEXT           "Αναγνώριση κωδικοποίησης:",IDC_STATIC,12,107,150,8
     COMBOBOX        IDC_OPTIONS_CODEPAGE_RECOGNITION,9,118,154,90,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "»Ί΄ζ:",IDC_STATIC,170,107,37,8
+    LTEXT           "Ενδ.μνήμη:",IDC_STATIC,170,107,37,8
     EDITTEXT        IDC_OPTIONS_CODEPAGE_RECOGNITION_BUFFER,168,118,40,13,
                     ES_NUMBER
-    LTEXT           "Δ¬ΘΟ΄ϊΒλÒ³:",IDC_STATIC,12,144,150,8
+    LTEXT           "Προεπιλεγμένη κωδικοποίηση:",IDC_STATIC,12,144,150,8
     COMBOBOX        IDC_OPTIONS_DEFAULT_CODEPAGE,9,155,154,90,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "ΙΈΡ΅",IDC_OPTIONS_CODEPAGE_FILTER,168,155,40,13
-    GROUPBOX        "New file",IDC_STATIC,9,182,200,41
+    PUSHBUTTON      "Φίλτρο",IDC_OPTIONS_CODEPAGE_FILTER,168,155,40,13
+    GROUPBOX        "Νέο αρχείο",IDC_STATIC,9,182,200,41
     COMBOBOX        IDC_OPTIONS_NEWFILE_CODEPAGE,18,200,110,90,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "BOM",IDC_OPTIONS_NEWFILE_BOM,"Button",BS_AUTOCHECKBOX | 
@@ -680,66 +683,66 @@ END
 IDD_OPTIONS_GENERAL_FILTER DIALOG DISCARDABLE  0, 0, 364, 255
 STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | 
     WS_CAPTION | WS_SYSMENU
-CAPTION "ΙΈΡ΅"
-FONT 9, "ΛΞΜε"
+CAPTION "Φίλτρο"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "ÒΡΡ΅΄ϊΒλÒ³:",IDC_STATIC,11,7,135,8
+    LTEXT           "Προσαρμοσμένο:",IDC_STATIC,11,7,135,8
     LISTBOX         IDC_OPTIONS_CODEPAGES_FILTER_CUSTOM,7,18,141,209,
                     LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "ΟςΙΟ",IDC_OPTIONS_CODEPAGES_FILTER_UP,155,19,50,14
-    PUSHBUTTON      "ΟςΟΒ",IDC_OPTIONS_CODEPAGES_FILTER_DOWN,155,34,50,14
+    PUSHBUTTON      "Πάνω",IDC_OPTIONS_CODEPAGES_FILTER_UP,155,19,50,14
+    PUSHBUTTON      "Κάτω",IDC_OPTIONS_CODEPAGES_FILTER_DOWN,155,34,50,14
     PUSHBUTTON      "<",IDC_OPTIONS_CODEPAGES_FILTER_ADD,155,56,50,14
     PUSHBUTTON      ">",IDC_OPTIONS_CODEPAGES_FILTER_DELETE,155,71,50,14
     PUSHBUTTON      "<<",IDC_OPTIONS_CODEPAGES_FILTER_ADDALL,155,93,50,14
     PUSHBUTTON      ">>",IDC_OPTIONS_CODEPAGES_FILTER_DELETEALL,155,108,50,
                     14
-    LTEXT           "ΏΙΣΓ΄ϊΒλÒ³:",IDC_STATIC,217,7,135,8
+    LTEXT           "Συστήματος:",IDC_STATIC,217,7,135,8
     LISTBOX         IDC_OPTIONS_CODEPAGES_FILTER_SYSTEM,213,18,141,209,
                     LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Θ·¶¨",IDOK,127,235,50,14,BS_CENTER
-    PUSHBUTTON      "Θ΅Οϋ",IDCANCEL,181,235,50,14,BS_CENTER
+    PUSHBUTTON      "Εντάξει",IDOK,127,235,50,14,BS_CENTER
+    PUSHBUTTON      "Ακύρωση",IDCANCEL,181,235,50,14,BS_CENTER
 END
 
 IDD_OPTIONS_REGISTRY DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "ΧΆ²α±ν"
-FONT 9, "ΛΞΜε"
+CAPTION "Μητρώο"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    GROUPBOX        "±£΄ζΙθΦΓµ½",IDC_STATIC,9,6,200,29
-    CONTROL         "ΧΆ²α±ν",IDC_OPTIONS_SAVESETTINGS_REGISTRY,"Button",
+    GROUPBOX        "Αποθήκευση επιλογών",IDC_STATIC,9,6,200,29
+    CONTROL         "Μητρώο",IDC_OPTIONS_SAVESETTINGS_REGISTRY,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP,32,19,70,10
-    CONTROL         "INI ΞΔΌώ",IDC_OPTIONS_SAVESETTINGS_INI,"Button",
+    CONTROL         "INI αρχείο",IDC_OPTIONS_SAVESETTINGS_INI,"Button",
                     BS_AUTORADIOBUTTON,133,19,70,10
     GROUPBOX        "Save history",IDC_STATIC,9,42,200,105
-    CONTROL         "ΧΆ²α±ν",IDC_OPTIONS_SAVEHISTORY_REGISTRY,"Button",
+    CONTROL         "Μητρώο",IDC_OPTIONS_SAVEHISTORY_REGISTRY,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP,32,55,70,10
-    CONTROL         "INI ΞΔΌώ",IDC_OPTIONS_SAVEHISTORY_INI,"Button",
+    CONTROL         "INI αρχείο",IDC_OPTIONS_SAVEHISTORY_INI,"Button",
                     BS_AUTORADIOBUTTON,134,55,70,10
-    CONTROL         "ΌΗΧ΅²εΘλµγΞ»ΦΓ",IDC_OPTIONS_SAVEPOSITIONS,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,75,185,10
-    CONTROL         "ΌΗΧ΅΄ϊΒλÒ³",IDC_OPTIONS_SAVECODEPAGES,"Button",
+    CONTROL         "Απομνημόνευση θέσης στο αρχείο",IDC_OPTIONS_SAVEPOSITIONS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,75,185,10
+    CONTROL         "Απομνημόνευση κωδικοποίησης",IDC_OPTIONS_SAVECODEPAGES,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,17,86,185,10
-    LTEXT           "Χξ½όΞΔΌώ:",IDC_STATIC,19,108,73,15,NOT WS_GROUP
+    LTEXT           "Πρόσφατα αρχεία:",IDC_STATIC,19,108,73,15,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_RECENTFILES_AMOUNT,95,106,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_RECENTFILES_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
                     UDS_NOTHOUSANDS,113,106,11,13
-    PUSHBUTTON      "Ηε³ύ",IDC_OPTIONS_RECENTFILES_CLEAR,141,105,54,14
-    LTEXT           "ΛΡΛχΐϊΚ·:",IDC_STATIC,19,128,73,15,NOT WS_GROUP
+    PUSHBUTTON      "Καθαρισμός",IDC_OPTIONS_RECENTFILES_CLEAR,141,105,54,14
+    LTEXT           "Ιστορικό εύρεσης:",IDC_STATIC,19,128,73,15,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_SEARCHSTRINGS_AMOUNT,95,126,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_SEARCHSTRINGS_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
                     UDS_NOTHOUSANDS,113,126,11,13
-    PUSHBUTTON      "Ηε³ύ",IDC_OPTIONS_SEARCHSTRINGS_CLEAR,141,125,54,14
-    GROUPBOX        "ΞΔΌώΐΰΠΝΉΨΑª",IDC_STATIC,9,153,200,70
-    CONTROL         "΄ςΏª:",IDC_OPTIONS_ASSOCIATE_OPEN,"Button",
+    PUSHBUTTON      "Καθαρισμός",IDC_OPTIONS_SEARCHSTRINGS_CLEAR,141,125,54,14
+    GROUPBOX        "Τύποι αρχείων",IDC_STATIC,9,153,200,70
+    CONTROL         "Άνοιγμα:",IDC_OPTIONS_ASSOCIATE_OPEN,"Button",
                     BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,16,169,43,10
     EDITTEXT        IDC_OPTIONS_FILETYPES_OPEN,64,167,138,13,ES_AUTOHSCROLL
-    CONTROL         "±ΰΌ­:",IDC_OPTIONS_ASSOCIATE_EDIT,"Button",
+    CONTROL         "Επεξεργασία:",IDC_OPTIONS_ASSOCIATE_EDIT,"Button",
                     BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,16,187,43,10
     EDITTEXT        IDC_OPTIONS_FILETYPES_EDIT,64,185,138,13,ES_AUTOHSCROLL
-    CONTROL         "΄ςΣ΅:",IDC_OPTIONS_ASSOCIATE_PRINT,"Button",
+    CONTROL         "Εκτύπωση:",IDC_OPTIONS_ASSOCIATE_PRINT,"Button",
                     BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,16,205,43,10
     EDITTEXT        IDC_OPTIONS_FILETYPES_PRINT,64,203,138,13,ES_AUTOHSCROLL
 END
@@ -747,67 +750,66 @@ END
 IDD_OPTIONS_EDITOR1 DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "±ΰΌ­Ζχ 1"
-FONT 9, "ΛΞΜε"
+CAPTION "Συντάκτης 1"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    GROUPBOX        "ΦΖ±ν·ϋ΄σΠ΅",IDC_STATIC,9,6,105,34
+    GROUPBOX        "Μέγεθος Tab",IDC_STATIC,9,6,105,34
     EDITTEXT        IDC_OPTIONS_TABSIZE,18,20,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_TABSIZE_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,39,20,
                     11,13
-    CONTROL         "Χª»»ΞªΏΥΈρ",IDC_OPTIONS_TABSIZE_SPACES,"Button",
+    CONTROL         "Spaces",IDC_OPTIONS_TABSIZE_SPACES,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,58,22,50,10
-    GROUPBOX        "³·Οϋ΄ΞΚύΟήΦΖ",IDC_STATIC,9,46,105,34
+    GROUPBOX        "Αναίρεσης όριο",IDC_STATIC,9,46,105,34
     EDITTEXT        IDC_OPTIONS_UNDO_LIMIT,18,59,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_UNDO_LIMIT_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,39,59,
                     11,13
-    CONTROL         "Φπ²½³·Οϋ",IDC_OPTIONS_UNDO_DETAILED,"Button",
+    CONTROL         "Λεπτομερείς",IDC_OPTIONS_UNDO_DETAILED,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,58,61,50,10
-    GROUPBOX        "»»ΠΠ·½Κ½",IDC_STATIC,124,6,87,74
-    CONTROL         "°΄ µ¥΄Κ",IDC_OPTIONS_WRAP_BY_WORDS,"Button",
+    GROUPBOX        "Αναδίπλωση",IDC_STATIC,124,6,87,74
+    CONTROL         "Με λέξεις",IDC_OPTIONS_WRAP_BY_WORDS,"Button",
                     BS_AUTORADIOBUTTON,133,19,72,10
-    CONTROL         "°΄ ·ϋΊΕ",IDC_OPTIONS_WRAP_BY_SYMBOLS,"Button",
+    CONTROL         "Με σύμβολα",IDC_OPTIONS_WRAP_BY_SYMBOLS,"Button",
                     BS_AUTORADIOBUTTON,133,31,72,10
-    LTEXT           "½ηΟή:",IDC_STATIC,131,49,36,8
+    LTEXT           "Όριο:",IDC_STATIC,131,49,36,8
     EDITTEXT        IDC_OPTIONS_WRAP_LIMIT,131,60,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_WRAP_LIMIT_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,153,60,
                     11,13
-    LTEXT           "±κ³ίΟί:",IDC_STATIC,171,49,36,8
+    LTEXT           "Δείκτη:",IDC_STATIC,171,49,36,8
     EDITTEXT        IDC_OPTIONS_MARKER,171,60,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_MARKER_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,193,60,
                     11,13
-    GROUPBOX        "²εΘλµγ",IDC_STATIC,9,86,202,51
-    CONTROL         "ΤΚΠν²εΘλµγÒΖ¶―µ½ΠΠΔ©±ίΤµµΔΣÒ±ί",
-                    IDC_OPTIONS_CARETOUTEDGE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,16,98,132,10
-    CONTROL         "ΟΤΚΎµ±Η°ΑΠ",IDC_OPTIONS_CARETVERTLINE,"Button",
+    GROUPBOX        "Δρομέας",IDC_STATIC,9,86,202,51
+    CONTROL         "Δρομέας μετά το τέλος γραμμής",IDC_OPTIONS_CARETOUTEDGE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,98,132,10
+    CONTROL         "Εμφάνιση ενεργής στήλη",IDC_OPTIONS_CARETVERTLINE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,16,110,132,10
-    CONTROL         "ΟΤΚΎµ±Η°ΠΠ",IDC_OPTIONS_CARETACTIVELINE,"Button",
+    CONTROL         "Εμφάνιση ενεργής γραμμής",IDC_OPTIONS_CARETACTIVELINE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,16,122,132,10
-    CONTROL         "±ίΏς",IDC_OPTIONS_CARETACTIVELINEBORDER,"Button",
+    CONTROL         "κορνίζα",IDC_OPTIONS_CARETACTIVELINEBORDER,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,151,122,56,10
-    LTEXT           "Ών¶Θ:",IDC_STATIC,151,94,56,8,NOT WS_GROUP
+    LTEXT           "Πλάτος:",IDC_STATIC,151,94,56,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_CARETWIDTH,151,105,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_CARETWIDTH_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,173,
                     105,11,13
-    GROUPBOX        "½»ΜζΠΠ",IDC_STATIC,9,144,105,62
-    LTEXT           "ΜψΉύ:",IDC_STATIC,18,160,43,8,NOT WS_GROUP
+    GROUPBOX        "Εναλλασσόμενες γραμμές",IDC_STATIC,9,144,105,62
+    LTEXT           "Πήδημα:",IDC_STATIC,18,160,43,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_ALTLINESKIP,18,171,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_ALTLINESKIP_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,40,171,
                     11,13
-    LTEXT           "Μξ³δ:",IDC_STATIC,67,160,43,8,NOT WS_GROUP
+    LTEXT           "Γέμισμα:",IDC_STATIC,67,160,43,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_ALTLINEFILL,67,171,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_ALTLINEFILL_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,89,171,
                     11,13
-    CONTROL         "±ίΏς",IDC_OPTIONS_ALTLINEBORDER,"Button",
+    CONTROL         "Κορνίζα",IDC_OPTIONS_ALTLINEBORDER,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,18,191,90,10
-    GROUPBOX        "ΞΔ±Ύ±ίΎΰ",IDC_STATIC,124,144,87,62
+    GROUPBOX        "Περιθώριο Κειμένου",IDC_STATIC,124,144,87,62
     EDITTEXT        IDC_OPTIONS_EDITMARGIN_LEFT,131,171,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_EDITMARGIN_LEFT_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,153,
@@ -824,7 +826,7 @@ BEGIN
     CONTROL         "Spin1",IDC_OPTIONS_EDITMARGIN_BOTTOM_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
                     UDS_NOTHOUSANDS,173,187,11,13
-    RTEXT           "ΠΠΎΰ:",IDC_STATIC,104,214,70,8,NOT WS_GROUP
+    RTEXT           "Διάκενο γραμμών:",IDC_STATIC,104,214,70,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_LINEGAP,178,212,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_LINEGAP_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,200,
@@ -834,79 +836,84 @@ END
 IDD_OPTIONS_EDITOR2 DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "±ΰΌ­Ζχ 2"
-FONT 9, "ΛΞΜε"
+CAPTION "Συντάκτης 2"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    CONTROL         "Χσ»χΏΥ°ΧΡ΅¶¨ΠΠ",IDC_OPTIONS_MOUSELEFTMARGIN,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,9,200,10
-    CONTROL         "RichEdit Κσ±κΡ΅Τρ",IDC_OPTIONS_MOUSERICHEDIT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,20,200,10
-    CONTROL         "Κσ±κΝΟ·Ε",IDC_OPTIONS_MOUSEDRAGGING,"Button",
+    CONTROL         "Αριστερό κλικ στο αριστερό περιθώριο επιλέγει γραμμή",
+                    IDC_OPTIONS_MOUSELEFTMARGIN,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,9,200,10
+    CONTROL         "RichEdit της επιλογής του ποντικιού",IDC_OPTIONS_MOUSERICHEDIT,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,20,200,10
+    CONTROL         "Εναπόθεση επιλεγμένου με το ποντίκι",IDC_OPTIONS_MOUSEDRAGGING,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,31,200,10
-    CONTROL         "ΣÒΌόµγ»χΚ±ÒΖ¶―²εΘλµγ",IDC_OPTIONS_RCLICKMOVECARET,
+    CONTROL         "Δεξί κλικ μετακινεί το δρομέα",IDC_OPTIONS_RCLICKMOVECARET,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,42,200,10
-    GROUPBOX        "³¬Α΄½Σ",IDC_STATIC,9,60,200,100
-    CONTROL         "ΟΤΚΎ",IDC_OPTIONS_URL_SHOW,"Button",BS_AUTOCHECKBOX | 
+    GROUPBOX        "Υπερσυνδέσεις",IDC_STATIC,9,60,200,100
+    CONTROL         "Εμφάνιση",IDC_OPTIONS_URL_SHOW,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,76,90,10
-    CONTROL         "µ¥»χ΄ςΏª",IDC_OPTIONS_URL_SINGLECLICK,"Button",
+    CONTROL         "Μονό κλικ",IDC_OPTIONS_URL_SINGLECLICK,"Button",
                     BS_AUTORADIOBUTTON,112,76,90,10
-    CONTROL         "Λ«»χ΄ςΏª",IDC_OPTIONS_URL_DOUBLECLICK,"Button",
+    CONTROL         "Διπλό κλικ",IDC_OPTIONS_URL_DOUBLECLICK,"Button",
                     BS_AUTORADIOBUTTON,112,87,90,10
-    CONTROL         "Η°ΧΊ:",IDC_OPTIONS_URL_PREFIXES_ENABLE,"Button",
+    CONTROL         "Προθέματα:",IDC_OPTIONS_URL_PREFIXES_ENABLE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,23,97,172,10
     EDITTEXT        IDC_OPTIONS_URL_PREFIXES,23,109,172,13,ES_AUTOHSCROLL
-    CONTROL         "·ΦΈτ·ϋ:",IDC_OPTIONS_URL_DELIMITERS_ENABLE,"Button",
+    CONTROL         "Διαχωριστικά:",IDC_OPTIONS_URL_DELIMITERS_ENABLE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,23,128,172,10
     EDITTEXT        IDC_OPTIONS_URL_LEFTDELIMITERS,23,140,83,13,
                     ES_AUTOHSCROLL
     EDITTEXT        IDC_OPTIONS_URL_RIGHTDELIMITERS,112,140,83,13,
                     ES_AUTOHSCROLL
-    CONTROL         "µ¥΄Κ·ΦΈτ·ϋ:",IDC_OPTIONS_WORD_DELIMITERS_ENABLE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,169,150,8
+    CONTROL         "Διαχωριστικά λέξεων:",IDC_OPTIONS_WORD_DELIMITERS_ENABLE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,169,150,8
     EDITTEXT        IDC_OPTIONS_WORD_DELIMITERS,9,180,148,13,ES_AUTOHSCROLL
-    PUSHBUTTON      "ΦΨΦΓ",IDC_OPTIONS_WORD_DELIMITERS_RESET,159,180,50,13,
+    PUSHBUTTON      "Επαναφορά",IDC_OPTIONS_WORD_DELIMITERS_RESET,159,180,50,13,
                     BS_CENTER
-    CONTROL         "»»ΠΠ·ΦΈτ·ϋ:",IDC_OPTIONS_WRAP_DELIMITERS_ENABLE,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,200,150,8
+    CONTROL         "Διαχωριστικά αναδίπλωσης:",IDC_OPTIONS_WRAP_DELIMITERS_ENABLE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,200,150,8
     EDITTEXT        IDC_OPTIONS_WRAP_DELIMITERS,9,211,148,13,ES_AUTOHSCROLL
-    PUSHBUTTON      "ΦΨΦΓ",IDC_OPTIONS_WRAP_DELIMITERS_RESET,159,211,50,13,
+    PUSHBUTTON      "Επαναφορά",IDC_OPTIONS_WRAP_DELIMITERS_RESET,159,211,50,13,
                     BS_CENTER
 END
 
 IDD_OPTIONS_ADVANCED DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-CAPTION "ΈίΌ¶"
-FONT 9, "ΛΞΜε"
+CAPTION "Προηγμένα"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    CONTROL         "ΧΤ¶―ΗΠ»»ΌόΕΜ²ΌΎΦ",IDC_OPTIONS_SWITCH_KEYBLAYOUT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,11,200,10
-    CONTROL         "ΌΗΧ΅ΓΏΈφ±κΗ©Ò³µΔΌόΕΜ²ΌΎΦ(MDI)",
+    CONTROL         "Αυτόματος διακόπτης διάταξης πληκτρολογίου",
+                    IDC_OPTIONS_SWITCH_KEYBLAYOUT,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,11,200,10
+    CONTROL         "Απομνημόνευση διάταξης πληκτρολ.κάθε καρτέλας (MDI)",
                     IDC_OPTIONS_REMEMBER_KEYBLAYOUT,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,9,23,200,10
-    CONTROL         "Ύ²Δ¬ΉΨ±ΥΞ΄±£΄ζµΔΏΥ±κΗ© (MDI)",
+    CONTROL         "Σιωπηλό κλείσιμο μη αποθηκευμ. κενής καρτέλας (MDI)",
                     IDC_OPTIONS_SILENTCLOSEEMPTY,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,9,35,200,10
-    CONTROL         "ΘηΉϋΞΔΌώÒΤ .LOG ΏªΝ·ΎΝ²εΘλΘΥΖΪ",IDC_OPTIONS_LOGDATE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,47,200,10
-    CONTROL         "±£΄ζµ½Φ»¶ΑΞΔΌώΚ±Ύ―Έζ",IDC_OPTIONS_SAVEIN_READONLY_MSG,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,59,200,10
+    CONTROL         "Εισαγωγή ημερ/νίας αν το αρχείο έχει .LOG στην αρχή",
+                    IDC_OPTIONS_LOGDATE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,47,200,10
+    CONTROL         "Αποθήκ. στη προειδοποίηση αρχείου Μόνο για ανάγνωση",
+                    IDC_OPTIONS_SAVEIN_READONLY_MSG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,59,200,10
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
-    LTEXT           "±£΄ζΚ±Δ¬ΘΟµΔΐ©ΥΉΓϋ",IDC_STATIC,37,77,171,8
-    GROUPBOX        "²ιΥÒ/Μζ»» ¶Τ»°Ώς",IDC_STATIC,9,96,200,66
-    CONTROL         "Θ«²ΏΜζ»» - ΉΨ±Υ¶Τ»°Ώς",IDC_OPTIONS_REPLACEALL_CLOSE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,109,185,10
-    CONTROL         """Replace all"" without message",
+    LTEXT           "προεπιλεγμένη επέκταση αποθήκευσης",IDC_STATIC,37,77,171,8
+    GROUPBOX        "Διάλογος Εύρεση/Αντικατάσταση",IDC_STATIC,9,96,200,66
+    CONTROL         """Αντικατάσταση όλων"" κλείνει τον διάλογο",
+                    IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,17,109,185,10
+    CONTROL         """Αντικατάσταση όλων"" χωρίς μήνυμα",
                     IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,121,185,10
-    CONTROL         "ΘηΉϋΡ΅¶¨ΗψΣς²»ΞªΏΥΎΝΡ΅ΙΟ΅°Ρ΅¶¨ΗψΣς΅±΅£",
+    CONTROL         """Στο επιλεγμένο"" αν η επιλογή δεν είναι κενή",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,133,185,10
-    CONTROL         "Ρ­»·ΛΡΛχ",IDC_OPTIONS_CYCLESEARCH,"Button",
+    CONTROL         "Κυκλική εύρεση",IDC_OPTIONS_CYCLESEARCH,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
-    CONTROL         "ΜαΚΎ",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
+    CONTROL         "Προτροπή",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
-    CONTROL         "Save position of modeless dialogs",
+    CONTROL         "Αποθήκευση θέση των διαλόγων",
                     IDC_OPTIONS_MODELESSSAVEPOS,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,9,169,185,10
 END
@@ -914,34 +921,35 @@ END
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
 STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | 
     WS_CAPTION | WS_SYSMENU
-CAPTION "ΉΨΣΪ"
-FONT 9, "ΛΞΜε", 0, 0, 0x1
+CAPTION "Σχετικά"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     ICON            IDI_ICON_MAIN,IDC_ABOUT_ICON,10,10,20,20
     CONTROL         "",IDC_ABOUT_VERSION,"Static",SS_LEFTNOWORDWRAP,44,16,
                     150,11
-    LTEXT           "ΦχÒ³:",IDC_STATIC,19,41,85,11
+    LTEXT           "Ιστοσελίδα:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
-    GROUPBOX        "ΧχΥί:",IDC_STATIC,20,62,177,109
-    LTEXT           "Shengalts Aleksander, 2006-2017",IDC_STATIC,72,82,125,8,
-                    NOT WS_GROUP
-    LTEXT           "E-Mail:",IDC_STATIC,43,98,29,8,NOT WS_GROUP,WS_EX_RIGHT
+    GROUPBOX        "Συγγραφείς:",IDC_STATIC,20,62,177,109
+    LTEXT           "Shengalts Aleksander, 2006-2017",IDC_STATIC,73,82,120,
+                    12,NOT WS_GROUP
+    LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
+                    WS_EX_RIGHT
     EDITTEXT        IDC_ABOUT_EMAIL_SHENGALTS,74,96,107,12,ES_READONLY | NOT 
                     WS_BORDER,WS_EX_STATICEDGE
-    LTEXT           "Alexey Kuznetsov, 2003-2006",IDC_STATIC,72,125,109,8,
+    LTEXT           "Alexey Kuznetsov, 2003-2006",IDC_STATIC,73,125,120,12,
                     NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,142,22,12,WS_DISABLED | NOT 
                     WS_GROUP,WS_EX_RIGHT
     EDITTEXT        IDC_ABOUT_EMAIL_KUZNETSOV,74,140,106,12,ES_READONLY | 
                     WS_DISABLED | NOT WS_BORDER | NOT WS_TABSTOP,
                     WS_EX_STATICEDGE
-    PUSHBUTTON      "Θ·¶¨",IDOK,148,183,50,14,BS_CENTER
+    PUSHBUTTON      "Εντάξει",IDOK,148,183,50,14,BS_CENTER
 END
 
 IDD_MESSAGEBOX DIALOG DISCARDABLE  0, 0, 227, 58
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU
-FONT 9, "ΛΞΜε"
+FONT 8, "MS Shell Dlg"
 BEGIN
 END
 
@@ -965,8 +973,8 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""(c) 2014 cnnnc""\r\n"
-    "  #define RC_VERSIONNAME ""Chinese (Simplified).dll""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2015 Shengalts Aleksander aka Instructor""\r\n"
+    "  #define RC_VERSIONNAME ""English.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
     "#include ""staticedit.h""\r\n"
@@ -991,136 +999,138 @@ END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    MSG_ERROR_IN_MESSAGE_QUEUE "ΟϋΟΆ¶ΣΑΠµΔ΄νΞσ΅£"
-    MSG_ERROR_NOT_ENOUGH_MEMORY "ΡΟΦΨ΄νΞσ: ΔΪ΄ζ²»Χγ΅£½¨ÒιΦΥΦΉ±Ύ³ΜΠς΅£"
-    MSG_ERROR_BINARY        """%s"" ΚΗÒ»Έφ¶ώ½ψΦΖΞΔΌώ΅£ΌΜΠψ?"
-    MSG_ERROR_IO            "ΚδΘλ/Κδ³φ΄νΞσ΅£"
-    MSG_ERROR_SYNTAX        "Σο·¨΄νΞσ (%d)΅£"
-    MSG_ERROR_PRINT         "Ξή·¨΄ςΣ΅ΞΔµµ΅£"
-    MSG_ERROR_RUN           "Ξή·¨ΤΛΠΠ³ΜΠς΅£"
-    MSG_ERROR_LOAD_DLL      "Ξή·¨ΌΣΤΨ ""%s""΅£"
-    MSG_ERROR_UNLOAD_DLL    "Ξή·¨Π¶ΤΨ ""%s""΅£"
+    MSG_ERROR_IN_MESSAGE_QUEUE "Σφάλμα στην ουρά μηνυμάτων."
+    MSG_ERROR_NOT_ENOUGH_MEMORY 
+                            "Κρίσιμο σφάλμα: η μνήμη δεν επαρκεί. Συνιστάται να τερματίσει το πρόγραμμα."
+    MSG_ERROR_BINARY        "Το ""%s"" είναι ένα δυαδικό αρχείο. Συνέχεια;"
+    MSG_ERROR_IO            "Εισόδου/εξόδου σφάλμα."
+    MSG_ERROR_SYNTAX        "Συντακτικό σφάλμα (%d)."
+    MSG_ERROR_PRINT         "Αδυναμία εκτύπωσης του εγγράφου."
+    MSG_ERROR_RUN           "Αδυναμία εκτέλεσης του προγράμματος."
+    MSG_ERROR_LOAD_DLL      "Αδυναμία φόρτωσης του ""%s""."
+    MSG_ERROR_UNLOAD_DLL    "Αδυναμία εκφόρτωσης του ""%s""."
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    MSG_AUTOLOAD_IS_NOT_SUPPORTED """%s"" ²»Φ§³ΦΧΤ¶―ΌΣΤΨ΅£"
-    MSG_FUNCTION_NOT_FOUND  "ΥÒ²»µ½Ί―Κύ ""%s::%s""£¬ΛωΤΪΞΔΌώ: ""%s""΅£"
-    MSG_UPDATE_PROGRAM      "ΈόΠΒ AkelPad΅£\n\nΠθÒªµΔ AkelPad ΧξΠ΅°ζ±Ύ: %d.%d.%d.%d\nµ±Η°µΔ AkelPad °ζ±Ύ: %d.%d.%d.%d"
-    MSG_PROGRAM_IS_NOT_SUPPORTED "²»Φ§³Φ AkelPad 4.x.x΅£"
-    MSG_UPDATE_PLUGIN       "ΈόΠΒ %s΅£\n\nAkelPad ΜεΟµ½αΉΉ: %d.%d.%d.%d\n%s ²εΌώΜεΟµ½αΉΉ: %d.%d.%d.%d"
-    MSG_PLUGIN_IS_NOT_SUPPORTED """%s"" Ξ΄±»Κ¶±πΞª AkelPad ²εΌώ΅£"
-    MSG_UPDATE_LANGMODULE   "ΈόΠΒ %s\n\nµ±Η°°ζ±Ύ: %d.%d.%d.%d\nΠθÒª°ζ±Ύ: %d.%d.%d.%d"
-    MSG_HOTKEY_EXISTS       "ΘΘΌόÒΡΎ­ΦΈ¶¨Έψ ""%s""΅£"
-    MSG_CANNOT_OPEN_FILE    "Ξή·¨΄ςΏªΞΔΌώ ""%s""΅£"
-    MSG_WRONG_STRING        "ΞήΠ§µΔΠΠΊΕ΅£"
-    MSG_LONG_FILELIST       "Ρ΅ΤρΜ«¶ΰΞΔΌώ΅£"
-    MSG_DOCUMENT_CHANGED    "ΞΔµµÒΡΎ­±»ΠήΈΔ΅£ΚΗ·ρ±£΄ζ?"
-    MSG_FILE_DOES_NOT_EXIST "΄΄½¨ΠΒΞΔΌώ ""%s""?"
+    MSG_AUTOLOAD_IS_NOT_SUPPORTED "Το ""%s"" δεν υποστηρίζει αυτόματη φόρτωση."
+    MSG_FUNCTION_NOT_FOUND  "Αδυναμία εύρεσης της λειτουργίας ""%s::%s"" στο ""%s""."
+    MSG_UPDATE_PROGRAM      "Ενημέρωση AkelPad.\n\nΕλάχιστη απαιτούμενη έκδοση AkelPad: %d.%d.%d.%d\nΤρέχουσα έκδοση AkelPad: %d.%d.%d.%d"
+    MSG_PROGRAM_IS_NOT_SUPPORTED "AkelPad 4.x.x δεν υποστηρίζεται."
+    MSG_UPDATE_PLUGIN       "Ενημέρωση %s.\n\nAkelPad αρχιτεκτονική: %d.%d.%d.%d\n%s πρόσθετου αρχιτεκτονική: %d.%d.%d.%d"
+    MSG_PLUGIN_IS_NOT_SUPPORTED "Το ""%s"" δεν αναγνωρίζεται ως AkelPad πρόσθετο."
+    MSG_UPDATE_LANGMODULE   "Ενημέρωση %s\n\nΤρέχουσα έκδοση: %d.%d.%d.%d\nΑπαιτούμενη έκδοση: %d.%d.%d.%d"
+    MSG_HOTKEY_EXISTS       "Η συντόμευση πληκτρολογίου έχει ήδη εκχωρηθεί στο ""%s""."
+    MSG_CANNOT_OPEN_FILE    "Αδυναμία ανοίγματος του αρχείου ""%s""."
+    MSG_WRONG_STRING        "Μη έγκυρος αριθμός γραμμής."
+    MSG_LONG_FILELIST       "Έχουν επιλεγεί πάρα πολλά αρχεία."
+    MSG_DOCUMENT_CHANGED    "Το έγγραφο είχε τροποποιηθεί. Θέλετε να το αποθηκεύσετε;"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    MSG_RECENTFILES_DELETED "ÒΡΙΎ³ύΌΗΒΌ: %d"
-    MSG_SEARCH_ENDED        "ΛΡΛχΝκ³Ι΅£"
-    MSG_SEARCH_CYCLEPROMPT  "µ½΄οΞΔΌώµΔ±ί½η΅£ΌΜΠψ?"
-    MSG_REPLACE_COUNT       "ΈόΈΔµΔΚύΑΏ: %d"
-    MSG_REPLACE_COUNT_ALLFILES "ΈόΈΔµΔΞΔΌώΚύ: %d\nΈόΈΔµΔΚύΑΏ: %Id"
-    MSG_FILE_WILL_BE_REOPENED "ΞΔΌώ½«±»ΦΨΠΒ΄ςΏª£¬ΛωΣΠΈόΈΔ½«»α¶ªΚ§΅£"
-    MSG_FILE_CHANGED        """%s"" ÒΡΎ­±»Νβ²ΏΠήΈΔ΅£\n\nΚΗ·ρÒªΦΨΠΒ΄ςΏª?"
-    MSG_CP_UNIMPLEMENTED    "Ξή·¨ΚΉΣΓ΄ϊΒλÒ³ ""%d""΅£"
-    MSG_CP_MISMATCH         "ÒΤ±Ύ±ΰΒλ±£΄ζΚ±½«»α¶ªΚ§·ϋΊΕ£¬ΠΠΊΕΞª΅°%d΅±΅£ΌΜΠψ?"
-    MSG_ACCESSDENIED        "ΠθÒªΉάΐνΤ±Θ¨Οή΅£\n\n""%s""\n\n"
-    MSG_RESTART_PROGRAM     "ΈόΈΔ½«ΤΪΦΨΠΒΖτ¶―³ΜΠςΊσΙϊΠ§΅£"
-    MSG_SAVEIN_READONLY     """%s"" ΚΗÒ»ΈφΦ»¶ΑΞΔΌώ΅£ΌΜΠψ?"
-    MSG_OVERWRITEPROMPT     """%s"" ÒΡΎ­΄ζΤΪ΅£Μζ»»?"
-    MSG_DOCUMENTSLIMIT      "ÒΡΎ­µ½΄οΞΔµµΚύΑΏΌ«Οή΅£Òª΄ςΏªΈό¶ΰΈφΞΔµµ£¬ΗλΚΉΣΓ PMDI Δ£Κ½΅£"
+    MSG_FILE_DOES_NOT_EXIST "Δημιουργία νέου αρχείου ""%s"";"
+    MSG_RECENTFILES_DELETED "Διαγραμμένες εγγραφές: %d"
+    MSG_SEARCH_ENDED        "Η εύρεση ολοκληρώθηκε."
+    MSG_SEARCH_CYCLEPROMPT  "Η εύρεση ολοκληρώθηκε. Συνέχεια από την αρχή;"
+    MSG_REPLACE_COUNT       "Σύνολο αντικαταστάσεων: %d"
+    MSG_REPLACE_COUNT_ALLFILES "Αλλαγμένα αρχεία: %d\nΣύνολο αντικαταστάσεων: %Id"
+    MSG_FILE_WILL_BE_REOPENED 
+                            "Το αρχείο θα ξανανοίξει, όλες οι αλλαγές θα χαθούν."
+    MSG_FILE_CHANGED        "Το ""%s"" έχει τροποποιηθεί από άλλο πρόγραμμα.\n\nΘέλετε να ξανανοίξει;"
+    MSG_CP_UNIMPLEMENTED    "Η ""%d"" κωδικοποίηση δεν εφαρμόζεται."
+    MSG_CP_MISMATCH         "Η γραμμή ""%d"" περιέχει σύμβολα τα οποία θα χαθούν κατά την αποθήκευση σε αυτήν την κωδικοποίηση. Συνέχεια;"
+    MSG_ACCESSDENIED        "Απαιτούνται δικαιώματα διαχειριστή.\n\n""%s""\n\n"
+    MSG_RESTART_PROGRAM     "Οι αλλαγές θα εμφανιστούν μετά την επανεκκίνηση του προγράμματος."
+    MSG_SAVEIN_READONLY     "Το ""%s"" είναι ένα αρχείο μόνο για ανάγνωση. Συνέχεια;"
+    MSG_OVERWRITEPROMPT     "Το ""%s"" υπάρχει ήδη. Θέλετε να αντικατασταθεί;"
+    MSG_DOCUMENTSLIMIT      "Μέγιστος αριθμός ανοιχτών εγγράφων. Χρήση της λειτουργίας PMDI για άνοιγμα περισσότερων εγγράφων."
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    STR_DOCNAME             "AkelPad ΞΔµµ"
-    STR_MODIFIED            "ÒΡΠήΈΔ"
-    STR_READONLY            "Φ»¶Α"
-    STR_COUNT               "%d / %d"
-    STR_WITHOUT             "Ξή"
-    STR_AUTODETECT          "ΧΤ¶―Όμ²β(&A)"
-    STR_RECENT_FILES_EMPTY  "(ΏΥ)"
-    STR_RECENT_FILES_DELETE_DEAD "ΙΎ³ύ²»΄ζΤΪµΔΌΗΒΌ"
-    STR_OPTIONS             "ΙθΦΓ..."
-    STR_LANGUAGE_NONE       "ΔΪ²Ώ"
-    STR_FILE_FILTER         "ΞΔ±ΎΞΔΌώ (*.txt)|*.txt|ΛωΣΠΞΔΌώ (*.*)|*.*"
+    STR_DOCNAME             "AkelPad έγγραφο"
+    STR_MODIFIED            "Τροποποιήθηκε"
+    STR_READONLY            "Μόνο για ανάγνωση"
+    STR_COUNT               "%d από %d"
+    STR_WITHOUT             "χωρίς"
+    STR_AUTODETECT          "&Αυτοεντοπισμός"
+    STR_RECENT_FILES_EMPTY  "Άδειο"
+    STR_RECENT_FILES_DELETE_DEAD "Διαγραφή ανύπαρκτων"
+    STR_OPTIONS             "Επιλογές..."
+    STR_LANGUAGE_NONE       "Εσωτερική"
+    STR_FILE_FILTER         "Κειμένου αρχεία (*.txt)|*.txt|Όλα τα αρχεία (*.*)|*.*"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    STR_EXECUTABLE_FILTER   "ΏΙΦ΄ΠΠΞΔΌώ (*.exe)|*.exe|ΛωΣΠΞΔΌώ (*.*)|*.*"
-    STR_NONE                "Ξή"
-    STR_PLUGIN              "²εΌώ"
-    STR_FUNCTION            "Ί―Κύ"
-    STR_HOTKEY              "ΘΘΌό"
-    STR_STATUS              "Χ΄Μ¬"
-    STR_RUNNING             "ΥύΤΪΤΛΠΠ"
-    STR_FONT                "ΧΦΜε"
-    STR_COLOR               "ΡΥΙ«"
-    STR_HEADLINE            "±κΜβΠΠ"
-    STR_TOP                 "Ò³ΓΌ:"
-    STR_BOTTOM              "Ò³½Ε:"
-    STR_ELEMENT             "ΤªΌώ"
-    STR_STANDARDTHEME       "±κΧΌ"
-    STR_TEXT                "ΞΔ±Ύ"
-    STR_BACKGROUND          "±³Ύ°"
+    STR_EXECUTABLE_FILTER   "Εκτελέσιμα αρχεία (*.exe)|*.exe|Όλα τα αρχεία (*.*)|*.*"
+    STR_NONE                "Κανένα"
+    STR_PLUGIN              "Πρόσθετο"
+    STR_FUNCTION            "Λειτουργία"
+    STR_HOTKEY              "Συντόμευση"
+    STR_STATUS              "Κατάσταση"
+    STR_RUNNING             "Εκτελείται"
+    STR_FONT                "Γραμματοσειρά"
+    STR_COLOR               "Χρώματα"
+    STR_HEADLINE            "Επικεφαλίδες"
+    STR_TOP                 "Πάνω:"
+    STR_BOTTOM              "Κάτω:"
+    STR_ELEMENT             "Στοιχείο"
+    STR_STANDARDTHEME       "Προεπιλεγμένο"
+    STR_TEXT                "Κείμενο"
+    STR_BACKGROUND          "Φόντο"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    STR_SAMPLE              "ΚΎΐύ"
-    STR_BASIC               "»ω±ΎΡΥΙ«"
-    STR_SELECTION           "Ρ΅¶¨ΗψΣς"
-    STR_ACTIVELINE          "µ±Η°ΠΠ"
-    STR_ACTIVELINEBORDER    "µ±Η°ΠΠ±ίΏς"
-    STR_ALTLINE             "½»ΜζΠΠ"
-    STR_ALTLINEBORDER       "½»ΜζΠΠ±ίΏς"
-    STR_ACTIVECOLUMN        "µ±Η°ΑΠ"
-    STR_COLUMNMARKER        "ΑΠ±κ³ίΟί"
-    STR_CARET               "²εΘλµγ"
-    STR_URL                 "³¬Α΄½Σ"
-    STR_ACTIVEURL           "µ±Η°³¬Α΄½Σ"
-    STR_VISITURL            "·ΓΞΚ³¬Α΄½Σ"
-    STR_PAGEFIT             "ΚΚΊΟÒ³Γζ"
-    STR_PAGEWIDTH           "Ò³ΓζΏν¶Θ"
-    STR_ALLFILES            "ΛωΣΠΞΔΌώ"
+    STR_SAMPLE              "Δείγμα"
+    STR_BASIC               "Βασικό χρώμα"
+    STR_SELECTION           "Επιλεγμένο"
+    STR_ACTIVELINE          "Ενεργή γραμμή"
+    STR_ACTIVELINEBORDER    "Κορνίζα ενεργής γραμμής"
+    STR_ALTLINE             "Άλλη γραμμή"
+    STR_ALTLINEBORDER       "Κορνίζα άλλης γραμμής"
+    STR_ACTIVECOLUMN        "Ενεργή στήλη"
+    STR_COLUMNMARKER        "Δείκτης στήλης"
+    STR_CARET               "Δρομέας"
+    STR_URL                 "Υπερσύνδεση"
+    STR_ACTIVEURL           "Ενεργή υπερσύνδεση"
+    STR_VISITURL            "Αναγνωσμένη υπερσύνδεση"
+    STR_PAGEFIT             "Προσαρμογή σελίδας"
+    STR_PAGEWIDTH           "Προσαρμογή στο πλάτος"
+    STR_ALLFILES            "Όλα τα αρχεία"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    STR_ONLYMODIFIED        "ÒΡΠήΈΔ"
-    STR_ONLYUNMODIFIED      "Ξ΄ΠήΈΔ"
-    STR_INVERTSELECTION     "·΄Ρ΅"
+    STR_ONLYMODIFIED        "Τροποποιήθηκε"
+    STR_ONLYUNMODIFIED      "Μη-Τροποποιημένο"
+    STR_INVERTSELECTION     "Αναστροφή επιλογής"
     STR_NEWLINEDOT          ". matches \\n"
-    STR_MESSAGEBOX_OK       "Θ·¶¨"
-    STR_MESSAGEBOX_YES      "ΚΗ(&Y)"
-    STR_MESSAGEBOX_NO       "·ρ(&N)"
-    STR_MESSAGEBOX_CANCEL   "Θ΅Οϋ"
-    STR_MESSAGEBOX_YESTOALL "Θ«ΚΗ"
-    STR_MESSAGEBOX_NOTOALL  "Θ«·ρ"
-    STR_MESSAGEBOX_GOTO     "Χªµ½"
-    STR_MESSAGEBOX_TERMINATE "ΦΥΦΉ"
-    STR_MESSAGEBOX_CONTINUE "ΌΜΠψ"
+    STR_MESSAGEBOX_OK       "Εντάξει"
+    STR_MESSAGEBOX_YES      "&Ναι"
+    STR_MESSAGEBOX_NO       "Ό&χι"
+    STR_MESSAGEBOX_CANCEL   "Ακύρωση"
+    STR_MESSAGEBOX_YESTOALL "Ναι σε ολα"
+    STR_MESSAGEBOX_NOTOALL  "Όχι σε ολα"
+    STR_MESSAGEBOX_GOTO     "Μετάβαση"
+    STR_MESSAGEBOX_TERMINATE "Τερματισμός"
+    STR_MESSAGEBOX_CONTINUE "Συνέχεια"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    STR_AUTODETECT_RUSSIAN  "Ξχΐο¶ϋΞΔ (1251, OEM, KOI8-R, UTF-8)"
-    STR_AUTODETECT_EASTERNEUROPE "¶«Ε· (1250, OEM, UTF-8)"
-    STR_AUTODETECT_WESTERNEUROPE "ΞχΕ· (1252, OEM, UTF-8)"
-    STR_AUTODETECT_TURKISH  "ΝΑ¶ϊΖδΞΔ (1254, OEM, UTF-8)"
-    STR_AUTODETECT_CHINESE  "ΦΠΞΔ (UTF-8)"
-    STR_AUTODETECT_JAPANESE "ΘΥΞΔ (UTF-8)"
-    STR_AUTODETECT_KOREAN   "Ί«ΞΔ (UTF-8)"
+    STR_AUTODETECT_RUSSIAN  "Κυριλλικό (1251, OEM, KOI8-R, UTF-8)"
+    STR_AUTODETECT_EASTERNEUROPE "Ανατολικής Ευρώπης (1250, OEM, UTF-8)"
+    STR_AUTODETECT_WESTERNEUROPE "Δυτικής Ευρώπης (1252, OEM, UTF-8)"
+    STR_AUTODETECT_TURKISH  "Τουρκικά (1254, OEM, UTF-8)"
+    STR_AUTODETECT_CHINESE  "Κινέζικα (ANSI, UTF-8)"
+    STR_AUTODETECT_JAPANESE "Ιαπωνικά (932, UTF-8)"
+    STR_AUTODETECT_KOREAN   "Κορέας (949, UTF-8)"
 END
 
-#endif    // Chinese (P.R.C.) resources
+#endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

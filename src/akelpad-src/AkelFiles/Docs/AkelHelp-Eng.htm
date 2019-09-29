@@ -1,4 +1,4 @@
-﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
 <meta http-equiv="Content-type" content="text/html; charset=utf-8">
@@ -102,19 +102,27 @@
         <td>- ignore next command line parameter.</td>
       </tr>
       <tr>
-        <td><li><b>/reassoc</b></td>
+        <td><li><b>/NewInstance</b></td>
+        <td>- force create new program instance.</td>
+      </tr>
+      <tr>
+        <td><li><b>/MainClass("MyAkelPad4")</b></td>
+        <td>- set class name for a new program instance. Name could contain variable %d, which is replaced with process id.</td>
+      </tr>
+      <tr>
+        <td><li><b>/Reassoc</b></td>
         <td>- reinstall assigned earlier associations of file types.</td>
       </tr>
       <tr>
-        <td><li><b>/deassoc</b></td>
+        <td><li><b>/Deassoc</b></td>
         <td>- uninstall assigned earlier associations of file types.</td>
       </tr>
       <tr>
-        <td><li><b>/quit</b></td>
+        <td><li><b>/Quit</b></td>
         <td>- stop parsing command line parameters and close program.</td>
       </tr>
       <tr>
-        <td><li><b>/end</b></td>
+        <td><li><b>/End</b></td>
         <td>- stop parsing command line parameters.</td>
       </tr>
     </table>
@@ -148,7 +156,7 @@
 
           <div style="margin-top:10px"><li><b>/SaveFile("file"[, SaveCodepage][, SaveBOM])</b></div>
           <div style="margin-left:30px">"file"</div>
-            <div style="margin-left:60px">Save current document to a specified file name.</div>
+            <div style="margin-left:60px">Save current document to a specified file name. If "", current file will be used.</div>
           <div style="margin-left:30px">SaveCodepage</div>
             <div style="margin-left:60px">Save codepage. If -1 or not specified, current codepage will be used.</div>
           <div style="margin-left:30px">SaveBOM</div>
@@ -164,13 +172,15 @@
           <div style="margin-left:30px">/Call("Scripts::Main")</div>
             <div style="margin-left:60px">method calls Scripts plugin and Main function.</div>
 
-          <div style="margin-top:10px"><li><b>/Exec("command line"[, "working directory"][, Wait])</b></div>
+          <div style="margin-top:10px"><li><b>/Exec("command line"[, "working directory"][, Wait][, WindowStyle])</b></div>
           <div style="margin-left:30px">"command line"</div>
             <div style="margin-left:60px">Command line string.</div>
           <div style="margin-left:30px">"working directory"</div>
             <div style="margin-left:60px">Working directory string. Default is "".</div>
           <div style="margin-left:30px">Wait</div>
-            <div style="margin-left:60px">Wait until the program finishes. 1 - wait, 0 - return immediately.</div>
+            <div style="margin-left:60px">Wait until the program finishes. 1 - wait, 0 - return immediately (default).</div>
+          <div style="margin-left:30px">WindowStyle</div>
+            <div style="margin-left:60px">See MainWindowStyle description of /Show() method. Note: programs could ignore this parameter.</div>
           <div style="margin-left:30px">/Exec("notepad.exe")</div>
             <div style="margin-left:60px">method calls notepad.</div>
           <div style="margin-left:30px">/Exec(`notepad.exe`)</div>
@@ -179,7 +189,7 @@
             <div style="margin-left:60px">method calls notepad.</div>
           <div style="margin-left:30px">/Exec('%windir%\notepad.exe')</div>
             <div style="margin-left:60px">method calls notepad.</div>
-          <div style="margin-left:30px">/Exec(`rundll32.exe shell32,ShellExec_RunDLL "%%f"`, "%%d")</div>
+          <div style="margin-left:30px">/Exec(`rundll32.exe shell32,ShellExec_RunDLL "%f"`, "%d")</div>
             <div style="margin-left:60px">method pass an active file for opening on Windows association.</div>
 
           <div style="margin-top:10px"><li><b>/Font("FaceName", Style, Size)</b></div>
@@ -219,14 +229,82 @@
           <div style="margin-left:30px">/Insert("\[0031 0032 0033]", 1)</div>
             <div style="margin-left:60px">method replaces selection with "123".</div>
 
-          <br>
+          <div style="margin-top:10px"><li><b>/If("expression", "IfTrue", "IfFalse")</b></div>
+          <div style="margin-left:30px">"expression"</div>
+            <div style="margin-left:60px">Expression could consist of:</div>
+            <div style="margin-left:60px">- mathematical operations:</div>
+              <div style="margin-left:90px">+, -, *, /, %, &amp;, |, ^.</div>
+            <div style="margin-left:60px">- logical operations:</div>
+              <div style="margin-left:90px">&gt;, &lt;, ==, !=, &gt;=, &lt;=, &amp;&amp;, ||, x?y:z.</div>
+            <div style="margin-left:60px">- comments:</div>
+              <div style="margin-left:90px">/*comment*/</div>
+            <div style="margin-left:60px">- methods:</div>
+              <div style="margin-left:90px"><b>SendMain(nMessage, wParam, lParam)</b></div>
+                <div style="margin-left:120px">nMessage</div>
+                  <div style="margin-left:150px">Specifies the message to be sent to the main window.</div>
+                <div style="margin-left:120px">wParam</div>
+                  <div style="margin-left:150px">Specifies additional message-specific information.</div>
+                <div style="margin-left:120px">lParam</div>
+                  <div style="margin-left:150px">Specifies additional message-specific information.</div>
+              <div style="margin-left:90px"><b>SendEdit(nMessage, wParam, lParam)</b></div>
+                <div style="margin-left:120px">nMessage</div>
+                  <div style="margin-left:150px">Specifies the message to be sent to the current edit window.</div>
+                <div style="margin-left:120px">wParam</div>
+                  <div style="margin-left:150px">Specifies additional message-specific information.</div>
+                <div style="margin-left:120px">lParam</div>
+                  <div style="margin-left:150px">Specifies additional message-specific information.</div>
+              <div style="margin-left:90px"><b>Call("Plugin::Function"[, additional parameters])</b></div>
+                <div style="margin-left:120px">- If a plugin is called, then exit code transfered via special parameter &nResult. &nResult must be located in a place where external call syntax requires a pointer to an integer.</div>
+                <div style="margin-left:120px">/If(`Call("Coder::CodeFold", 1, &nResult)`, `/Call("Coder::CodeFold", 1)`, ``)</div>
+                  <div style="margin-left:150px">Close CodeFold window, if opened.</div>
+                <div style="margin-left:120px">- If a script is called, then it is necessary to use external calls 2 or 4 and also transfer exit code from script via AkelPad.ScriptExitCode.</div>
+                <div style="margin-left:120px">/If(`Call("Scripts::Main", 4, "EvalCmd.js", 'if (AkelPad.GetEditFile(0)) AkelPad.ScriptExitCode(1);')`, ``, `/Quit`)</div>
+                  <div style="margin-left:150px">Quit, if current document has no name.</div>
+                <div style="margin-left:120px">- It is possible to call Scripts plugin method directly.</div>
+                <div style="margin-left:120px">/If(`AkelPad.Constants._X64 == 1`, `/Quit`, ``)</div>
+                  <div style="margin-left:150px">Quit, if program is x64.</div>
+          <div style="margin-left:30px">"IfTrue"</div>
+            <div style="margin-left:60px">Command line, if expression result is true (not equal to zero).</div>
+          <div style="margin-left:30px">"IfFalse"</div>
+            <div style="margin-left:60px">Command line, if expression result is false (equal to zero).</div>
+          <div style="margin-left:30px">/If(`SendMain(1222 /*AKD_GETMAININFO*/, 5 /*MI_SAVESETTINGS*/, 0) == 2 /*SS_INI*/`, `/OpenFile("%a\AkelPad.ini")`, ``)</div>
+            <div style="margin-left:60px">method opens AkelPad.ini, if settings saved to ini file.</div>
+
+          <div style="margin-top:10px"><li><b>/Var(Flags)</b></div>
+          <div style="margin-left:30px">Flags to use variables for the following command line methods. Set by the sum of members:</div>
+            <div style="margin-left:60px">0 don't expand variables.</div>
+            <div style="margin-left:60px">1 expand system variables (for example, %windir%).</div>
+            <div style="margin-left:60px">2 expand program variables %f,%d,%a. If flag set, then symbol % specified as %%.</div>
+            <div style="margin-left:60px">By default: 1+2=3.</div>
+          <div style="margin-left:30px">/Var(0) /OpenFile("1%a%2.txt")</div>
+            <div style="margin-left:60px">open file "1%a%2.txt".</div>
+
           <div style="margin-top:10px">Variables available for use in methods:</div>
 
-          <div style="margin-left:30px;margin-top:10px">%%f - active file</div>
-          <div style="margin-left:30px">%%d - directory of active file</div>
-          <div style="margin-left:30px">%%a - AkelPad's directory (i.e. contains AkelPad.exe)</div>
-          <div style="margin-left:30px">%%%% - % symbol</div>
-          <div style="margin-left:30px">%system variable% (i.e. <i>Environment</i> variable)</div>
+          <table cellspacing=0 cellpadding=5 border=1>
+            <tr>
+              <td>Normal usage</td>
+              <td>Batch files (bat,cmd)</td>
+            </tr>
+            <tr>
+              <td>
+                <div style="margin-left:30px">%f - active file</div>
+                <div style="margin-left:30px">%d - directory of active file</div>
+                <div style="margin-left:30px">%a - AkelPad's directory (i.e. contains AkelPad.exe)</div>
+                <div style="margin-left:30px">%% - % symbol</div>
+                <div style="margin-left:30px">%system variable% (i.e. <i>environment</i> variable)</div>
+              </td>
+              <td>
+                <div style="margin-left:30px">%%f - active file</div>
+                <div style="margin-left:30px">%%d - directory of active file</div>
+                <div style="margin-left:30px">%%a - AkelPad's directory (i.e. contains AkelPad.exe)</div>
+                <div style="margin-left:30px">%%%% - % symbol</div>
+                <div style="margin-left:30px">%system variable% (i.e. <i>environment</i> variable)</div>
+                <div style="margin-left:30px">^& - & symbol</div>
+              </td>
+            </tr>
+          </table>
+
         </td>
       </tr>
     </table>
@@ -256,7 +334,6 @@
           <br>By default: "".
         </td>
       </tr>
-
       <tr>
         <td><b>ShowModify</b></td>
         <td>Determines where <i>document changed</i> status will be displayed. Set by the sum of members:
@@ -302,7 +379,7 @@
           <br><li>8 - GUI (right click moves caret).
           <br><li>16 - Triple click and left margin click selects line without newline character(s).
           <br><li>32 - Disable font size change using Ctrl+<i>mouse scroll wheel</i>.
-          <br><li>64 - Left margin line selection with mouse selects all wrapped line.
+          <br><li>64 - Line selection with mouse selects all wrapped line.
           <br><li>128 - No scrolling after middle mouse click.
           <br><li>256 - Invert mouse horizontal wheel.
           <br><li>512 - Invert mouse vertical wheel.
@@ -335,6 +412,7 @@
           <br><li>2097152 - disable new tab creation using middle button click on the tab bar.
           <br><li>4194304 - disable close tab using left button double click on the tab.
           <br><li>8388608 - disable close tab using middle button click on the tab.
+          <br><li>268435456 - close modified tabs first on exit.
           <br>
           <br>By default: 2+256+131072=131330.
         </td>
@@ -351,8 +429,8 @@
         <td>Defines <a href=#ch7>regular expression</a> replace pattern for tab name in MDI/PMDI mode. Used with TabNameFind.
           <br>
           <br>Example:
-          <br>TabNameFind=(.{20})[^.]{4,}(.*)
-          <br>TabNameRep=\1..\2
+          <br>TabNameFind=(.{20}).{3,}(?:\.([^.]*))?
+          <br>TabNameRep=\1...\2
           <br>
           <br>By default: "".
         </td>
@@ -365,9 +443,21 @@
           <br><li>4 - Draw newline selection to right edge of text area.
           <br><li>8 - Hides the selection when the control loses the input focus.
           <br><li>16 - Disable marker painting after last line.
+          <br><li>128 - Unit of vertical scrolling is line (default is pixel).
           <br><li>256 - Show scroll bars only when needed.
           <br><li>512 - Draw thin edit window border.
           <br><li>1024 - Draw no edit window border.
+          <br>
+          <br>By default: 0.
+        </td>
+      </tr>
+      <tr>
+        <td><b>FixedCharWidth</b></td>
+        <td>Defines fixed character width. All symbols, including proportional fonts, will be paint in this width. Special values:
+          <br><li>-1 - font latin character average width.
+          <br><li>-4 - font space width.
+          <br><li>-6 - font latin character maximum width.
+          <br><li>0 - disable fixed width.
           <br>
           <br>By default: 0.
         </td>
@@ -658,307 +748,317 @@
   <table cellspacing=0 cellpadding=1 border=1>
     <tr>
       <td><b>Ctrl+X</b><br><b>Shift+Del</b></td>
-      <td>cut</td>
+      <td>Cut</td>
     </tr>
 
     <tr>
-      <td><b>Ctrl+C</b><br><b>Ctrl+Ins</b></td>
-      <td>copy</td>
+      <td><b>Ctrl+C</b><br><b>Ctrl+Ins</b><br><b>Ctrl+Shift+C</b></td>
+      <td>Copy</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+V</b><br><b>Shift+Ins</b></td>
-      <td>paste</td>
+      <td>Paste</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Shift+V</b><br><b>Ctrl+Shift+Ins</b></td>
-      <td>paste text as ANSI</td>
+      <td>Paste text as ANSI</td>
     </tr>
 
     <tr>
       <td><b>Alt+V</b></td>
-      <td>paste to column selection</td>
+      <td>Paste to column selection</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+A</b></td>
-      <td>select all</td>
+      <td>Select all</td>
     </tr>
 
     <tr>
       <td><b>Backspace</b></td>
-      <td>delete from left</td>
+      <td>Delete from left</td>
     </tr>
 
     <tr>
       <td><b>Del</b></td>
-      <td>delete from right</td>
+      <td>Delete from right</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Z</b></td>
-      <td>undo</td>
+      <td>Undo</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Shift+Z</b></td>
-      <td>redo</td>
+      <td>Redo</td>
+    </tr>
+
+    <tr>
+      <td><b>Insert</b></td>
+      <td>Insert/Overtype mode</td>
     </tr>
 
     <tr>
       <td><b>Home</b></td>
-      <td>go to start of line</td>
+      <td>Go to start of line</td>
     </tr>
 
     <tr>
       <td><b>End</b></td>
-      <td>go to end of line</td>
+      <td>Go to end of line</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Home</b></td>
-      <td>go to start of text</td>
+      <td>Go to start of text</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+End</b></td>
-      <td>go to end of text</td>
+      <td>Go to end of text</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Left</b></td>
-      <td>go to start of word</td>
+      <td>Go to start of word</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Right</b></td>
-      <td>go to end of word</td>
+      <td>Go to end of word</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Up</b></td>
-      <td>go to start of previous line</td>
+      <td>Go to start of previous line</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Down</b></td>
-      <td>go to start of next line</td>
+      <td>Go to start of next line</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+PageUp</b></td>
-      <td>go to first visible character</td>
+      <td>Go to first visible character</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+PageDown</b></td>
-      <td>go to last visible character</td>
+      <td>Go to last visible character</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Backspace</b></td>
-      <td>delete left word</td>
+      <td>Delete left word</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Del</b></td>
-      <td>delete right word</td>
+      <td>Delete right word</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+N</b></td>
-      <td>create new file</td>
+      <td>Create new file</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Shift+N</b></td>
-      <td>create new window</td>
+      <td>Create new window</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+O</b></td>
-      <td>open file</td>
+      <td>Open file</td>
     </tr>
 
     <tr>
       <td><b>F5</b><br><b>Ctrl+Shift+O</b></td>
-      <td>reopen file</td>
+      <td>Reopen file</td>
     </tr>
 
     <tr>
       <td><b>F2</b><br><b>Ctrl+S</b></td>
-      <td>save</td>
+      <td>Save</td>
     </tr>
 
     <tr>
       <td><b>Shift+F2</b><br><b>Ctrl+Shift+S</b></td>
-      <td>save as</td>
+      <td>Save as</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Alt+F2</b></td>
-      <td>save all</td>
+      <td>Save all</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Alt+F4</b></td>
-      <td>close all</td>
+      <td>Close all</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+P</b></td>
-      <td>print</td>
+      <td>Print</td>
     </tr>
 
     <tr>
       <td><b>Esc</b><br><b>Alt+F4</b></td>
-      <td>exit</td>
+      <td>Exit</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+F</b></td>
-      <td>find</td>
+      <td>Find</td>
     </tr>
 
     <tr>
       <td><b>F3</b></td>
-      <td>find next down. Search/replace dialog: close dialog and find next down.</td>
+      <td>Find next down. Search/replace dialog: close dialog and find next down.</td>
     </tr>
 
     <tr>
       <td><b>Shift+F3</b></td>
-      <td>find next up. Search/replace dialog: close dialog and find next up.</td>
+      <td>Find next up. Search/replace dialog: close dialog and find next up.</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+R</b><br><b>Ctrl+H</b></td>
-      <td>find and replace</td>
+      <td>Find and replace</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+G</b></td>
-      <td>go to line (by number)</td>
+      <td>Go to line (by number)</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+I</b></td>
-      <td>run "Character map" (i.e. "Edit/Insert character" menu item)</td>
+      <td>Run "Character map" (i.e. "Edit/Insert character" menu item)</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+D</b></td>
-      <td>insert date</td>
+      <td>Insert date</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+T</b></td>
-      <td>on/off "Always on top"</td>
+      <td>On/off "Always on top"</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+U</b></td>
-      <td>on/off "Word wrap"</td>
+      <td>On/off "Word wrap"</td>
     </tr>
 
     <tr>
       <td><b>Alt+W</b></td>
-      <td>reopen file as ANSI (Windows)</td>
+      <td>Reopen file as ANSI (Windows)</td>
     </tr>
 
     <tr>
       <td><b>Alt+D</b></td>
-      <td>reopen file as OEM (DOS)</td>
+      <td>Reopen file as OEM (DOS)</td>
     </tr>
 
     <tr>
       <td><b>Alt+K</b></td>
-      <td>reopen file as KOI8-R</td>
+      <td>Reopen file as KOI8-R</td>
     </tr>
 
     <tr>
       <td><b>Alt+L</b></td>
-      <td>reopen file as UTF-16LE</td>
+      <td>Reopen file as UTF-16LE</td>
     </tr>
 
     <tr>
       <td><b>Alt+B</b></td>
-      <td>reopen file as UTF-16BE</td>
+      <td>Reopen file as UTF-16BE</td>
     </tr>
 
     <tr>
       <td><b>Alt+U</b></td>
-      <td>reopen file as UTF-8</td>
+      <td>Reopen file as UTF-8</td>
     </tr>
 
     <tr>
       <td><b>Shift+Alt+W</b></td>
-      <td>save file as ANSI (Windows)</td>
+      <td>Save file as ANSI (Windows)</td>
     </tr>
 
     <tr>
       <td><b>Shift+Alt+D</b></td>
-      <td>save file as OEM (DOS)</td>
+      <td>Save file as OEM (DOS)</td>
     </tr>
 
     <tr>
       <td><b>Shift+Alt+K</b></td>
-      <td>save file as KOI8-R</td>
+      <td>Save file as KOI8-R</td>
     </tr>
 
     <tr>
       <td><b>Shift+Alt+L</b></td>
-      <td>save file as UTF-16LE</td>
+      <td>Save file as UTF-16LE</td>
     </tr>
 
     <tr>
       <td><b>Shift+Alt+B</b></td>
-      <td>save file as UTF-16BE</td>
+      <td>Save file as UTF-16BE</td>
     </tr>
 
     <tr>
       <td><b>Shift+Alt+U</b></td>
-      <td>save file as UTF-8</td>
+      <td>Save file as UTF-8</td>
     </tr>
 
     <tr>
       <td><b>Alt+F5</b></td>
-      <td>reopen file with code page detect</td>
+      <td>Reopen file with code page detect</td>
     </tr>
 
     <tr>
       <td><b>F12</b></td>
-      <td>show context menu for fast reopening/saving in desired code page</td>
+      <td>Show context menu for fast reopening/saving in desired code page</td>
     </tr>
 
     <tr>
       <td><b>Alt+R</b></td>
-      <td>recode text (i.e. "Edit/Selection/Recode..." menu item)</td>
+      <td>Recode text (i.e. "Edit/Selection/Recode..." menu item)</td>
+    </tr>
+
+    <tr>
+      <td><b>Shift+Space</b></td>
+      <td>Delete space if several lines selected, otherwise insert space.</td>
     </tr>
 
     <tr>
       <td><b>Shift+Backspace</b></td>
-      <td>delete first char</td>
+      <td>Delete first char</td>
     </tr>
 
     <tr>
       <td><b>Alt+Backspace</b></td>
-      <td>trim trailing whitespace</td>
+      <td>Trim trailing whitespace</td>
     </tr>
 
     <tr>
       <td><b>Alt+P</b></td>
-      <td>plugins dialog</td>
+      <td>Plugins dialog</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+F5</b></td>
-      <td>execute command</td>
+      <td>Execute command</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+L</b></td>
-      <td>on/off "Keep left spaces"</td>
+      <td>On/off "Keep left spaces"</td>
     </tr>
 
     <tr>
@@ -969,102 +1069,112 @@
 
     <tr>
       <td><b>F4</b><br><b>Alt+Enter</b></td>
-      <td>maximize/restore window</td>
+      <td>Maximize/restore window</td>
     </tr>
 
     <tr>
       <td><b>F8</b><br><b>Ctrl+Y</b></td>
-      <td>delete current line</td>
+      <td>Delete current line</td>
     </tr>
 
     <tr>
       <td><b>Alt+\</b></td>
-      <td>move caret to opposite end of selection</td>
+      <td>Move caret to opposite end of selection</td>
+    </tr>
+
+    <tr>
+      <td><b>Alt+,</b></td>
+      <td>Move caret to previous location</td>
+    </tr>
+
+    <tr>
+      <td><b>Alt+.</b></td>
+      <td>Move caret to next location</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Num +</b></td>
-      <td>increase font by 1 pt</td>
+      <td>Increase font by 1 pt</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Num -</b></td>
-      <td>decrease font by 1 pt</td>
+      <td>Decrease font by 1 pt</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Num *</b></td>
-      <td>restore font to size at startup</td>
+      <td>Restore font to size at startup</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+5</b></td>
-      <td>cycle selection through case change</td>
+      <td>Cycle selection through case change</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+6</b></td>
-      <td>selected text, as "UPPERCASE"</td>
+      <td>Selected text, as "UPPERCASE"</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+7</b></td>
-      <td>selected text, as "lowercase"</td>
+      <td>Selected text, as "lowercase"</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+8</b></td>
-      <td>selected text, as "Sentence case."</td>
+      <td>Selected text, as "Sentence case."</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+9</b></td>
-      <td>selected text, as "Title Case"</td>
+      <td>Selected text, as "Title Case"</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+0</b></td>
-      <td>selected text, as "iNVERT cASE"</td>
+      <td>Selected text, as "iNVERT cASE"</td>
     </tr>
 
     <tr>
       <td><b>F6</b></td>
-      <td>go to next dialog</td>
+      <td>Go to next dialog</td>
     </tr>
 
     <tr>
       <td><b>Shift+F6</b></td>
-      <td>go to previous dialog</td>
+      <td>Go to previous dialog</td>
     </tr>
 
     <tr>
       <td><b>F9</b></td>
-      <td>activate next pane (split window)</td>
+      <td>Activate next pane (split window)</td>
     </tr>
 
     <tr>
       <td><b>Shift+F9</b></td>
-      <td>activate previous pane (split window)</td>
+      <td>Activate previous pane (split window)</td>
     </tr>
 
     <tr>
       <td><b>F10</b></td>
-      <td>select window dialog (MDI/PMDI)</td>
+      <td>Select window dialog (MDI/PMDI)</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Tab</b><br><b>Ctrl+F6</b></td>
-      <td>next window (MDI/PMDI)</td>
+      <td>Next window (MDI/PMDI)</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+Shift+Tab</b><br><b>Ctrl+Shift+F6</b></td>
-      <td>previous window (MDI/PMDI)</td>
+      <td>Previous window (MDI/PMDI)</td>
     </tr>
 
     <tr>
       <td><b>Ctrl+F4</b><br><b>Ctrl+W</b></td>
-      <td>close window (MDI/PMDI)</td>
+      <td>Close window (MDI/PMDI)</td>
     </tr>
 
   </table>
@@ -1086,7 +1196,8 @@
 
     <tr>
       <td align=center><b>4103</b></td>
-      <td>Open file dialog</td>
+      <td>Open file dialog
+          <br>Optional parameter: 1 - force to use last directory.</td>
     </tr>
 
     <tr>
@@ -1101,7 +1212,8 @@
 
     <tr>
       <td align=center><b>4106</b></td>
-      <td>Save file dialog</td>
+      <td>Save file dialog
+          <br>Optional parameter: 1 - force to use last directory.</td>
     </tr>
 
     <tr>
@@ -1226,17 +1338,58 @@
 
     <tr>
       <td align=center><b>4153</b></td>
-      <td>Cut</td>
+      <td>Cut
+          <br>Optional first parameter:
+          <br>1 - cut word under caret, if no selection;
+          <br>2 - cut line under caret, if no selection;
+          <br>4 - cut unwrapped line under caret, if no selection.
+          <br>8 - cut also new line. Uses with flag 2 (2+8=10) or 4 (4+8=12).
+          <br>Optional second parameter:
+          <br>1 - input new line.
+          <br>2 - output new line (default).
+          <br>3 - new line of the source (as is).
+          <br>5 - "\r" new line.
+          <br>6 - "\n" new line.
+          <br>7 - "\r\n" new line.
+          <br>8 - "\r\r\n" new line.
+          <br>Parameters value calculation: (first parameter value) + 100000 * (second parameter value)</td>
     </tr>
 
     <tr>
       <td align=center><b>4154</b></td>
-      <td>Copy</td>
+      <td>Copy
+          <br>Optional first parameter:
+          <br>1 - copy word under caret, if no selection;
+          <br>2 - copy line under caret, if no selection;
+          <br>4 - copy unwrapped line under caret, if no selection.
+          <br>8 - copy also new line. Uses with flag 2 (2+8=10) or 4 (4+8=12).
+          <br>Optional second parameter:
+          <br>1 - input new line.
+          <br>2 - output new line (default).
+          <br>3 - new line of the source (as is).
+          <br>5 - "\r" new line.
+          <br>6 - "\n" new line.
+          <br>7 - "\r\n" new line.
+          <br>8 - "\r\r\n" new line.
+          <br>Parameters value calculation: (first parameter value) + 100000 * (second parameter value)</td>
     </tr>
 
     <tr>
       <td align=center><b>4155</b></td>
-      <td>Paste</td>
+      <td>Paste
+          <br>Optional first parameter:
+          <br>1 - paste text as ANSI. Same as 4191 command.
+          <br>2 - paste to column selection. Same as 4192 command.
+          <br>4 - select pasted text.
+          <br>Optional second parameter:
+          <br>1 - input new line (default).
+          <br>2 - output new line.
+          <br>3 - new line of the source (as is).
+          <br>5 - "\r" new line.
+          <br>6 - "\n" new line.
+          <br>7 - "\r\n" new line.
+          <br>8 - "\r\r\n" new line.
+          <br>Parameters value calculation: (first parameter value) + 100000 * (second parameter value)</td>
     </tr>
 
     <tr>
@@ -1291,7 +1444,8 @@
 
     <tr>
       <td align=center><b>4166</b></td>
-      <td>Delete tabulation</td>
+      <td>Delete tabulation if several lines selected, otherwise insert tabulation.
+          <br>Optional parameter: 1 - delete tabulation in single line selection.</td>
     </tr>
 
     <tr>
@@ -1311,7 +1465,8 @@
 
     <tr>
       <td align=center><b>4170</b></td>
-      <td>Delete space</td>
+      <td>Delete space if several lines selected, otherwise insert space.
+          <br>Optional parameter: 1 - delete space in single line selection.</td>
     </tr>
 
     <tr>
@@ -1337,37 +1492,37 @@
     <tr>
       <td align=center><b>4175</b></td>
       <td>Convert text to "UPPERCASE".
-          <br>Optional parameter: 1 - change case for current word if no selection.</td>
+          <br>Optional parameter: 1 - change case for all text if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4176</b></td>
       <td>Convert text to "lowercase".
-          <br>Optional parameter: 1 - change case for current word if no selection.</td>
+          <br>Optional parameter: 1 - change case for all text if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4177</b></td>
       <td>Convert text to "Sentence case.".
-          <br>Optional parameter: 1 - change case for current word if no selection.</td>
+          <br>Optional parameter: 1 - change case for all text if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4178</b></td>
       <td>Convert text to "Title Case".
-          <br>Optional parameter: 1 - change case for current word if no selection.</td>
+          <br>Optional parameter: 1 - change case for all text if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4179</b></td>
       <td>Convert text to "iNVERT cASE".
-          <br>Optional parameter: 1 - change case for current word if no selection.</td>
+          <br>Optional parameter: 1 - change case for all text if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4180</b></td>
       <td>Cycle case.
-          <br>Optional parameter: 1 - change case for current word if no selection.</td>
+          <br>Optional parameter: 1 - change case for all text if no selection.</td>
     </tr>
 
     <tr>
@@ -1654,7 +1809,24 @@
 
     <tr>
       <td align=center><b>4321</b></td>
-      <td>Close all unmodified tabs</td>
+      <td>Close all unmodified tabs
+          <br>Optional parameter: 1 - close all modified tabs.</td>
+    </tr>
+
+    <tr>
+      <td align=center><b>4322</b></td>
+      <td>Clone current tab</td>
+    </tr>
+
+    <tr>
+      <td align=center><b>4323</b></td>
+      <td>Copy current tab file path
+          <br>Optional parameter:
+          <br>0 - copy full path (default);
+          <br>1 - copy directory;
+          <br>2 - copy file name;
+          <br>3 - copy file base name;
+          <br>4 - copy file extension.</td>
     </tr>
 
     <tr>
@@ -1770,7 +1942,7 @@
       <th>Matches</th>
     </tr>
     <tr>
-      <td>^\s*$</td>
+      <td>^\s*?$</td>
       <td>Match a blank line.</td>
     </tr>
     <tr>
@@ -1778,7 +1950,7 @@
       <td>Validate an ID number consisting of 2 digits, a hyphen, and an additional 5 digits.</td>
     </tr>
     <tr>
-      <td>&lt;(\w+)[^&gt;]*&gt;.*&lt;/\1&gt;</td>
+      <td>&lt;(\w+)[^&gt;]*&gt;.*?&lt;/\1&gt;</td>
       <td>Match an HTML tag.</td>
     </tr>
   </table>
@@ -1868,12 +2040,12 @@
       <td>(?(<i>condition</i>)<i>pattern-true</i>|<i>pattern-false</i>)
       <br><br>(?(<i>condition</i>)<i>pattern-true</i>)
       </td>
-      <td>If the condition is satisfied, the pattern-true is used; otherwise the pattern-false (if present) is used. Condition can be pattern or a number of backreference, which will be checked for match success. For example, '(a)?b(?(1)c|d)' matches the "abc" in "abc" and "bd" in "zbd". Because, if "а" found, then trying to find "с" after "b", if "а" not found, then trying to find "d" after "b".</td>
+      <td>If the condition is satisfied, the pattern-true is used; otherwise the pattern-false (if present) is used. Condition can be pattern with positive/negative lookahead/lookbehind search or a number of backreference, which will be checked for match success. For example, '(a)?b(?(1)c|d)' matches the "abc" in "abc" and "bd" in "zbd". Because, if "a" found, then trying to find "c" after "b", if "a" not found, then trying to find "d" after "b".</td>
     </tr>
     <tr>
       <td>(?<i>options</i>)</td>
       <td>
-        Options applies to the current group, if specified at the beginning of a special pattern, for example, 'a(?i:b)c' applies to "b" or to the next group, if specified separately, for example, 'a(?i)bc' applies to "bc".
+        Options applies only to current group, if specified at the beginning of a special pattern, for example, 'a(?i:b)c' applies to "b" or also to the next groups, if specified separately, for example, 'a(?i)bc' applies to "bc".
         <br>Possible to use several options at once, for example, 'a(?im-Us)bc'.
         <br>
         <br>
@@ -1958,6 +2130,10 @@
       <td>Same as \Z, but matches the position at the end of the search range.</td>
     </tr>
     <tr>
+      <td>\K</td>
+      <td>Any previously matched characters not included in the final result. For example, 'a+b+\K\c+' matches the "ccc" in "aaabbbccc".</td>
+    </tr>
+    <tr>
       <td>\d</td>
       <td>Matches a digit character. Equivalent to '[0-9]'.</td>
     </tr>
@@ -2026,6 +2202,8 @@
   <br><b>Notes:</b>
   <br>- Regular expression quantifiers (*, +, {n,}) are greedy by default. To make it lazy use "?" after quantifier, like, "\d*?". To make it possessive use "+" after quantifier, like, "\d*+".
   <br>- Using possessive quantifiers increases the speed of expression execution.
+  <br>- Metacharacters \b, \B, \A, \a, \z, \Z, \K not used in character sets [xyz], because they not relate to any concrete characters.
+  <br>- If metacharacter \K exclude characters from result, button "Replace" in replace dialog will work as "Find".
   <br>
 
 <a name=ch8><h3>License</h3></a>

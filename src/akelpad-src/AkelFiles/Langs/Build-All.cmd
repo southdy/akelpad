@@ -23,6 +23,9 @@ if not %ERRORLEVEL% == 0 goto END
 call :COMPILE "Brazilian" 0x416
 if not %ERRORLEVEL% == 0 goto END
 
+call :COMPILE "Catalan" 0x403
+if not %ERRORLEVEL% == 0 goto END
+
 call :COMPILE "Chinese (Simplified)" 0x804
 if not %ERRORLEVEL% == 0 goto END
 
@@ -45,6 +48,9 @@ call :COMPILE "French" 0x40C
 if not %ERRORLEVEL% == 0 goto END
 
 call :COMPILE "German" 0x407
+if not %ERRORLEVEL% == 0 goto END
+
+call :COMPILE "Greek" 0x408
 if not %ERRORLEVEL% == 0 goto END
 
 call :COMPILE "Hungarian" 0x40E
@@ -75,6 +81,9 @@ call :COMPILE "Spanish" 0x40A
 if not %ERRORLEVEL% == 0 goto END
 
 call :COMPILE "Ukrainian" 0x422
+if not %ERRORLEVEL% == 0 goto END
+
+call :COMPILE "Uzbek" 0x443
 if not %ERRORLEVEL% == 0 goto END
 
 :END

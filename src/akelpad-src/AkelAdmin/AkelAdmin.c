@@ -1,7 +1,7 @@
 /***********************************************************************************
  *                      AkelAdmin UAC support for AkelPad                          *
  *                                                                                 *
- * Copyright 2014 by Shengalts Aleksander aka Instructor (Shengalts@mail.ru)       *
+ * Copyright 2015 by Shengalts Aleksander aka Instructor (Shengalts@mail.ru)       *
  *                                                                                 *
  * License: this source is distributed under "BSD license" conditions.             *
  ***********************************************************************************/
@@ -457,7 +457,7 @@ const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen)
 
   if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
 
-  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
+  for (wpCount=wpFile + nFileLen - 1; (INT_PTR)wpCount >= (INT_PTR)wpFile; --wpCount)
   {
     if (*wpCount == L'\\')
       return wpCount + 1;

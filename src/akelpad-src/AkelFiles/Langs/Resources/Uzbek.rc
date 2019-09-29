@@ -13,24 +13,27 @@
   #else
     #define RC_VERSIONDESCRIPTION "AkelPad (x86) language module"
   #endif
-  #define RC_VERSIONCOPYRIGHT "© 2018 Shengalts Aleksander aka Instructor"
-  #define RC_VERSIONNAME "Russian.dll"
+  #define RC_VERSIONCOPYRIGHT "© 2015 Shamsiddinov Zafar"
+  #define RC_VERSIONNAME "Uzbek.dll"
 #endif
 #include "winresrc.h"
 #include "staticedit.h"
 #include "version.h"
 #include "..\..\Plugs\AkelDLL\AkelDLL.h"
+#ifndef LANG_UZBEK
+  #define LANG_UZBEK 0x43
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Russian resources
+// Unknown language: 0x43, 0x1 resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_UZB)
 #ifdef _WIN32
-LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
-#pragma code_page(1251)
+LANGUAGE 0x43, 0x1
+#pragma code_page(1254)
 #endif //_WIN32
 
 /////////////////////////////////////////////////////////////////////////////
@@ -40,161 +43,163 @@ LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 
 IDM_MENU_MAIN MENU DISCARDABLE
 BEGIN
-    POPUP "&Файл"
+    POPUP "&Fayl"
     BEGIN
-        MENUITEM "&Новый\tCtrl+N",              IDM_FILE_NEW
-        MENUITEM "Созд&ать окно\tCtrl+Shift+N", IDM_FILE_CREATENEW
-        MENUITEM "&Открыть...\tCtrl+O",         IDM_FILE_OPEN
-        MENUITEM "&Переоткрыть\tF5",            IDM_FILE_REOPEN
+        MENUITEM "&Yangi\tCtrl+N",              IDM_FILE_NEW
+        MENUITEM "Oyna &yaratmoq\tCtrl+Shift+N", IDM_FILE_CREATENEW
+        MENUITEM "&Ochmoq...\tCtrl+O",          IDM_FILE_OPEN
+        MENUITEM "&Qayta ochmoq\tF5",           IDM_FILE_REOPEN
         MENUITEM SEPARATOR
-        MENUITEM "&Сохранить\tCtrl+S",          IDM_FILE_SAVE
-        MENUITEM "Сохранить &как...\tCtrl+Shift+S", IDM_FILE_SAVEAS
-        MENUITEM "Сохранить &все\tCtrl+Alt+F2", IDM_FILE_SAVEALL
-        MENUITEM "Сохранить вс&е как...",       IDM_FILE_SAVEALLAS
+        MENUITEM "&Saqlamoq\tCtrl+S",           IDM_FILE_SAVE
+        MENUITEM "Quyidagicha &saqlamoq...\tCtrl+Shift+S", IDM_FILE_SAVEAS
+        MENUITEM "Barini &saqlamoq\tCtrl+Alt+F2", IDM_FILE_SAVEALL
+        MENUITEM "Quyidagicha &barini saqlamoq...", IDM_FILE_SAVEALLAS
         MENUITEM SEPARATOR
-        MENUITEM "Пара&метры страницы...",      IDM_FILE_PAGESETUP
-        MENUITEM "Предпросмо&тр...",            IDM_FILE_PRINTPREVIEW
-        MENUITEM "Пе&чать...\tCtrl+P",          IDM_FILE_PRINT
+        MENUITEM "Sahifalar &parametri...",     IDM_FILE_PAGESETUP
+        MENUITEM "&Oldindan ko‘rish...",        IDM_FILE_PRINTPREVIEW
+        MENUITEM "&Chop etish...\tCtrl+P",      IDM_FILE_PRINT
         MENUITEM SEPARATOR
-        POPUP "Последние &файлы"
+        POPUP "Oxirgi &fayllar"
         BEGIN
             MENUITEM "_",                           IDM_RECENT_FILES
         END
         MENUITEM SEPARATOR
-        MENUITEM "В&ыход\tEsc",                 IDM_FILE_EXIT
+        MENUITEM "&Chiqish\tEsc",               IDM_FILE_EXIT
     END
-    POPUP "&Правка"
+    POPUP "&Tahrir"
     BEGIN
-        MENUITEM "&Отменить\tCtrl+Z",           IDM_EDIT_UNDO
-        MENUITEM "Пов&торить\tCtrl+Shift+Z",    IDM_EDIT_REDO
+        MENUITEM "&Bekor qilmoq\tCtrl+Z",       IDM_EDIT_UNDO
+        MENUITEM "&Qaytarmoq\tCtrl+Shift+Z",    IDM_EDIT_REDO
         MENUITEM SEPARATOR
-        MENUITEM "&Вырезать\tCtrl+X",           IDM_EDIT_CUT
-        MENUITEM "&Копировать\tCtrl+C",         IDM_EDIT_COPY
-        MENUITEM "Вст&авить\tCtrl+V",           IDM_EDIT_PASTE
-        MENUITEM "&Удалить\tDel",               IDM_EDIT_CLEAR
-        MENUITEM "В&ыделить всё\tCtrl+A",       IDM_EDIT_SELECTALL
+        MENUITEM "&Qirqmoq\tCtrl+X",            IDM_EDIT_CUT
+        MENUITEM "&Nusxa olmoq\tCtrl+C",        IDM_EDIT_COPY
+        MENUITEM "&Qo‘ymoq\tCtrl+V",            IDM_EDIT_PASTE
+        MENUITEM "&O‘chirmoq\tDel",             IDM_EDIT_CLEAR
+        MENUITEM "&Barini belgilamoq\tCtrl+A",  IDM_EDIT_SELECTALL
         MENUITEM SEPARATOR
-        MENUITEM "Найт&и...\tCtrl+F",           IDM_EDIT_FIND
-        MENUITEM "Найти далее в&низ\tF3",       IDM_EDIT_FINDNEXTDOWN
-        MENUITEM "Найти далее ввер&х\tShift+F3", IDM_EDIT_FINDNEXTUP
-        MENUITEM "&Заменить...\tCtrl+R",        IDM_EDIT_REPLACE
-        MENUITEM "&Перейти...\tCtrl+G",         IDM_EDIT_GOTO
+        MENUITEM "&Izlash...\tCtrl+F",          IDM_EDIT_FIND
+        MENUITEM "Pastdan &izlash\tF3",         IDM_EDIT_FINDNEXTDOWN
+        MENUITEM "Yuqoridan izlash\tShift+F3",  IDM_EDIT_FINDNEXTUP
+        MENUITEM "&Almashtirmoq...\tCtrl+R",    IDM_EDIT_REPLACE
+        MENUITEM "&O‘tish...\tCtrl+G",          IDM_EDIT_GOTO
         MENUITEM SEPARATOR
-        MENUITEM "Вставить &символ\tCtrl+I",    IDM_EDIT_INSERTCHAR
-        MENUITEM "Вставить &дату\tCtrl+D",      IDM_EDIT_INSERTDATE
-        POPUP "Выде&ление"
+        MENUITEM "Belgi &qo‘ymoq\tCtrl+I",      IDM_EDIT_INSERTCHAR
+        MENUITEM "Sana &qo‘ymoq\tCtrl+D",       IDM_EDIT_INSERTDATE
+        POPUP "Belgi&lash"
         BEGIN
-            MENUITEM "Вертикальная вставка\tAlt+V", IDM_EDIT_PASTECOLUMN
+            MENUITEM "Vertikal tarzda qo‘yish\tAlt+V", IDM_EDIT_PASTECOLUMN
             MENUITEM SEPARATOR
-            MENUITEM "&Добавить Tab\tTab",          IDM_EDIT_INSERT_TAB_MENU
-            MENUITEM "&Убрать Tab\tShift+Tab",      IDM_EDIT_DELETE_TAB_MENU
-            MENUITEM "Д&обавить пробел\tSpace",     IDM_EDIT_INSERT_SPACE_MENU
+            MENUITEM "&Tab qo‘shmoq\tTab",          IDM_EDIT_INSERT_TAB_MENU
+            MENUITEM "&Tab olmoq\tShift+Tab",       IDM_EDIT_DELETE_TAB_MENU
+            MENUITEM "&Probel qo‘shmoq\tSpace",     IDM_EDIT_INSERT_SPACE_MENU
 
-            MENUITEM "У&брать пробел\tShift+Space", IDM_EDIT_DELETE_SPACE_MENU
+            MENUITEM "Probelni &olmoq\tShift+Space",
+                                                    IDM_EDIT_DELETE_SPACE_MENU
 
-            MENUITEM "Убр&ать первый символ\tShift+Backspace",
+            MENUITEM "Birinchi belgini &o‘chirmoq\tShift+Backspace",
                                                     IDM_EDIT_DELETE_FIRST_CHAR_MENU
 
-            MENUITEM "Убра&ть Tab'ы и пробелы в конце\tAlt+Backspace",
+            MENUITEM "Oxiridagi &Tablar va probellarni o‘chirmoq\tAlt+Backspace",
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
-            MENUITEM "Убрать Tab'ы и пробелы в выделении",
+
+            MENUITEM "&Belgilangan Tablar va probellarni o‘chirmoq",
                                                     IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
-            MENUITEM "ВСЕ &ПРОПИСНЫЕ\tCtrl+6",      IDM_EDIT_UPPERCASE
-            MENUITEM "все &строчные\tCtrl+7",       IDM_EDIT_LOWERCASE
-            MENUITEM "&Как в предложениях.\tCtrl+8", IDM_EDIT_SENTENCECASE
-            MENUITEM "&Начинать С Прописных\tCtrl+9", IDM_EDIT_TITLECASE
-            MENUITEM "&иНВЕРТИРОВАТЬ\tCtrl+0",      IDM_EDIT_INVERTCASE
+            MENUITEM "BARI &KATTA HAFRLARDA\tCtrl+6", IDM_EDIT_UPPERCASE
+            MENUITEM "bari &kichik harflarda\tCtrl+7", IDM_EDIT_LOWERCASE
+            MENUITEM "&Gap tarzida.\tCtrl+8",       IDM_EDIT_SENTENCECASE
+            MENUITEM "&Katta Harflarda Boshlash\tCtrl+9", IDM_EDIT_TITLECASE
+            MENUITEM "&tESKARI TARTIBDA\tCtrl+0",   IDM_EDIT_INVERTCASE
             MENUITEM SEPARATOR
-            MENUITEM "Перекодироват&ь...\tAlt+R",   IDM_EDIT_RECODE
+            MENUITEM "&Qayta kodlamoq...\tAlt+R",   IDM_EDIT_RECODE
         END
-        POPUP "&Формат новой строки"
+        POPUP "&Yangi satrlar formati"
         BEGIN
             MENUITEM "DOS/Windows (0Dh, 0Ah)",      IDM_EDIT_NEWLINE_WIN
             MENUITEM "Unix (0Ah)",                  IDM_EDIT_NEWLINE_UNIX
             MENUITEM "Mac (0Dh)",                   IDM_EDIT_NEWLINE_MAC
         END
     END
-    POPUP "&Вид"
+    POPUP "&Ko‘rinish"
     BEGIN
-        MENUITEM "&Шрифт...",                   IDM_VIEW_FONT
-        MENUITEM "&Цвета...",                   IDM_VIEW_COLORS
+        MENUITEM "&Shrift...",                  IDM_VIEW_FONT
+        MENUITEM "&Ranglar...",                 IDM_VIEW_COLORS
         MENUITEM SEPARATOR
-        MENUITEM "&Только чтение",              IDM_VIEW_READONLY
-        MENUITEM "П&еренос по словам\tCtrl+U",  IDM_VIEW_WORDWRAP
-        MENUITEM "&Разделить окно",             IDM_VIEW_SPLIT_WINDOW_ONOFF
-        MENUITEM "&Поверх всех окон\tCtrl+T",   IDM_VIEW_ONTOP
-        MENUITEM "&Строка состояния",           IDM_VIEW_SHOW_STATUSBAR
+        MENUITEM "&Faqat o‘qish",               IDM_VIEW_READONLY
+        MENUITEM "&So‘zlarni bo‘g‘in ko‘chirish\tCtrl+U", IDM_VIEW_WORDWRAP
+        MENUITEM "&Oynani ajratmoq",            IDM_VIEW_SPLIT_WINDOW_ONOFF
+        MENUITEM "&Barcha oynalardan yuqorida\tCtrl+T", IDM_VIEW_ONTOP
+        MENUITEM "&Satr holati",                IDM_VIEW_SHOW_STATUSBAR
         MENUITEM SEPARATOR
-        POPUP "&Язык"
+        POPUP "&Til"
         BEGIN
             MENUITEM "_",                           IDM_LANGUAGE
         END
     END
-    POPUP "&Настройки"
+    POPUP "&Moslash"
     BEGIN
-        MENUITEM "П&лагины...\tAlt+P",          IDM_OPTIONS_PLUGINS
-        MENUITEM "&Выполнить\tCtrl+F5",         IDM_OPTIONS_EXEC
+        MENUITEM "&Plaginlar...\tAlt+P",        IDM_OPTIONS_PLUGINS
+        MENUITEM "&Bajarmoq\tCtrl+F5",          IDM_OPTIONS_EXEC
         MENUITEM SEPARATOR
-        MENUITEM "Со&хранять отступы слева\tCtrl+L", IDM_OPTIONS_KEEPSPACE
-        MENUITEM "Следить за &изменением файла", IDM_OPTIONS_WATCHFILE
-        MENUITEM "Не &менять время файла",      IDM_OPTIONS_SAVETIME
-        MENUITEM "Не открывать ф&айл дважды",   IDM_OPTIONS_SINGLEOPEN_FILE
-        MENUITEM "Не открывать про&грамму дважды",
+        MENUITEM "Chap &chekinishni saqlamoq\tCtrl+L", IDM_OPTIONS_KEEPSPACE
+        MENUITEM "Fayl o‘zgarishini &kuzatmoq", IDM_OPTIONS_WATCHFILE
+        MENUITEM "&Fayl vaqtini saqlamoq",      IDM_OPTIONS_SAVETIME
+        MENUITEM "Faylni &ikki bor ochmaslik",  IDM_OPTIONS_SINGLEOPEN_FILE
+        MENUITEM "&Dasturni ikki bor ochmaslik",
                                                 IDM_OPTIONS_SINGLEOPEN_PROGRAM
 
         MENUITEM SEPARATOR
-        POPUP "&Оконный режим"
+        POPUP "&Oyna rejimi"
         BEGIN
-            MENUITEM "&Однооконный (SDI)",          IDM_OPTIONS_SDI
-            MENUITEM "&Многооконный (MDI)",         IDM_OPTIONS_MDI
-            MENUITEM "&Псевдо-многооконный (PMDI)", IDM_OPTIONS_PMDI
+            MENUITEM "&Biroynali (SDI)",            IDM_OPTIONS_SDI
+            MENUITEM "&Ko‘poynali (MDI)",           IDM_OPTIONS_MDI
+            MENUITEM "&Psevdo-ko‘poynali (PMDI)",   IDM_OPTIONS_PMDI
         END
         MENUITEM SEPARATOR
-        MENUITEM "&Параметры...",               IDM_OPTIONS
+        MENUITEM "&Parametrlar...",             IDM_OPTIONS
     END
-    POPUP "&Окно"
+    POPUP "&Oyna"
     BEGIN
-        POPUP "Вк&ладки"
+        POPUP "Xat&cho‘plar"
         BEGIN
-            MENUITEM "С&верху",                     IDM_WINDOW_TABVIEW_TOP
-            MENUITEM "С&низу",                      IDM_WINDOW_TABVIEW_BOTTOM
+            MENUITEM "&Yuqoriga",                   IDM_WINDOW_TABVIEW_TOP
+            MENUITEM "&Pastga",                     IDM_WINDOW_TABVIEW_BOTTOM
 
-            MENUITEM "С&крыть",                     IDM_WINDOW_TABVIEW_NONE
+            MENUITEM "Ber&kitmoq",                  IDM_WINDOW_TABVIEW_NONE
             MENUITEM SEPARATOR
-            MENUITEM "&Стандарные",                 IDM_WINDOW_TABTYPE_STANDARD
+            MENUITEM "&Standart",                   IDM_WINDOW_TABTYPE_STANDARD
 
-            MENUITEM "Кн&опки",                     IDM_WINDOW_TABTYPE_BUTTONS
+            MENUITEM "Tug&malar",                   IDM_WINDOW_TABTYPE_BUTTONS
 
-            MENUITEM "&Плоские кнопки",             IDM_WINDOW_TABTYPE_FLATBUTTONS
+            MENUITEM "&Tekis tugmalar",             IDM_WINDOW_TABTYPE_FLATBUTTONS
 
             MENUITEM SEPARATOR
-            MENUITEM "С&ледующая-Предыдущая",       IDM_WINDOW_TABSWITCH_NEXTPREV
+            MENUITEM "&Keyingi-oldingi",            IDM_WINDOW_TABSWITCH_NEXTPREV
 
-            MENUITEM "П&равая-Левая",               IDM_WINDOW_TABSWITCH_RIGHTLEFT
+            MENUITEM "&O‘ng-chap",                  IDM_WINDOW_TABSWITCH_RIGHTLEFT
 
         END
         MENUITEM SEPARATOR
-        MENUITEM "&Горизонтально",              IDM_WINDOW_TILEHORIZONTAL
-        MENUITEM "&Вертикально",                IDM_WINDOW_TILEVERTICAL
-        MENUITEM "&Каскадом",                   IDM_WINDOW_CASCADE
-        MENUITEM "&Закрыть",                    IDM_WINDOW_FRAMECLOSE
-        MENUITEM "Закрыть в&се",                IDM_WINDOW_FRAMECLOSEALL
-        MENUITEM "Закрыть все, кроме &активного",
+        MENUITEM "&Gorizontal",                 IDM_WINDOW_TILEHORIZONTAL
+        MENUITEM "&Vertikal",                   IDM_WINDOW_TILEVERTICAL
+        MENUITEM "&Pog‘onasimon",               IDM_WINDOW_CASCADE
+        MENUITEM "&Yopmoq",                     IDM_WINDOW_FRAMECLOSE
+        MENUITEM "Barini &yopmoq",              IDM_WINDOW_FRAMECLOSEALL
+        MENUITEM "Faoldan boshqa barini &yopmoq",
                                                 IDM_WINDOW_FRAMECLOSEALL_BUTACTIVE
 
         MENUITEM SEPARATOR
-        MENUITEM "Кло&нировать",                IDM_WINDOW_FRAMECLONE
-        MENUITEM "Ко&пировать путь",            IDM_WINDOW_COPYPATH
-        MENUITEM "Выбор &окна...",              IDM_WINDOW_MDILIST
+        MENUITEM "&Klonlamoq",                  IDM_WINDOW_FRAMECLONE
+        MENUITEM "&Yo‘lakni nusxalamoq",        IDM_WINDOW_COPYPATH
+        MENUITEM "&Oyna tanlovi...",            IDM_WINDOW_MDILIST
     END
-    POPUP "&Справка"
+    POPUP "&Ma’lumot"
     BEGIN
-        MENUITEM "&Руководство",                IDM_MANUAL
-        MENUITEM "О&бновление...",              IDM_UPDATE
+        MENUITEM "&Qo‘llanma",                  IDM_MANUAL
+        MENUITEM "&Yangilash...",               IDM_UPDATE
         MENUITEM SEPARATOR
-        MENUITEM "&О программе",                IDM_ABOUT
+        MENUITEM "&Dastur haqida",              IDM_ABOUT
     END
 END
 
@@ -202,51 +207,51 @@ IDM_MENU_POPUP MENU DISCARDABLE
 BEGIN
     POPUP "EditPopup"
     BEGIN
-        MENUITEM "&Отменить",                   IDM_EDIT_UNDO
-        MENUITEM "&Повторить",                  IDM_EDIT_REDO
+        MENUITEM "&Bekor qilmoq",               IDM_EDIT_UNDO
+        MENUITEM "&Qaytarmoq",                  IDM_EDIT_REDO
         MENUITEM SEPARATOR
-        MENUITEM "&Вырезать",                   IDM_EDIT_CUT
-        MENUITEM "&Копировать",                 IDM_EDIT_COPY
-        MENUITEM "Вст&авить",                   IDM_EDIT_PASTE
-        MENUITEM "&Удалить",                    IDM_EDIT_CLEAR
+        MENUITEM "&Qirqmoq",                    IDM_EDIT_CUT
+        MENUITEM "&Nusxa olmoq",                IDM_EDIT_COPY
+        MENUITEM "&Qo‘ymoq",                    IDM_EDIT_PASTE
+        MENUITEM "&O‘chirmoq",                  IDM_EDIT_CLEAR
         MENUITEM SEPARATOR
-        MENUITEM "В&ыделить всё",               IDM_EDIT_SELECTALL
+        MENUITEM "&Barini belgilamoq",          IDM_EDIT_SELECTALL
     END
     POPUP "ViewPopup"
     BEGIN
-        MENUITEM "&Копировать",                 IDM_EDIT_COPY
+        MENUITEM "&Nusxa olmoq",                IDM_EDIT_COPY
         MENUITEM SEPARATOR
-        MENUITEM "В&ыделить всё",               IDM_EDIT_SELECTALL
+        MENUITEM "&barini belgilamoq",          IDM_EDIT_SELECTALL
     END
     POPUP "CodepagePopup"
     BEGIN
-        POPUP "Открыть как"
+        POPUP "Quyidagicha ochmoq"
         BEGIN
             MENUITEM "_",                           IDM_POPUP_OPENAS
         END
         MENUITEM SEPARATOR
-        POPUP "Сохранить как"
+        POPUP "Quyidagicha saqlamoq"
         BEGIN
             MENUITEM "_",                           IDM_POPUP_SAVEAS
         END
         MENUITEM SEPARATOR
-        MENUITEM "Определить заново",           IDM_FILE_REDETECT
+        MENUITEM "Qayta aniqlamoq",             IDM_FILE_REDETECT
     END
     POPUP "HeadlinePopup"
     BEGIN
-        MENUITEM "Номер страницы[первая страница]\t%n[1]",
+        MENUITEM "Sahifalar raqami[birinchi sahifa]\t%n[1]",
                                                 IDM_POPUP_HEADLINE_PAGE_NUMBER
 
-        MENUITEM "Имя файла\t%f",               IDM_POPUP_HEADLINE_FILENAME
-        MENUITEM "Директория файла\t%d",        IDM_POPUP_HEADLINE_FILEDIR
-        MENUITEM "Символ %\t%%",                IDM_POPUP_HEADLINE_SYMBOL
+        MENUITEM "Fayl nomi\t%f",               IDM_POPUP_HEADLINE_FILENAME
+        MENUITEM "Fayl jildi\t%d",              IDM_POPUP_HEADLINE_FILEDIR
+        MENUITEM "Belgi %\t%%",                 IDM_POPUP_HEADLINE_SYMBOL
         MENUITEM SEPARATOR
-        MENUITEM "Выравнивание по центру\t%c",  IDM_POPUP_HEADLINE_ALIGN_CENTER
+        MENUITEM "Markazga tekislash\t%c",      IDM_POPUP_HEADLINE_ALIGN_CENTER
 
-        MENUITEM "Выравнивание по левому краю\t%l",
+        MENUITEM "Chap burchakka tekislash\t%l",
                                                 IDM_POPUP_HEADLINE_ALIGN_LEFT
 
-        MENUITEM "Выравнивание по правому краю\t%r",
+        MENUITEM "O‘ng burchakka tekislash\t%r",
                                                 IDM_POPUP_HEADLINE_ALIGN_RIGHT
 
     END
@@ -396,7 +401,7 @@ IDD_OFN DIALOGEX 0, 0, 275, 120
 STYLE DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_CLIPSIBLINGS
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    LTEXT           "&Кодировка:",IDC_OFN_CODEPAGE_LABEL,8,3,40,8
+    LTEXT           "&Kodlash:",IDC_OFN_CODEPAGE_LABEL,8,3,40,8
     COMBOBOX        IDC_OFN_CODEPAGE,53,1,145,130,CBS_DROPDOWNLIST |
                     WS_VSCROLL | WS_TABSTOP
     CONTROL         "",IDC_OFN_AUTODETECT,"Button",BS_AUTOCHECKBOX |
@@ -409,17 +414,17 @@ END
 IDD_SAVEALLAS DIALOG DISCARDABLE  70, 70, 200, 135
 STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE |
     WS_CAPTION | WS_SYSMENU
-CAPTION "Сохранить все как"
+CAPTION "Quyidagicha barini saqlamoq"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    CONTROL         "&Кодировка:",IDC_SAVEALLAS_CODEPAGE_CHECK,"Button",
+    CONTROL         "&Kodlash:",IDC_SAVEALLAS_CODEPAGE_CHECK,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,10,9,101,8
     GROUPBOX        "",IDC_STATIC,9,16,182,35
     COMBOBOX        IDC_SAVEALLAS_CODEPAGE_LIST,18,29,131,82,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "BOM",IDC_SAVEALLAS_BOM,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,155,31,27,10
-    CONTROL         "&Формат новой строки:",IDC_SAVEALLAS_NEWLINE_CHECK,
+    CONTROL         "&Yangi satr formati:",IDC_SAVEALLAS_NEWLINE_CHECK,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,62,101,8
     GROUPBOX        "",IDC_STATIC,9,69,182,35
     CONTROL         "Windows",IDC_SAVEALLAS_NEWLINE_WIN,"Button",
@@ -429,12 +434,12 @@ BEGIN
     CONTROL         "Mac",IDC_SAVEALLAS_NEWLINE_MAC,"Button",
                     BS_AUTORADIOBUTTON,140,85,40,8
     DEFPUSHBUTTON   "OK",IDOK,47,115,50,14,BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,102,115,50,14,BS_CENTER
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,102,115,50,14,BS_CENTER
 END
 
 IDD_MDILIST DIALOG DISCARDABLE  0, 0, 262, 264
 STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
-CAPTION "Выбор окна"
+CAPTION "Oyna tanlovi"
 FONT 8, "MS Shell Dlg"
 BEGIN
     LISTBOX         IDC_MDILIST_LIST,6,9,178,219,LBS_SORT |
@@ -443,30 +448,30 @@ BEGIN
     RTEXT           "",IDC_MDILIST_STATS,92,232,89,8
     EDITTEXT        IDC_MDILIST_SEARCH,6,243,178,14,ES_AUTOHSCROLL
     DEFPUSHBUTTON   "OK",IDOK,198,10,50,14
-    GROUPBOX        "Выравнивание",IDC_MDILIST_ARRANGE_GROUP,191,31,64,50
-    PUSHBUTTON      "Горизонталь",IDC_MDILIST_HORZ,198,45,50,14
-    PUSHBUTTON      "Вертикаль",IDC_MDILIST_VERT,198,60,50,14
-    GROUPBOX        "Вкладки",IDC_MDILIST_TABS_GROUP,191,86,64,72
-    PUSHBUTTON      "Вверх",IDC_MDILIST_UP,198,100,50,14
-    PUSHBUTTON      "Вниз",IDC_MDILIST_DOWN,198,115,50,14
-    PUSHBUTTON      "Сортировать",IDC_MDILIST_SORT,198,138,50,14
-    GROUPBOX        "Файлы",IDC_MDILIST_FILES_GROUP,191,163,64,49
-    PUSHBUTTON      "Сохранить",IDC_MDILIST_SAVE,198,177,50,14
-    PUSHBUTTON      "Закрыть",IDC_MDILIST_CLOSE,198,192,50,14
-    CONTROL         "Только имена",IDC_MDILIST_ONLYNAMES,"Button",
+    GROUPBOX        "Tekislash",IDC_MDILIST_ARRANGE_GROUP,191,31,64,50
+    PUSHBUTTON      "Gorizontal",IDC_MDILIST_HORZ,198,45,50,14
+    PUSHBUTTON      "Vertikal",IDC_MDILIST_VERT,198,60,50,14
+    GROUPBOX        "Xatcho‘plar",IDC_MDILIST_TABS_GROUP,191,86,64,72
+    PUSHBUTTON      "Yuqoriga",IDC_MDILIST_UP,198,100,50,14
+    PUSHBUTTON      "Pastga",IDC_MDILIST_DOWN,198,115,50,14
+    PUSHBUTTON      "Saralamoq",IDC_MDILIST_SORT,198,138,50,14
+    GROUPBOX        "Fayllar",IDC_MDILIST_FILES_GROUP,191,163,64,49
+    PUSHBUTTON      "Saqlamoq",IDC_MDILIST_SAVE,198,177,50,14
+    PUSHBUTTON      "Yopmoq",IDC_MDILIST_CLOSE,198,192,50,14
+    CONTROL         "Faqat nomlar",IDC_MDILIST_ONLYNAMES,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,191,219,67,10
-    PUSHBUTTON      "Отмена",IDCANCEL,198,243,50,14
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,198,243,50,14
 END
 
 IDD_PRINTPREVIEW DIALOGEX 0, 0, 447, 300
 STYLE DS_3DLOOK | DS_CENTER | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP |
     WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_CLIENTEDGE
-CAPTION "Предпросмотр"
+CAPTION "Oldindan ko‘rish"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "&Печать...",IDC_PREVIEW_PRINT,9,9,50,14
-    PUSHBUTTON      "&Страница...",IDC_PREVIEW_PAGESETUP,62,9,50,14
+    DEFPUSHBUTTON   "&Chop etish...",IDC_PREVIEW_PRINT,9,9,50,14
+    PUSHBUTTON      "&Sahifa...",IDC_PREVIEW_PAGESETUP,62,9,50,14
     GROUPBOX        "",IDC_STATIC,131,2,121,24
     PUSHBUTTON      "<",IDC_PREVIEW_PREVPAGE,139,10,20,12
     EDITTEXT        IDC_PREVIEW_PAGECOUNT,164,10,53,12,ES_CENTER |
@@ -474,122 +479,122 @@ BEGIN
     PUSHBUTTON      ">",IDC_PREVIEW_NEXTPAGE,223,10,20,12
     COMBOBOX        IDC_PREVIEW_ZOOM,267,10,48,200,CBS_DROPDOWN | WS_VSCROLL |
                     WS_TABSTOP
-    CONTROL         "&Выделение",IDC_PREVIEW_SELECTION,"Button",
+    CONTROL         "&Belgilash",IDC_PREVIEW_SELECTION,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,325,12,61,10
-    PUSHBUTTON      "&Закрыть",IDC_PREVIEW_CLOSE,390,9,50,14
+    PUSHBUTTON      "&Yopmoq",IDC_PREVIEW_CLOSE,390,9,50,14
 END
 
 IDD_FIND DIALOGEX 70, 70, 257, 108
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
-CAPTION "Поиск"
+CAPTION "Izlash"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN |
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "&Учитывать регистр",IDC_SEARCH_MATCHCASE,"Button",
+    CONTROL         "&Registr hisobi bilan",IDC_SEARCH_MATCHCASE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,29,109,12
-    CONTROL         "Слово &целиком",IDC_SEARCH_WHOLEWORD,"Button",
+    CONTROL         "&To‘liq so‘zlarni",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,41,109,12
-    CONTROL         "&Регулярные выражения",IDC_SEARCH_REGEXP,"Button",
+    CONTROL         "&Davomiy ifoda",IDC_SEARCH_REGEXP,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,53,95,12
-    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW |
+    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
                     WS_TABSTOP,106,55,10,9
-    CONTROL         "Esc-&последовательности",IDC_SEARCH_ESCAPESEQ,"Button",
+    CONTROL         "Esc-&davomchisi",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,65,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,77,96,12,NOT
                     WS_GROUP
-    GROUPBOX        "Направление",IDC_STATIC,121,27,66,58
-    CONTROL         "Вни&з",IDC_SEARCH_FORWARD,"Button",BS_AUTORADIOBUTTON,
-                    126,37,60,10
-    CONTROL         "Ввер&х",IDC_SEARCH_BACKWARD,"Button",BS_AUTORADIOBUTTON,
-                    126,48,60,10
-    CONTROL         "&С начала",IDC_SEARCH_BEGINNING,"Button",
+    GROUPBOX        "Yo‘nalish",IDC_STATIC,121,27,66,58
+    CONTROL         "&Pastdan",IDC_SEARCH_FORWARD,"Button",
+                    BS_AUTORADIOBUTTON,126,37,60,10
+    CONTROL         "Yuqori&dan",IDC_SEARCH_BACKWARD,"Button",
+                    BS_AUTORADIOBUTTON,126,48,60,10
+    CONTROL         "&Boshidan",IDC_SEARCH_BEGINNING,"Button",
                     BS_AUTORADIOBUTTON,126,59,60,10
-    CONTROL         "В в&ыделении",IDC_SEARCH_INSEL,"Button",
+    CONTROL         "&Belgilangandan",IDC_SEARCH_INSEL,"Button",
                     BS_AUTORADIOBUTTON,126,70,60,10
-    CONTROL         "Все &файлы",IDC_SEARCH_ALLFILES,"Button",
+    CONTROL         "Barcha &fayllar",IDC_SEARCH_ALLFILES,"Button",
                     BS_AUTORADIOBUTTON,126,87,60,10
     GROUPBOX        "",IDC_SEARCH_ALLFILES_GROUP,121,80,66,19
-    DEFPUSHBUTTON   "&Найти далее",IDC_SEARCH_FIND_BUTTON,196,6,54,14,
+    DEFPUSHBUTTON   "&Davom etish",IDC_SEARCH_FIND_BUTTON,196,6,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,196,23,54,14,BS_CENTER
-    LTEXT           "Что:",IDC_STATIC,5,11,22,12,NOT WS_GROUP
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,196,23,54,14,BS_CENTER
+    LTEXT           "So‘z:",IDC_STATIC,5,11,22,12,NOT WS_GROUP
 END
 
 IDD_REPLACE DIALOGEX 70, 70, 257, 122
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
-CAPTION "Замена"
+CAPTION "Almashtirmoq"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN |
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
     COMBOBOX        IDC_SEARCH_REPLACE,27,23,160,100,CBS_DROPDOWN |
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "&Учитывать регистр",IDC_SEARCH_MATCHCASE,"Button",
+    CONTROL         "&Registr hisobi bilan",IDC_SEARCH_MATCHCASE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,43,109,12
-    CONTROL         "Слово &целиком",IDC_SEARCH_WHOLEWORD,"Button",
+    CONTROL         "To‘liq &so‘zlarni",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,55,109,12
-    CONTROL         "&Регулярные выражения",IDC_SEARCH_REGEXP,"Button",
+    CONTROL         "&Davomiy ifoda",IDC_SEARCH_REGEXP,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,67,95,12
-    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW |
+    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
                     WS_TABSTOP,106,69,10,9
-    CONTROL         "Esc-&последовательности",IDC_SEARCH_ESCAPESEQ,"Button",
+    CONTROL         "Esc-&davomchisi",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,79,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,91,96,12,NOT
                     WS_GROUP
-    GROUPBOX        "Направление",IDC_STATIC,121,41,66,58
-    CONTROL         "Вни&з",IDC_SEARCH_FORWARD,"Button",BS_AUTORADIOBUTTON,
-                    126,51,60,10
-    CONTROL         "Ввер&х",IDC_SEARCH_BACKWARD,"Button",BS_AUTORADIOBUTTON,
-                    126,62,60,10
-    CONTROL         "&С начала",IDC_SEARCH_BEGINNING,"Button",
+    GROUPBOX        "Yo‘nalish",IDC_STATIC,121,41,66,58
+    CONTROL         "Past&dan",IDC_SEARCH_FORWARD,"Button",
+                    BS_AUTORADIOBUTTON,126,51,60,10
+    CONTROL         "Yuqori&dan",IDC_SEARCH_BACKWARD,"Button",
+                    BS_AUTORADIOBUTTON,126,62,60,10
+    CONTROL         "&Boshidan",IDC_SEARCH_BEGINNING,"Button",
                     BS_AUTORADIOBUTTON,126,73,60,10
-    CONTROL         "В в&ыделении",IDC_SEARCH_INSEL,"Button",
+    CONTROL         "&Belgilangandan",IDC_SEARCH_INSEL,"Button",
                     BS_AUTORADIOBUTTON,126,84,60,10
-    CONTROL         "Все &файлы",IDC_SEARCH_ALLFILES,"Button",
+    CONTROL         "Barcha &fayllar",IDC_SEARCH_ALLFILES,"Button",
                     BS_AUTORADIOBUTTON,126,101,60,10
     GROUPBOX        "",IDC_SEARCH_ALLFILES_GROUP,121,94,66,19
-    DEFPUSHBUTTON   "&Найти далее",IDC_SEARCH_FIND_BUTTON,196,6,54,14,
+    DEFPUSHBUTTON   "&Davom etish",IDC_SEARCH_FIND_BUTTON,196,6,54,14,
                     BS_CENTER
-    PUSHBUTTON      "&Заменить",IDC_SEARCH_REPLACE_BUTTON,196,23,54,14,
+    PUSHBUTTON      "&Almashtirmoq",IDC_SEARCH_REPLACE_BUTTON,196,23,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Заменить &всё",IDC_SEARCH_ALL_BUTTON,196,39,54,14,
+    PUSHBUTTON      "Barini &almash",IDC_SEARCH_ALL_BUTTON,196,39,54,14,
                     BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,196,55,54,14,BS_CENTER
-    LTEXT           "Что:",IDC_STATIC,5,11,22,12,NOT WS_GROUP
-    LTEXT           "Чем:",IDC_STATIC,5,25,22,12,NOT WS_GROUP
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,196,55,54,14,BS_CENTER
+    LTEXT           "so‘zni:",IDC_STATIC,5,11,22,12,NOT WS_GROUP
+    LTEXT           "so‘zga:",IDC_STATIC,5,25,22,12,NOT WS_GROUP
 END
 
 IDD_GOTO DIALOG DISCARDABLE  70, 70, 151, 85
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
-CAPTION "Перейти"
+CAPTION "O‘tish"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "Номер:",IDC_STATIC,17,8,97,8,NOT WS_GROUP
+    LTEXT           "Raqam:",IDC_STATIC,17,8,97,8,NOT WS_GROUP
     EDITTEXT        IDC_GOTO_NUMBER,14,20,122,13
-    CONTROL         "Строка:Колонка",IDC_GOTO_LINE,"Button",
-                    BS_AUTORADIOBUTTON,14,41,70,10
-    CONTROL         "Смещение",IDC_GOTO_OFFSET,"Button",BS_AUTORADIOBUTTON,
-                    86,41,50,10
+    CONTROL         "Satr:Ustun",IDC_GOTO_LINE,"Button",BS_AUTORADIOBUTTON,
+                    14,41,70,10
+    CONTROL         "Aralash",IDC_GOTO_OFFSET,"Button",BS_AUTORADIOBUTTON,86,
+                    41,50,10
     PUSHBUTTON      "OK",IDOK,23,63,50,14,BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,77,63,50,14,BS_CENTER
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,77,63,50,14,BS_CENTER
 END
 
 IDD_RECODE DIALOGEX 70, 70, 278, 214
 STYLE DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU |
     WS_THICKFRAME
-CAPTION "Перекодировать"
+CAPTION "Qayta kodlamoq"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    RTEXT           "Из:",IDC_RECODE_CODEPAGEFROM_LABEL,6,11,35,8
+    RTEXT           "dan:",IDC_RECODE_CODEPAGEFROM_LABEL,6,11,35,8
     COMBOBOX        IDC_RECODE_CODEPAGEFROM_LIST,45,9,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    RTEXT           "В:",IDC_RECODE_CODEPAGETO_LABEL,6,29,35,8
+    RTEXT           "ga:",IDC_RECODE_CODEPAGETO_LABEL,6,29,35,8
     COMBOBOX        IDC_RECODE_CODEPAGETO_LIST,45,27,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "",IDC_RECODE_AUTODETECT,"Button",BS_AUTOCHECKBOX |
@@ -598,82 +603,82 @@ BEGIN
                     WS_HSCROLL | WS_TABSTOP | 0x2904,6,50,263,134,
                     WS_EX_CLIENTEDGE
     PUSHBUTTON      "OK",IDOK,165,193,50,14,BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,219,193,50,14,BS_CENTER
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,219,193,50,14,BS_CENTER
 END
 
 IDD_COLORS DIALOG DISCARDABLE  0, 0, 260, 246
 STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU | WS_THICKFRAME
-CAPTION "Цвета"
+CAPTION "Ranglar"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "Цветовая тема:",IDC_COLORS_THEMENAME_LABEL,11,6,103,8
+    LTEXT           "Ranglar temasi:",IDC_COLORS_THEMENAME_LABEL,11,6,103,8
     COMBOBOX        IDC_COLORS_THEMENAME_COMBO,9,17,129,83,CBS_DROPDOWN |
                     WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Сохранить",IDC_COLORS_THEMESAVE,145,16,50,14
-    PUSHBUTTON      "Удалить",IDC_COLORS_THEMEDELETE,197,16,50,14
+    PUSHBUTTON      "Saqlamoq",IDC_COLORS_THEMESAVE,145,16,50,14
+    PUSHBUTTON      "O‘chirmoq",IDC_COLORS_THEMEDELETE,197,16,50,14
     CONTROL         "List1",IDC_COLORS_LIST,"SysListView32",LVS_REPORT |
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT |
                     WS_BORDER | WS_TABSTOP,9,40,239,144
-    LTEXT           "Фоновый рисунок (%a директория akelpad):",
+    LTEXT           "Fon rasmi (%a akelpad jildi):",
                     IDC_COLORS_BKIMAGEFILE_LABEL,14,189,190,8,NOT WS_GROUP
     EDITTEXT        IDC_COLORS_BKIMAGEFILE_EDIT,10,200,177,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_COLORS_BKIMAGEFILE_BROWSE,190,200,14,13
-    LTEXT           "Альфа:",IDC_COLORS_BKIMAGEALPHA_LABEL,211,189,40,8
+    LTEXT           "Alfa:",IDC_COLORS_BKIMAGEALPHA_LABEL,211,189,40,8
     EDITTEXT        IDC_COLORS_BKIMAGEALPHA_EDIT,211,200,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_COLORS_BKIMAGEALPHA_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,233,
                     200,11,13
     PUSHBUTTON      "OK",IDOK,145,224,50,14,BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,198,224,50,14,BS_CENTER
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,198,224,50,14,BS_CENTER
 END
 
 IDD_PLUGINS DIALOG DISCARDABLE  0, 0, 340, 230
 STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU | WS_THICKFRAME
-CAPTION "Плагины"
+CAPTION "Plaginlar"
 FONT 8, "MS Shell Dlg"
 BEGIN
     CONTROL         "List1",IDC_PLUGINS_LIST,"SysListView32",LVS_REPORT |
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SORTASCENDING |
                     LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,9,11,265,178
-    LTEXT           "Поставьте галочку для автозагрузки плагина.",
+    LTEXT           "Plaginni avtomatik yuklash uchun nishonni belgilang.",
                     IDC_PLUGINS_LIST_INFO,11,192,264,8
-    LTEXT           "Горячая клавиша:",IDC_PLUGINS_HOTKEY_LABEL,277,13,62,8
+    LTEXT           "Chaqiruv tugmasi:",IDC_PLUGINS_HOTKEY_LABEL,277,13,62,8
     CONTROL         "HotKey1",IDC_PLUGINS_HOTKEY,"msctls_hotkey32",WS_BORDER |
                     WS_TABSTOP,282,24,50,14
-    PUSHBUTTON      "Назначить",IDC_PLUGINS_ASSIGN,282,42,50,14
-    DEFPUSHBUTTON   "Вызвать",IDC_PLUGINS_CALL,9,209,50,14
+    PUSHBUTTON      "Tayinlamoq",IDC_PLUGINS_ASSIGN,282,42,50,14
+    DEFPUSHBUTTON   "Chaqirmoq",IDC_PLUGINS_CALL,9,209,50,14
     PUSHBUTTON      "OK",IDOK,228,209,50,14,BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,282,209,50,14,BS_CENTER
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,282,209,50,14,BS_CENTER
 END
 
 IDD_OPTIONS_GENERAL DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
-CAPTION "Общие"
+CAPTION "Umumiy"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    GROUPBOX        "Выполнить",IDC_STATIC,9,6,200,90
-    LTEXT           "Команда (%f файл, %a директория akelpad):",IDC_STATIC,
-                    21,24,160,8,NOT WS_GROUP
+    GROUPBOX        "Bajarmoq",IDC_STATIC,9,6,200,90
+    LTEXT           "Buyruq (%f fayl, %a akelpad jildi):",IDC_STATIC,21,24,
+                    160,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_EXECCOM,18,35,166,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_OPTIONS_EXECCOM_BROWSE,185,35,14,13
-    LTEXT           "Рабочий каталог (%d директория файла):",IDC_STATIC,21,
-                    59,160,8,NOT WS_GROUP
+    LTEXT           "ishchi katalog (%d fayl jildi):",IDC_STATIC,21,59,160,8,
+                    NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_EXECDIR,18,70,166,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_OPTIONS_EXECDIR_BROWSE,185,70,14,13
-    LTEXT           "Распознавание кодировки:",IDC_STATIC,12,107,150,8
+    LTEXT           "Kodlashni aniqlashtirish:",IDC_STATIC,12,107,150,8
     COMBOBOX        IDC_OPTIONS_CODEPAGE_RECOGNITION,9,118,154,90,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Буфер:",IDC_STATIC,170,107,37,8
+    LTEXT           "Bufer:",IDC_STATIC,170,107,37,8
     EDITTEXT        IDC_OPTIONS_CODEPAGE_RECOGNITION_BUFFER,168,118,40,13,
                     ES_NUMBER
-    LTEXT           "Кодировка по умолчанию:",IDC_STATIC,12,144,150,8
+    LTEXT           "Standart kodlash:",IDC_STATIC,12,144,150,8
     COMBOBOX        IDC_OPTIONS_DEFAULT_CODEPAGE,9,155,154,90,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Фильтр",IDC_OPTIONS_CODEPAGE_FILTER,168,155,40,13
-    GROUPBOX        "Новый файл",IDC_STATIC,9,182,200,41
+    PUSHBUTTON      "Filtr",IDC_OPTIONS_CODEPAGE_FILTER,168,155,40,13
+    GROUPBOX        "Yangi fayl",IDC_STATIC,9,182,200,41
     COMBOBOX        IDC_OPTIONS_NEWFILE_CODEPAGE,18,200,110,90,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "BOM",IDC_OPTIONS_NEWFILE_BOM,"Button",BS_AUTOCHECKBOX |
@@ -685,66 +690,68 @@ END
 IDD_OPTIONS_GENERAL_FILTER DIALOG DISCARDABLE  0, 0, 364, 255
 STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE |
     WS_CAPTION | WS_SYSMENU
-CAPTION "Фильтр"
+CAPTION "Filtr"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "Пользовательский:",IDC_STATIC,11,7,135,8
+    LTEXT           "Foydalanuvchi:",IDC_STATIC,11,7,135,8
     LISTBOX         IDC_OPTIONS_CODEPAGES_FILTER_CUSTOM,7,18,141,209,
                     LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Вверх",IDC_OPTIONS_CODEPAGES_FILTER_UP,155,19,50,14
-    PUSHBUTTON      "Вниз",IDC_OPTIONS_CODEPAGES_FILTER_DOWN,155,34,50,14
+    PUSHBUTTON      "Yuqoriga",IDC_OPTIONS_CODEPAGES_FILTER_UP,155,19,50,14
+    PUSHBUTTON      "Pastga",IDC_OPTIONS_CODEPAGES_FILTER_DOWN,155,34,50,14
     PUSHBUTTON      "<",IDC_OPTIONS_CODEPAGES_FILTER_ADD,155,56,50,14
     PUSHBUTTON      ">",IDC_OPTIONS_CODEPAGES_FILTER_DELETE,155,71,50,14
     PUSHBUTTON      "<<",IDC_OPTIONS_CODEPAGES_FILTER_ADDALL,155,93,50,14
     PUSHBUTTON      ">>",IDC_OPTIONS_CODEPAGES_FILTER_DELETEALL,155,108,50,
                     14
-    LTEXT           "Системный:",IDC_STATIC,217,7,135,8
+    LTEXT           "Tizimga oid:",IDC_STATIC,217,7,135,8
     LISTBOX         IDC_OPTIONS_CODEPAGES_FILTER_SYSTEM,213,18,141,209,
                     LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "OK",IDOK,127,235,50,14,BS_CENTER
-    PUSHBUTTON      "Отмена",IDCANCEL,181,235,50,14,BS_CENTER
+    PUSHBUTTON      "Bekor qilmoq",IDCANCEL,181,235,50,14,BS_CENTER
 END
 
 IDD_OPTIONS_REGISTRY DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
-CAPTION "Реестр"
+CAPTION "Ryestr"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    GROUPBOX        "Сохранять настройки",IDC_STATIC,9,6,200,29
-    CONTROL         "Реестр",IDC_OPTIONS_SAVESETTINGS_REGISTRY,"Button",
+    GROUPBOX        "Sozlamani saqlamoq",IDC_STATIC,9,6,200,29
+    CONTROL         "Ryestr",IDC_OPTIONS_SAVESETTINGS_REGISTRY,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP,32,19,70,10
-    CONTROL         "INI файл",IDC_OPTIONS_SAVESETTINGS_INI,"Button",
+    CONTROL         "INI fayl",IDC_OPTIONS_SAVESETTINGS_INI,"Button",
                     BS_AUTORADIOBUTTON,133,19,70,10
-    GROUPBOX        "Сохранять историю",IDC_STATIC,9,42,200,105
-    CONTROL         "Реестр",IDC_OPTIONS_SAVEHISTORY_REGISTRY,"Button",
+    GROUPBOX        "Save history",IDC_STATIC,9,42,200,105
+    CONTROL         "Ryestr",IDC_OPTIONS_SAVEHISTORY_REGISTRY,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP,32,55,70,10
-    CONTROL         "INI файл",IDC_OPTIONS_SAVEHISTORY_INI,"Button",
+    CONTROL         "INI fayl",IDC_OPTIONS_SAVEHISTORY_INI,"Button",
                     BS_AUTORADIOBUTTON,134,55,70,10
-    CONTROL         "Запоминать позицию каретки",IDC_OPTIONS_SAVEPOSITIONS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,75,185,10
-    CONTROL         "Запоминать кодировку",IDC_OPTIONS_SAVECODEPAGES,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,86,185,10
-    LTEXT           "Последние файлы:",IDC_STATIC,19,108,73,15,NOT WS_GROUP
+    CONTROL         "Karetka o‘rnini yodda saqlamoq",
+                    IDC_OPTIONS_SAVEPOSITIONS,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,17,75,185,10
+    CONTROL         "Kodlashni yodda saqlamoq",IDC_OPTIONS_SAVECODEPAGES,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,86,185,10
+    LTEXT           "Oxirgi fayllar:",IDC_STATIC,19,108,73,15,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_RECENTFILES_AMOUNT,95,106,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_RECENTFILES_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS |
                     UDS_NOTHOUSANDS,113,106,11,13
-    PUSHBUTTON      "Очистить",IDC_OPTIONS_RECENTFILES_CLEAR,141,105,54,14
-    LTEXT           "История поиска:",IDC_STATIC,19,128,73,15,NOT WS_GROUP
+    PUSHBUTTON      "Tozalamoq",IDC_OPTIONS_RECENTFILES_CLEAR,141,105,54,14
+    LTEXT           "Izlash tarixi:",IDC_STATIC,19,128,73,15,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_SEARCHSTRINGS_AMOUNT,95,126,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_SEARCHSTRINGS_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS |
                     UDS_NOTHOUSANDS,113,126,11,13
-    PUSHBUTTON      "Очистить",IDC_OPTIONS_SEARCHSTRINGS_CLEAR,141,125,54,14
-    GROUPBOX        "Типы файлов",IDC_STATIC,9,153,200,70
-    CONTROL         "Открыть:",IDC_OPTIONS_ASSOCIATE_OPEN,"Button",
+    PUSHBUTTON      "Tozalamoq",IDC_OPTIONS_SEARCHSTRINGS_CLEAR,141,125,54,
+                    14
+    GROUPBOX        "Fayl turlari",IDC_STATIC,9,153,200,70
+    CONTROL         "Ochmoq:",IDC_OPTIONS_ASSOCIATE_OPEN,"Button",
                     BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,16,169,49,10
     EDITTEXT        IDC_OPTIONS_FILETYPES_OPEN,69,167,133,13,ES_AUTOHSCROLL
-    CONTROL         "Изменить:",IDC_OPTIONS_ASSOCIATE_EDIT,"Button",
+    CONTROL         "O‘zgartirmoq:",IDC_OPTIONS_ASSOCIATE_EDIT,"Button",
                     BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,16,187,49,10
     EDITTEXT        IDC_OPTIONS_FILETYPES_EDIT,69,185,133,13,ES_AUTOHSCROLL
-    CONTROL         "Печать:",IDC_OPTIONS_ASSOCIATE_PRINT,"Button",
+    CONTROL         "Chop etish:",IDC_OPTIONS_ASSOCIATE_PRINT,"Button",
                     BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,16,205,49,10
     EDITTEXT        IDC_OPTIONS_FILETYPES_PRINT,69,203,133,13,ES_AUTOHSCROLL
 END
@@ -752,66 +759,67 @@ END
 IDD_OPTIONS_EDITOR1 DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
-CAPTION "Редактор 1"
+CAPTION "Muharrir 1"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    GROUPBOX        "Размер табуляции",IDC_STATIC,9,6,105,34
+    GROUPBOX        "Tab o‘lchami",IDC_STATIC,9,6,105,34
     EDITTEXT        IDC_OPTIONS_TABSIZE,18,20,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_TABSIZE_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,39,20,
                     11,13
-    CONTROL         "Пробелы",IDC_OPTIONS_TABSIZE_SPACES,"Button",
+    CONTROL         "Probellar",IDC_OPTIONS_TABSIZE_SPACES,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,58,22,50,10
-    GROUPBOX        "Лимит отмен",IDC_STATIC,9,46,105,34
+    GROUPBOX        "Bekor qilish cheklovi",IDC_STATIC,9,46,105,34
     EDITTEXT        IDC_OPTIONS_UNDO_LIMIT,18,59,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_UNDO_LIMIT_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,39,59,
                     11,13
-    CONTROL         "Подробно",IDC_OPTIONS_UNDO_DETAILED,"Button",
+    CONTROL         "Batafsil",IDC_OPTIONS_UNDO_DETAILED,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,58,61,50,10
-    GROUPBOX        "Перенос",IDC_STATIC,124,6,87,74
-    CONTROL         "По словам",IDC_OPTIONS_WRAP_BY_WORDS,"Button",
+    GROUPBOX        "Bo‘gin ko‘chirish",IDC_STATIC,124,6,87,74
+    CONTROL         "So‘z bo‘yicha",IDC_OPTIONS_WRAP_BY_WORDS,"Button",
                     BS_AUTORADIOBUTTON,133,19,72,10
-    CONTROL         "По символам",IDC_OPTIONS_WRAP_BY_SYMBOLS,"Button",
+    CONTROL         "Belgilar bo‘yicha",IDC_OPTIONS_WRAP_BY_SYMBOLS,"Button",
                     BS_AUTORADIOBUTTON,133,31,72,10
-    LTEXT           "Лимит:",IDC_STATIC,131,49,36,8
+    LTEXT           "Cheklov:",IDC_STATIC,131,49,36,8
     EDITTEXT        IDC_OPTIONS_WRAP_LIMIT,131,60,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_WRAP_LIMIT_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,153,60,
                     11,13
-    LTEXT           "Маркер:",IDC_STATIC,171,49,36,8
+    LTEXT           "Marker:",IDC_STATIC,171,49,36,8
     EDITTEXT        IDC_OPTIONS_MARKER,171,60,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_MARKER_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,193,60,
                     11,13
-    GROUPBOX        "Каретка",IDC_STATIC,9,86,202,51
-    CONTROL         "Выход каретки за края строк",IDC_OPTIONS_CARETOUTEDGE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,98,132,10
-    CONTROL         "Показывать активный столбец",IDC_OPTIONS_CARETVERTLINE,
+    GROUPBOX        "Karetka",IDC_STATIC,9,86,202,51
+    CONTROL         "Satrlar burchagida karetkadan chiqish",
+                    IDC_OPTIONS_CARETOUTEDGE,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,16,98,132,10
+    CONTROL         "Faol ustunlarni ko‘rsatmoq",IDC_OPTIONS_CARETVERTLINE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,110,132,10
-    CONTROL         "Показывать активную строку",IDC_OPTIONS_CARETACTIVELINE,
+    CONTROL         "Faol satrlarni ko‘rsatmoq",IDC_OPTIONS_CARETACTIVELINE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,122,132,10
-    CONTROL         "граница",IDC_OPTIONS_CARETACTIVELINEBORDER,"Button",
+    CONTROL         "chegara",IDC_OPTIONS_CARETACTIVELINEBORDER,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,151,122,56,10
-    LTEXT           "Ширина:",IDC_STATIC,151,94,56,8,NOT WS_GROUP
+    LTEXT           "Eni:",IDC_STATIC,151,94,56,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_CARETWIDTH,151,105,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_CARETWIDTH_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,173,
                     105,11,13
-    GROUPBOX        "Зебра",IDC_STATIC,9,144,105,62
-    LTEXT           "Пропуск:",IDC_STATIC,18,160,43,8,NOT WS_GROUP
+    GROUPBOX        "Zebra chiziq",IDC_STATIC,9,144,105,62
+    LTEXT           "Skip:",IDC_STATIC,18,160,43,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_ALTLINESKIP,18,171,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_ALTLINESKIP_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,40,171,
                     11,13
-    LTEXT           "Заливка:",IDC_STATIC,67,160,43,8,NOT WS_GROUP
+    LTEXT           "To‘ldirish:",IDC_STATIC,67,160,43,8,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_ALTLINEFILL,67,171,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_ALTLINEFILL_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,89,171,
                     11,13
-    CONTROL         "Граница",IDC_OPTIONS_ALTLINEBORDER,"Button",
+    CONTROL         "Chegara",IDC_OPTIONS_ALTLINEBORDER,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,18,191,90,10
-    GROUPBOX        "Отступ текста",IDC_STATIC,124,144,87,62
+    GROUPBOX        "Matnni chekinish",IDC_STATIC,124,144,87,62
     EDITTEXT        IDC_OPTIONS_EDITMARGIN_LEFT,131,171,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_EDITMARGIN_LEFT_SPIN,"msctls_updown32",
                     UDS_SETBUDDYINT | UDS_ARROWKEYS | UDS_NOTHOUSANDS,153,
@@ -828,7 +836,7 @@ BEGIN
     CONTROL         "Spin1",IDC_OPTIONS_EDITMARGIN_BOTTOM_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS |
                     UDS_NOTHOUSANDS,173,187,11,13
-    RTEXT           "Зазор между строк:",IDC_STATIC,104,214,70,8,NOT
+    RTEXT           "Satrlar orasi oralig‘i:",IDC_STATIC,104,214,70,8,NOT
                     WS_GROUP
     EDITTEXT        IDC_OPTIONS_LINEGAP,178,212,21,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_LINEGAP_SPIN,"msctls_updown32",
@@ -839,87 +847,90 @@ END
 IDD_OPTIONS_EDITOR2 DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
-CAPTION "Редактор 2"
+CAPTION "Muharrir 2"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    CONTROL         "Левый клик в отступ выделяет строку",
+    CONTROL         "Chekinishda chap tugmani bosish bilan satrni belgilamoq",
                     IDC_OPTIONS_MOUSELEFTMARGIN,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,11,9,200,10
-    CONTROL         "RichEdit выделение мышью",IDC_OPTIONS_MOUSERICHEDIT,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,20,200,10
-    CONTROL         "Перетаскивание мышью",IDC_OPTIONS_MOUSEDRAGGING,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,31,200,10
-    CONTROL         "Правый клик смещает каретку",
+    CONTROL         "RichEdit sichqoncha belgilashi",
+                    IDC_OPTIONS_MOUSERICHEDIT,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,11,20,200,10
+    CONTROL         "Sichqoncha bilan surib olib kelmoq",
+                    IDC_OPTIONS_MOUSEDRAGGING,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,11,31,200,10
+    CONTROL         "Karetkani aralashtirish uchun o‘ng tugmani bosmoq",
                     IDC_OPTIONS_RCLICKMOVECARET,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,11,42,200,10
-    GROUPBOX        "Гиперссылки",IDC_STATIC,9,60,200,100
-    CONTROL         "Показывать",IDC_OPTIONS_URL_SHOW,"Button",
+    GROUPBOX        "Giperhavolalar",IDC_STATIC,9,60,200,100
+    CONTROL         "Ko‘rsatmoq",IDC_OPTIONS_URL_SHOW,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,17,76,90,10
-    CONTROL         "Одинарный клик",IDC_OPTIONS_URL_SINGLECLICK,"Button",
+    CONTROL         "Bir marta bosmoq",IDC_OPTIONS_URL_SINGLECLICK,"Button",
                     BS_AUTORADIOBUTTON,112,76,90,10
-    CONTROL         "Двойной клик",IDC_OPTIONS_URL_DOUBLECLICK,"Button",
+    CONTROL         "Ikki marta bosmoq",IDC_OPTIONS_URL_DOUBLECLICK,"Button",
                     BS_AUTORADIOBUTTON,112,87,90,10
-    CONTROL         "Префиксы:",IDC_OPTIONS_URL_PREFIXES_ENABLE,"Button",
+    CONTROL         "Prefikslar:",IDC_OPTIONS_URL_PREFIXES_ENABLE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,23,97,172,10
     EDITTEXT        IDC_OPTIONS_URL_PREFIXES,23,109,172,13,ES_AUTOHSCROLL
-    CONTROL         "Разделители:",IDC_OPTIONS_URL_DELIMITERS_ENABLE,"Button",
+    CONTROL         "Ajratgichlar:",IDC_OPTIONS_URL_DELIMITERS_ENABLE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,23,128,172,10
     EDITTEXT        IDC_OPTIONS_URL_LEFTDELIMITERS,23,140,83,13,
                     ES_AUTOHSCROLL
     EDITTEXT        IDC_OPTIONS_URL_RIGHTDELIMITERS,112,140,83,13,
                     ES_AUTOHSCROLL
-    CONTROL         "Разделители слов:",IDC_OPTIONS_WORD_DELIMITERS_ENABLE,
+    CONTROL         "So‘zlar ajratgichi:",IDC_OPTIONS_WORD_DELIMITERS_ENABLE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,169,150,8
     EDITTEXT        IDC_OPTIONS_WORD_DELIMITERS,9,180,148,13,ES_AUTOHSCROLL
-    PUSHBUTTON      "Сбросить",IDC_OPTIONS_WORD_DELIMITERS_RESET,159,180,50,
+    PUSHBUTTON      "Tashlamoq",IDC_OPTIONS_WORD_DELIMITERS_RESET,159,180,50,
                     13,BS_CENTER
-    CONTROL         "Разделители переносов:",
+    CONTROL         "Bo‘ginlar ajratgichi:",
                     IDC_OPTIONS_WRAP_DELIMITERS_ENABLE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,200,150,8
     EDITTEXT        IDC_OPTIONS_WRAP_DELIMITERS,9,211,148,13,ES_AUTOHSCROLL
-    PUSHBUTTON      "Сбросить",IDC_OPTIONS_WRAP_DELIMITERS_RESET,159,211,50,
+    PUSHBUTTON      "Tashlamoq",IDC_OPTIONS_WRAP_DELIMITERS_RESET,159,211,50,
                     13,BS_CENTER
 END
 
 IDD_OPTIONS_ADVANCED DIALOG DISCARDABLE  0, 0, 220, 230
 STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
-CAPTION "Дополнительно"
+CAPTION "Qo‘shimcha"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    CONTROL         "Авто-переключение раскладки клавиатуры",
+    CONTROL         "Klaviatura tilini avtomatik yoqmoq",
                     IDC_OPTIONS_SWITCH_KEYBLAYOUT,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,9,11,200,10
-    CONTROL         "Запоминать раскладку клавиатуры для вкладки (MDI)",
+    CONTROL         "(MDI) xatcho‘pi uchun klaviatura tilini yodda saqlamoq",
                     IDC_OPTIONS_REMEMBER_KEYBLAYOUT,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,9,23,200,10
-    CONTROL         "Молча закрывать несохраненный пустой документ",
+    CONTROL         "Bo‘sh (MDI) xatcho‘pini saqlash haqida so‘ramaslik",
                     IDC_OPTIONS_SILENTCLOSEEMPTY,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,9,35,200,10
-    CONTROL         "Вставить дату, если файл содержит .LOG в начале",
+    CONTROL         "Fayl avvalida .LOG mavjud bo‘lsa sanani qo‘shib qo‘ymoq",
                     IDC_OPTIONS_LOGDATE,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,9,47,200,10
-    CONTROL         "Предупреждение о сохранении в read-only файлы",
+    CONTROL         "Faqat-o‘qish fayllarida saqlanmasligi haqida ogohlantirish",
                     IDC_OPTIONS_SAVEIN_READONLY_MSG,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,9,59,200,10
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
-    LTEXT           "расширение по умолчанию при сохранении документа",
-                    IDC_STATIC,37,77,171,8
-    GROUPBOX        "Диалог поиска/замены",IDC_STATIC,9,96,200,66
-    CONTROL         """Заменить всё"" закрывает диалог",
+    LTEXT           "sukut bo‘yicha hujjatni saqlash kengaytmasi",IDC_STATIC,
+                    37,77,171,8
+    GROUPBOX        "Izlash/almashtirish muloqot oynasi",IDC_STATIC,9,96,200,
+                    66
+    CONTROL         """Barini almash"" oynani yopsin",
                     IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,17,109,185,10
-    CONTROL         """Заменить всё"" без сообщения",
+    CONTROL         """Barini almash"" xabarsiz",
                     IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,17,121,185,10
-    CONTROL         "Отметить ""В выделении"", если есть выделение",
+    CONTROL         "Bekor qilmoq ""Belgilangandan"", agar belgilash bo‘lsa",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,17,133,185,10
-    CONTROL         "Поиск по кругу",IDC_OPTIONS_CYCLESEARCH,"Button",
+    CONTROL         "Aylanasiga izlash",IDC_OPTIONS_CYCLESEARCH,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
-    CONTROL         "Запрос",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
+    CONTROL         "So‘rov",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
-    CONTROL         "Сохранять позицию немодальных диалогов",
+    CONTROL         "Modal bo‘lmagan oynalar o‘rnini saqlamoq",
                     IDC_OPTIONS_MODELESSSAVEPOS,"Button",BS_AUTOCHECKBOX |
                     WS_TABSTOP,9,169,185,10
 END
@@ -927,22 +938,22 @@ END
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
 STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE |
     WS_CAPTION | WS_SYSMENU
-CAPTION "О программе"
+CAPTION "Dastur haqida"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     ICON            IDI_ICON_MAIN,IDC_ABOUT_ICON,10,10,20,20
     CONTROL         "",IDC_ABOUT_VERSION,"Static",SS_LEFTNOWORDWRAP,44,16,
                     150,11
-    LTEXT           "Домашняя страница:",IDC_STATIC,19,41,85,11
+    LTEXT           "Rasmiy veb-sahifa:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
-    GROUPBOX        "Авторы:",IDC_STATIC,20,62,177,109
-    LTEXT           "Шенгальц Александр, 2006-2017",IDC_STATIC,73,82,120,12,
+    GROUPBOX        "Mualliflar:",IDC_STATIC,20,62,177,109
+    LTEXT           "Shengalts Aleksander, 2006-2017",IDC_STATIC,73,82,120,12,
                     NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
     EDITTEXT        IDC_ABOUT_EMAIL_SHENGALTS,74,96,107,12,ES_READONLY | NOT
                     WS_BORDER,WS_EX_STATICEDGE
-    LTEXT           "Алексей Кузнецов, 2003-2006",IDC_STATIC,73,125,120,12,
+    LTEXT           "Alexey Kuznetsov, 2003-2006",IDC_STATIC,73,125,120,12,
                     NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,142,22,12,WS_DISABLED | NOT
                     WS_GROUP,WS_EX_RIGHT
@@ -979,13 +990,16 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2018 Shengalts Aleksander aka Instructor""\r\n"
-    "  #define RC_VERSIONNAME ""Russian.dll""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2015 Shamsiddinov Zafar""\r\n"
+    "  #define RC_VERSIONNAME ""Uzbek.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
     "#include ""staticedit.h""\r\n"
     "#include ""version.h""\r\n"
     "#include ""..\\..\\Plugs\\AkelDLL\\AkelDLL.h""\r\n"
+    "#ifndef LANG_UZBEK\r\n"
+    "  #define LANG_UZBEK 0x43\r\n"
+    "#endif\r\n"
     "\0"
 END
 
@@ -1021,138 +1035,139 @@ END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    MSG_ERROR_IN_MESSAGE_QUEUE "Ошибка в очереди сообщений."
+    MSG_ERROR_IN_MESSAGE_QUEUE "Xabar navbatini xatolik."
     MSG_ERROR_NOT_ENOUGH_MEMORY
-                            "Критическая ошибка: недостаточно памяти. Рекомендуется завершить работу программы."
-    MSG_ERROR_BINARY        """%s"" бинарный файл. Продолжить?"
-    MSG_ERROR_IO            "Ошибка ввода/вывода."
-    MSG_ERROR_SYNTAX        "Синтаксическая ошибка (%d)."
-    MSG_ERROR_PRINT         "Ошибка при печати документа"
-    MSG_ERROR_RUN           "Невозможно запустить программу."
-    MSG_ERROR_LOAD_DLL      "Не удается загрузить ""%s""."
-    MSG_ERROR_UNLOAD_DLL    "Не удается выгрузить ""%s""."
+                            "Kritik xatolik: xotira yetarli emas. Dastur ishini tugallash tavsiya etiladi."
+    MSG_ERROR_BINARY        """%s"" binar fayl. Davom etilsinmi?"
+    MSG_ERROR_IO            "Kiritish/chiqarishda xatolik."
+    MSG_ERROR_SYNTAX        "Sintaktik xatolik (%d)."
+    MSG_ERROR_PRINT         "Hujjatni chop etishda xatolik"
+    MSG_ERROR_RUN           "Dasturga kirishning imkoni yo‘q."
+    MSG_ERROR_LOAD_DLL      """%s""ni yuklab bo‘lmadi."
+    MSG_ERROR_UNLOAD_DLL    """%s""ni yuklab bo‘lmadi."
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    MSG_AUTOLOAD_IS_NOT_SUPPORTED """%s"" не поддерживает автозагрузку."
-    MSG_FUNCTION_NOT_FOUND  "Не удается найти функцию ""%s::%s"" в ""%s""."
-    MSG_UPDATE_PROGRAM      "Обновите AkelPad.\n\nТребуется AkelPad версии не ниже: %d.%d.%d.%d\nТекущая версия AkelPad'а: %d.%d.%d.%d"
-    MSG_PROGRAM_IS_NOT_SUPPORTED "AkelPad 4.x.x не поддерживается."
-    MSG_UPDATE_PLUGIN       "Обновите %s.\n\nАрхитектура AkelPad'а: %d.%d.%d.%d\nАрхитектура %s плагина: %d.%d.%d.%d"
-    MSG_PLUGIN_IS_NOT_SUPPORTED """%s"" не распознан как плагин AkelPad'а."
-    MSG_UPDATE_LANGMODULE   "Обновите %s\n\nТекущая версия: %d.%d.%d.%d\nТребуемая версия: %d.%d.%d.%d"
-    MSG_HOTKEY_EXISTS       "Горячая клавиша уже назначена для ""%s""."
-    MSG_CANNOT_OPEN_FILE    "Невозможно открыть файл ""%s""."
-    MSG_WRONG_STRING        "Неправильный номер строки."
-    MSG_LONG_FILELIST       "Выбрано слишком много файлов."
-    MSG_DOCUMENT_CHANGED    "Документ был изменён. Сохранить?"
-    MSG_FILE_DOES_NOT_EXIST "Создать новый файл ""%s""?"
+    MSG_AUTOLOAD_IS_NOT_SUPPORTED """%s"" avto yuklashni qo‘llamaydi."
+    MSG_FUNCTION_NOT_FOUND  """%s""dan ""%s::%s"" funksiyani topib bo‘lmadi."
+    MSG_UPDATE_PROGRAM      "AkelPadni yangilang.\n\nAkelPadning: %d.%d.%d.%d-dan past bo‘lmagan versiyasi talab etiladi\nAkelPadning joriy versiyasi: %d.%d.%d.%d"
+    MSG_PROGRAM_IS_NOT_SUPPORTED "AkelPad 4.x.x qo‘llamaydi."
+    MSG_UPDATE_PLUGIN       "%sni yangilang.\n\nAkelPad arxitekturasi: %d.%d.%d.%d\n%s plagini arxitekturasi: %d.%d.%d.%d"
+    MSG_PLUGIN_IS_NOT_SUPPORTED """%s"" AkelPad plagini sifatida aniqlanmadi."
+    MSG_UPDATE_LANGMODULE   "%sni yangilang\n\nJoriy versiya: %d.%d.%d.%d\nTalab etilgan versiya: %d.%d.%d.%d"
+    MSG_HOTKEY_EXISTS       "Chaqiruv tugmasi ""%s"" uchun oldindan belgilangan."
+    MSG_CANNOT_OPEN_FILE    """%s"" faylini ochib bo‘lmaydi."
+    MSG_WRONG_STRING        "Satr raqami noto‘g‘ri."
+    MSG_LONG_FILELIST       "Juda ko‘p fayllar tanlangan."
+    MSG_DOCUMENT_CHANGED    "Hujjatda o‘zgarish bor. Saqlansinmi?"
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    MSG_RECENTFILES_DELETED "Удалено записей: %d"
-    MSG_SEARCH_ENDED        "Поиск завершен."
-    MSG_SEARCH_CYCLEPROMPT  "Достигнута граница файла. Продолжить?"
-    MSG_REPLACE_COUNT       "Количество замен: %d"
-    MSG_REPLACE_COUNT_ALLFILES "Измененных файлов: %d\nКоличество замен: %Id"
+    MSG_FILE_DOES_NOT_EXIST """%s"" yangi fayli yaratilsinmi?"
+    MSG_RECENTFILES_DELETED "O‘chirilgan qaydlar: %d ta"
+    MSG_SEARCH_ENDED        "Topish bajarildi."
+    MSG_SEARCH_CYCLEPROMPT  "Fayl oxiriga kelindi. Davom etilsinmi?"
+    MSG_REPLACE_COUNT       "Almashtirishlar soni: %d ta"
+    MSG_REPLACE_COUNT_ALLFILES
+                            "O‘zgargan fayllar: %d ta\nAlmashtirishlar soni: %Id"
     MSG_FILE_WILL_BE_REOPENED
-                            "Файл будет открыт заново, все изменения будут потеряны."
-    MSG_FILE_CHANGED        """%s"" был изменен извне.\n\nПереоткрыть его?"
-    MSG_CP_UNIMPLEMENTED    """%d"" кодовая страница не поддерживается."
-    MSG_CP_MISMATCH         "Строка ""%d"" содержит символы, которые будут утеряны при сохранении в этой кодировке. Продолжить?"
-    MSG_ACCESSDENIED        "Требуются права администратора.\n\n""%s""\n\n"
-    MSG_RESTART_PROGRAM     "Изменения вступят в силу после перезапуска программы."
-    MSG_SAVEIN_READONLY     """%s"" файл имеет атрибут ""Только чтение"". Продолжить?"
-    MSG_OVERWRITEPROMPT     """%s"" уже существует. Перезаписать?"
-    MSG_DOCUMENTSLIMIT      "Достигнут лимит документов. Используйте режим PMDI для открытия большего количества документов."
+                            "Fayl qayta ochiladi, barcha o‘zgarishlar yo‘q bo‘ladi."
+    MSG_FILE_CHANGED        """%s"" o‘zgarishlardan tashqarida.\n\nQayta ochilsinmi?"
+    MSG_CP_UNIMPLEMENTED    """%d"" kodlash sahifasi qo‘llanmaydi."
+    MSG_CP_MISMATCH         "Satrda ""%d"" belgilar mavjud, ushbu kodlashda ba’zi bir belgilar yo‘qotiladi. Davom etilsinmi?"
+    MSG_ACCESSDENIED        "Ma’mur huquqi kerak.\n\n""%s""\n\n"
+    MSG_RESTART_PROGRAM     "O‘zgarish dasturga qayta kirgandan so‘ng amalga oshadi."
+    MSG_SAVEIN_READONLY     """%s"" faylida ""Faqat o‘qish"" xossasi mavjud. Davom etilsinmi?"
+    MSG_OVERWRITEPROMPT     """%s"" allaqachon mavjud. Qayta yozilsinmi?"
+    MSG_DOCUMENTSLIMIT      "Hujjatlar chekloviga yetildi. Juda ko‘p hujjatlarni ochish uchun PMDI rejimidan foydalaning."
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    STR_DOCNAME             "AkelPad документ"
-    STR_MODIFIED            "Изменён"
-    STR_READONLY            "Только чтение"
-    STR_COUNT               "%d из %d"
-    STR_WITHOUT             "без"
-    STR_AUTODETECT          "&Автовыбор"
-    STR_RECENT_FILES_EMPTY  "Пусто"
-    STR_RECENT_FILES_DELETE_DEAD "Удалить несуществующие"
-    STR_OPTIONS             "Параметры..."
-    STR_LANGUAGE_NONE       "Внутренний"
-    STR_FILE_FILTER         "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*"
+    STR_DOCNAME             "AkelPad hujjati"
+    STR_MODIFIED            "O‘zgargan"
+    STR_READONLY            "Faqat o‘qish"
+    STR_COUNT               "%d dan %d"
+    STR_WITHOUT             "siz"
+    STR_AUTODETECT          "&Avtotanlov"
+    STR_RECENT_FILES_EMPTY  "Bo‘sh"
+    STR_RECENT_FILES_DELETE_DEAD "Mavjud bo‘lmaganlarni o‘chirmoq"
+    STR_OPTIONS             "Parametrlar..."
+    STR_LANGUAGE_NONE       "Ichki"
+    STR_FILE_FILTER         "Matnli fayllar (*.txt)|*.txt|Barcha fayllar (*.*)|*.*"
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    STR_EXECUTABLE_FILTER   "Исполняемые файлы (*.exe)|*.exe|Все файлы (*.*)|*.*"
-    STR_NONE                "Нет"
-    STR_PLUGIN              "Плагин"
-    STR_FUNCTION            "Функция"
-    STR_HOTKEY              "Горячая клавиша"
-    STR_STATUS              "Статус"
-    STR_RUNNING             "Работает"
-    STR_FONT                "Шрифт"
-    STR_COLOR               "Цвета"
-    STR_HEADLINE            "Колонтитулы"
-    STR_TOP                 "Верхний:"
-    STR_BOTTOM              "Нижний:"
-    STR_ELEMENT             "Элемент"
-    STR_STANDARDTHEME       "Стандартная"
-    STR_TEXT                "Текст"
-    STR_BACKGROUND          "Фон"
+    STR_EXECUTABLE_FILTER   "Bajaruvchi fayllar (*.exe)|*.exe|Barcha fayllar (*.*)|*.*"
+    STR_NONE                "Yo‘q"
+    STR_PLUGIN              "Plagin"
+    STR_FUNCTION            "Funksiya"
+    STR_HOTKEY              "Chaqiruv tugmasi"
+    STR_STATUS              "Holat"
+    STR_RUNNING             "Faol"
+    STR_FONT                "Shrift"
+    STR_COLOR               "Rang"
+    STR_HEADLINE            "Kolontitullar"
+    STR_TOP                 "Yuqori:"
+    STR_BOTTOM              "Quyi:"
+    STR_ELEMENT             "Element"
+    STR_STANDARDTHEME       "Standart"
+    STR_TEXT                "Matn"
+    STR_BACKGROUND          "Fon"
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    STR_SAMPLE              "Образец"
-    STR_BASIC               "Основной цвет"
-    STR_SELECTION           "Выделение"
-    STR_ACTIVELINE          "Активная строка"
-    STR_ACTIVELINEBORDER    "Граница активной строки"
-    STR_ALTLINE             "Зебра"
-    STR_ALTLINEBORDER       "Граница зебры"
-    STR_ACTIVECOLUMN        "Активный столбец"
-    STR_COLUMNMARKER        "Маркер"
-    STR_CARET               "Каретка"
-    STR_URL                 "Ссылка"
-    STR_ACTIVEURL           "Активная ссылка"
-    STR_VISITURL            "Посещенная ссылка"
-    STR_PAGEFIT             "Целиком"
-    STR_PAGEWIDTH           "По ширине"
-    STR_ALLFILES            "Все файлы"
+    STR_SAMPLE              "Namuna"
+    STR_BASIC               "Asosiy rang"
+    STR_SELECTION           "Belgilangan"
+    STR_ACTIVELINE          "Faol satr"
+    STR_ACTIVELINEBORDER    "Faol satr chegarasi"
+    STR_ALTLINE             "Zebra"
+    STR_ALTLINEBORDER       "Zebra chiziqlar chegarasi"
+    STR_ACTIVECOLUMN        "Faol ustunlar"
+    STR_COLUMNMARKER        "Marker"
+    STR_CARET               "Karetka"
+    STR_URL                 "Havola"
+    STR_ACTIVEURL           "Faol havola"
+    STR_VISITURL            "Kirilgan havola"
+    STR_PAGEFIT             "Butunicha"
+    STR_PAGEWIDTH           "Eniga moslash"
+    STR_ALLFILES            "Barcha fayllar"
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    STR_ONLYMODIFIED        "Измененные"
-    STR_ONLYUNMODIFIED      "Неизмененные"
-    STR_INVERTSELECTION     "Инвертировать выделение"
-    STR_NEWLINEDOT          ". захватывает \\n"
+    STR_ONLYMODIFIED        "O‘zgargan"
+    STR_ONLYUNMODIFIED      "O‘zgarmagan"
+    STR_INVERTSELECTION     "Belgilashni teskarilamoq"
+    STR_NEWLINEDOT          ". matches \\n"
     STR_MESSAGEBOX_OK       "OK"
-    STR_MESSAGEBOX_YES      "&Да"
-    STR_MESSAGEBOX_NO       "&Нет"
-    STR_MESSAGEBOX_CANCEL   "Отмена"
-    STR_MESSAGEBOX_YESTOALL "Да для всех"
-    STR_MESSAGEBOX_NOTOALL  "Нет для всех"
-    STR_MESSAGEBOX_GOTO     "Перейти"
-    STR_MESSAGEBOX_TERMINATE "Завершить"
-    STR_MESSAGEBOX_CONTINUE "Продолжить"
+    STR_MESSAGEBOX_YES      "&Ha"
+    STR_MESSAGEBOX_NO       "&Yo‘q"
+    STR_MESSAGEBOX_CANCEL   "Bekor qilmoq"
+    STR_MESSAGEBOX_YESTOALL "Bariga ha"
+    STR_MESSAGEBOX_NOTOALL  "Bariga yo‘q"
+    STR_MESSAGEBOX_GOTO     "O‘tish"
+    STR_MESSAGEBOX_TERMINATE "Tugatmoq"
+    STR_MESSAGEBOX_CONTINUE "Davom etmoq"
 END
 
 STRINGTABLE DISCARDABLE
 BEGIN
-    STR_AUTODETECT_RUSSIAN  "Кириллица (1251, OEM, KOI8-R, UTF-8)"
-    STR_AUTODETECT_EASTERNEUROPE "Восточно-Европейский (1250, OEM, UTF-8)"
-    STR_AUTODETECT_WESTERNEUROPE "Западно-Европейский (1252, OEM, UTF-8)"
-    STR_AUTODETECT_TURKISH  "Турецкий (1254, OEM, UTF-8)"
-    STR_AUTODETECT_CHINESE  "Китайский (ANSI, UTF-8)"
-    STR_AUTODETECT_JAPANESE "Японский (932, UTF-8)"
-    STR_AUTODETECT_KOREAN   "Корейский (949, UTF-8)"
+    STR_AUTODETECT_RUSSIAN  "Kirilcha (1251, OEM, KOI8-R, UTF-8)"
+    STR_AUTODETECT_EASTERNEUROPE "Sharqiy-Yevropa (1250, OEM, UTF-8)"
+    STR_AUTODETECT_WESTERNEUROPE "G‘arbiy-Yevropa (1252, OEM, UTF-8)"
+    STR_AUTODETECT_TURKISH  "Turkcha (1254, OEM, UTF-8)"
+    STR_AUTODETECT_CHINESE  "Xitoycha (ANSI, UTF-8)"
+    STR_AUTODETECT_JAPANESE "Yaponcha (932, UTF-8)"
+    STR_AUTODETECT_KOREAN   "Koreyscha (949, UTF-8)"
 END
 
-#endif    // Russian resources
+#endif    // Unknown language: 0x43, 0x1 resources
 /////////////////////////////////////////////////////////////////////////////
 
 

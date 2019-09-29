@@ -13,7 +13,7 @@
   #else
     #define RC_VERSIONDESCRIPTION "AkelPad (x86) language module"
   #endif
-  #define RC_VERSIONCOPYRIGHT "© 2014 Shengalts Aleksander aka Instructor"
+  #define RC_VERSIONCOPYRIGHT "© 2018 Shengalts Aleksander aka Instructor"
   #define RC_VERSIONNAME "English.dll"
 #endif
 #include "winresrc.h"
@@ -98,7 +98,8 @@ BEGIN
 
             MENUITEM "Trim trailing &whitespace\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
-            MENUITEM "Delete selection whitespaces",
+
+            MENUITEM "Delete selection whitespaces", 
                                                     IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
@@ -140,7 +141,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Keep left spaces\tCtrl+L",   IDM_OPTIONS_KEEPSPACE
         MENUITEM "Watch file &change",          IDM_OPTIONS_WATCHFILE
-        MENUITEM "Save file &time",             IDM_OPTIONS_SAVETIME
+        MENUITEM "Preserve file &time",         IDM_OPTIONS_SAVETIME
         MENUITEM "Don't open a &file twice",    IDM_OPTIONS_SINGLEOPEN_FILE
         MENUITEM "Don't open a &program twice", IDM_OPTIONS_SINGLEOPEN_PROGRAM
 
@@ -183,7 +184,10 @@ BEGIN
         MENUITEM "Close all",                   IDM_WINDOW_FRAMECLOSEALL
         MENUITEM "Close all but active",        IDM_WINDOW_FRAMECLOSEALL_BUTACTIVE
 
-        MENUITEM "Select Window...",            IDM_WINDOW_MDILIST
+        MENUITEM SEPARATOR
+        MENUITEM "Clo&ne",                      IDM_WINDOW_FRAMECLONE
+        MENUITEM "Co&py path",                  IDM_WINDOW_COPYPATH
+        MENUITEM "&Select Window...",           IDM_WINDOW_MDILIST
     END
     POPUP "&Help"
     BEGIN
@@ -478,7 +482,7 @@ STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
 CAPTION "Find"
-FONT 8, "MS Shell Dlg"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
@@ -487,7 +491,9 @@ BEGIN
     CONTROL         "&Whole word",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,41,109,12
     CONTROL         "Regular e&xpressions",IDC_SEARCH_REGEXP,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,53,109,12
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,53,95,12
+    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
+                    WS_TABSTOP,106,55,10,9
     CONTROL         "&Esc-sequences",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,65,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,77,96,12,NOT 
@@ -515,7 +521,7 @@ STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
 CAPTION "Replace"
-FONT 8, "MS Shell Dlg"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
@@ -526,7 +532,9 @@ BEGIN
     CONTROL         "&Whole word",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,55,109,12
     CONTROL         "Regular e&xpressions",IDC_SEARCH_REGEXP,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,67,109,12
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,67,95,12
+    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
+                    WS_TABSTOP,106,69,10,9
     CONTROL         "&Esc-sequences",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,79,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,91,96,12,NOT 
@@ -576,10 +584,10 @@ STYLE DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU |
 CAPTION "Recode"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    RTEXT           "From:",IDC_STATIC,6,11,35,8
+    RTEXT           "From:",IDC_RECODE_CODEPAGEFROM_LABEL,6,11,35,8
     COMBOBOX        IDC_RECODE_CODEPAGEFROM_LIST,45,9,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    RTEXT           "To:",IDC_STATIC,6,29,35,8
+    RTEXT           "To:",IDC_RECODE_CODEPAGETO_LABEL,6,29,35,8
     COMBOBOX        IDC_RECODE_CODEPAGETO_LIST,45,27,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "",IDC_RECODE_AUTODETECT,"Button",BS_AUTOCHECKBOX | 
@@ -597,11 +605,11 @@ STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION |
 CAPTION "Colors"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "Color theme:",IDC_STATIC,11,6,103,8
-    COMBOBOX        IDC_COLORS_THEME_NAME,9,17,129,83,CBS_DROPDOWN | 
+    LTEXT           "Color theme:",IDC_COLORS_THEMENAME_LABEL,11,6,103,8
+    COMBOBOX        IDC_COLORS_THEMENAME_COMBO,9,17,129,83,CBS_DROPDOWN | 
                     WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Save",IDC_COLORS_THEME_SAVE,145,16,50,14
-    PUSHBUTTON      "Delete",IDC_COLORS_THEME_DELETE,197,16,50,14
+    PUSHBUTTON      "Save",IDC_COLORS_THEMESAVE,145,16,50,14
+    PUSHBUTTON      "Delete",IDC_COLORS_THEMEDELETE,197,16,50,14
     CONTROL         "List1",IDC_COLORS_LIST,"SysListView32",LVS_REPORT | 
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | 
                     WS_BORDER | WS_TABSTOP,9,40,239,144
@@ -703,22 +711,25 @@ FONT 8, "MS Shell Dlg"
 BEGIN
     GROUPBOX        "Save settings",IDC_STATIC,9,6,200,29
     CONTROL         "Registry",IDC_OPTIONS_SAVESETTINGS_REGISTRY,"Button",
-                    BS_AUTORADIOBUTTON,32,19,70,10
+                    BS_AUTORADIOBUTTON | WS_GROUP,32,19,70,10
     CONTROL         "INI file",IDC_OPTIONS_SAVESETTINGS_INI,"Button",
                     BS_AUTORADIOBUTTON,133,19,70,10
-    GROUPBOX        "Recent files",IDC_STATIC,9,42,200,64
+    GROUPBOX        "Save history",IDC_STATIC,9,42,200,105
+    CONTROL         "Registry",IDC_OPTIONS_SAVEHISTORY_REGISTRY,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,32,55,70,10
+    CONTROL         "INI file",IDC_OPTIONS_SAVEHISTORY_INI,"Button",
+                    BS_AUTORADIOBUTTON,134,55,70,10
     CONTROL         "Remember caret position",IDC_OPTIONS_SAVEPOSITIONS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,55,185,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,75,185,10
     CONTROL         "Remember code page",IDC_OPTIONS_SAVECODEPAGES,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,66,185,10
-    LTEXT           "Amount of files:",IDC_STATIC,19,88,73,11,NOT WS_GROUP
-    EDITTEXT        IDC_OPTIONS_RECENTFILES_AMOUNT,95,86,18,13,ES_NUMBER
+                    BS_AUTOCHECKBOX | WS_TABSTOP,17,86,185,10
+    LTEXT           "Recent files:",IDC_STATIC,19,108,73,15,NOT WS_GROUP
+    EDITTEXT        IDC_OPTIONS_RECENTFILES_AMOUNT,95,106,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_RECENTFILES_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
-                    UDS_NOTHOUSANDS,113,86,11,13
-    PUSHBUTTON      "Clear",IDC_OPTIONS_RECENTFILES_CLEAR,141,85,54,14
-    GROUPBOX        "Search history",IDC_STATIC,9,113,200,33
-    LTEXT           "Amount of lines:",IDC_STATIC,19,128,73,11,NOT WS_GROUP
+                    UDS_NOTHOUSANDS,113,106,11,13
+    PUSHBUTTON      "Clear",IDC_OPTIONS_RECENTFILES_CLEAR,141,105,54,14
+    LTEXT           "Search history:",IDC_STATIC,19,128,73,15,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_SEARCHSTRINGS_AMOUNT,95,126,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_SEARCHSTRINGS_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
@@ -877,7 +888,7 @@ BEGIN
     CONTROL         "Remember keyboard layout of each tab (MDI)",
                     IDC_OPTIONS_REMEMBER_KEYBLAYOUT,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,9,23,200,10
-    CONTROL         "Silently close unsaved empty tab (MDI)",
+    CONTROL         "Silently close unsaved empty document",
                     IDC_OPTIONS_SILENTCLOSEEMPTY,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,9,35,200,10
     CONTROL         "Insert date if file has .LOG at the beginning",
@@ -902,6 +913,9 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Prompt",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
+    CONTROL         "Save position of modeless dialogs",
+                    IDC_OPTIONS_MODELESSSAVEPOS,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,169,185,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -916,7 +930,7 @@ BEGIN
     LTEXT           "Homepage:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Authors:",IDC_STATIC,20,62,177,109
-    LTEXT           "Shengalts Aleksander, 2006-2014",IDC_STATIC,73,82,120,
+    LTEXT           "Shengalts Aleksander, 2006-2017",IDC_STATIC,73,82,120,
                     12,NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -959,7 +973,7 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2014 Shengalts Aleksander aka Instructor""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2018 Shengalts Aleksander aka Instructor""\r\n"
     "  #define RC_VERSIONNAME ""English.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
@@ -990,7 +1004,7 @@ BEGIN
                             "Critical error: not enough memory. It is recommended to terminate the program."
     MSG_ERROR_BINARY        """%s"" is a binary file. Continue?"
     MSG_ERROR_IO            "Input/output error."
-    MSG_ERROR_SYNTAX        "Syntax error."
+    MSG_ERROR_SYNTAX        "Syntax error (symbol %d)."
     MSG_ERROR_PRINT         "Cannot print document."
     MSG_ERROR_RUN           "Cannot run program."
     MSG_ERROR_LOAD_DLL      "Cannot load ""%s""."
@@ -1011,11 +1025,11 @@ BEGIN
     MSG_WRONG_STRING        "Invalid line number."
     MSG_LONG_FILELIST       "Too many files chosen."
     MSG_DOCUMENT_CHANGED    "Document was modified. Do you want to save it?"
-    MSG_FILE_DOES_NOT_EXIST "Create new file ""%s""?"
 END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
+    MSG_FILE_DOES_NOT_EXIST "Create new file ""%s""?"
     MSG_RECENTFILES_DELETED "Deleted records: %d"
     MSG_SEARCH_ENDED        "Search finished."
     MSG_SEARCH_CYCLEPROMPT  "Passed file boundary. Continue?"
@@ -1093,6 +1107,7 @@ BEGIN
     STR_ONLYMODIFIED        "Modified"
     STR_ONLYUNMODIFIED      "Unmodified"
     STR_INVERTSELECTION     "Invert selection"
+    STR_NEWLINEDOT          ". matches \\n"
     STR_MESSAGEBOX_OK       "OK"
     STR_MESSAGEBOX_YES      "&Yes"
     STR_MESSAGEBOX_NO       "&No"

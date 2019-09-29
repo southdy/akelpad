@@ -188,6 +188,9 @@ BEGIN
         MENUITEM "Zamknij wszystkie, oprócz aktywnego", 
                                                 IDM_WINDOW_FRAMECLOSEALL_BUTACTIVE
 
+        MENUITEM SEPARATOR
+        MENUITEM "Sklo&nuj",                      IDM_WINDOW_FRAMECLONE
+        MENUITEM "Ko&piuj œcie¿kê",                  IDM_WINDOW_COPYPATH
         MENUITEM "Wybór okna...",               IDM_WINDOW_MDILIST
     END
     POPUP "Pomo&c"
@@ -492,7 +495,9 @@ BEGIN
     CONTROL         "Ca³e &wyrazy",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,41,109,12
     CONTROL         "Wyra¿enia &regularne",IDC_SEARCH_REGEXP,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,53,109,12
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,53,95,12
+    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
+                    WS_TABSTOP,106,55,10,9
     CONTROL         "Sekwencje &Esc",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,65,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,77,96,12,NOT 
@@ -530,7 +535,9 @@ BEGIN
     CONTROL         "Ca³e &wyrazy",IDC_SEARCH_WHOLEWORD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,55,109,12
     CONTROL         "Wyra¿enia &regularne",IDC_SEARCH_REGEXP,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,9,67,109,12
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,67,95,12
+    CONTROL         "",IDC_SEARCH_REGEXP_ARROW,"Button",BS_OWNERDRAW | 
+                    WS_TABSTOP,106,69,10,9
     CONTROL         "Sekwencje &Esc",IDC_SEARCH_ESCAPESEQ,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,79,109,12
     LTEXT           "(\\[0020], \\\\, \\n, \\t)",IDC_STATIC,22,91,96,12,NOT 
@@ -579,10 +586,10 @@ STYLE DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU |
 CAPTION "Przekoduj"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    RTEXT           "Z:",IDC_STATIC,6,11,35,8
+    RTEXT           "Z:",IDC_RECODE_CODEPAGEFROM_LABEL,6,11,35,8
     COMBOBOX        IDC_RECODE_CODEPAGEFROM_LIST,45,9,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    RTEXT           "Na:",IDC_STATIC,6,29,35,8
+    RTEXT           "Na:",IDC_RECODE_CODEPAGETO_LABEL,6,29,35,8
     COMBOBOX        IDC_RECODE_CODEPAGETO_LIST,45,27,152,130,
                     CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "",IDC_RECODE_AUTODETECT,"Button",BS_AUTOCHECKBOX | 
@@ -600,11 +607,11 @@ STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION |
 CAPTION "Kolory"
 FONT 8, "MS Shell Dlg"
 BEGIN
-    LTEXT           "Motyw kolorów:",IDC_STATIC,11,6,103,8
-    COMBOBOX        IDC_COLORS_THEME_NAME,9,17,129,83,CBS_DROPDOWN | 
+    LTEXT           "Motyw kolorów:",IDC_COLORS_THEMENAME_LABEL,11,6,103,8
+    COMBOBOX        IDC_COLORS_THEMENAME_COMBO,9,17,129,83,CBS_DROPDOWN | 
                     WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON      "Zapisz",IDC_COLORS_THEME_SAVE,145,16,50,14
-    PUSHBUTTON      "Usuñ",IDC_COLORS_THEME_DELETE,197,16,50,14
+    PUSHBUTTON      "Zapisz",IDC_COLORS_THEMESAVE,145,16,50,14
+    PUSHBUTTON      "Usuñ",IDC_COLORS_THEMEDELETE,197,16,50,14
     CONTROL         "List1",IDC_COLORS_LIST,"SysListView32",LVS_REPORT | 
                     LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | 
                     WS_BORDER | WS_TABSTOP,9,40,239,144
@@ -706,22 +713,25 @@ FONT 8, "MS Shell Dlg"
 BEGIN
     GROUPBOX        "Zapisz ustawienia",IDC_STATIC,9,6,200,29
     CONTROL         "W rejestrze",IDC_OPTIONS_SAVESETTINGS_REGISTRY,"Button",
-                    BS_AUTORADIOBUTTON,32,19,70,10
+                    BS_AUTORADIOBUTTON | WS_GROUP,32,19,70,10
     CONTROL         "W pliku INI",IDC_OPTIONS_SAVESETTINGS_INI,"Button",
                     BS_AUTORADIOBUTTON,133,19,70,10
-    GROUPBOX        "Ostatnio otwarte pliki",IDC_STATIC,9,42,200,64
+    GROUPBOX        "Zapisz historiê",IDC_STATIC,9,42,200,105
+    CONTROL         "W rejestrze",IDC_OPTIONS_SAVEHISTORY_REGISTRY,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP,32,55,70,10
+    CONTROL         "W pliku INI",IDC_OPTIONS_SAVEHISTORY_INI,"Button",
+                    BS_AUTORADIOBUTTON,134,55,70,10
     CONTROL         "Zapamiêtaj pozycjê kursora",IDC_OPTIONS_SAVEPOSITIONS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,55,185,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,75,185,10
     CONTROL         "Zapamiêtaj stronê kodow¹",IDC_OPTIONS_SAVECODEPAGES,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,66,185,10
-    LTEXT           "Liczba plików:",IDC_STATIC,19,88,73,11,NOT WS_GROUP
-    EDITTEXT        IDC_OPTIONS_RECENTFILES_AMOUNT,95,86,18,13,ES_NUMBER
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,86,185,10
+    LTEXT           "Ostatnio otwarte pliki:",IDC_STATIC,19,108,73,15,NOT WS_GROUP
+    EDITTEXT        IDC_OPTIONS_RECENTFILES_AMOUNT,95,106,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_RECENTFILES_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
-                    UDS_NOTHOUSANDS,113,86,11,13
-    PUSHBUTTON      "Wyczyœæ",IDC_OPTIONS_RECENTFILES_CLEAR,141,85,54,14
-    GROUPBOX        "Historia wyszukiwania",IDC_STATIC,9,113,200,33
-    LTEXT           "Liczba elementów:",IDC_STATIC,19,128,73,11,NOT WS_GROUP
+                    UDS_NOTHOUSANDS,113,106,11,13
+    PUSHBUTTON      "Wyczyœæ",IDC_OPTIONS_RECENTFILES_CLEAR,141,105,54,14
+    LTEXT           "Historia wyszukiwania:",IDC_STATIC,19,128,73,15,NOT WS_GROUP
     EDITTEXT        IDC_OPTIONS_SEARCHSTRINGS_AMOUNT,95,126,18,13,ES_NUMBER
     CONTROL         "Spin1",IDC_OPTIONS_SEARCHSTRINGS_AMOUNT_SPIN,
                     "msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS | 
@@ -908,6 +918,9 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Zapytanie",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
+    CONTROL         "Pamiêtaj po³o¿enie niemodalnych okien dialogowych",
+                    IDC_OPTIONS_MODELESSSAVEPOS,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,169,185,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -922,7 +935,7 @@ BEGIN
     LTEXT           "Strona domowa:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Autorzy:",IDC_STATIC,20,62,177,109
-    LTEXT           "Shengalts Aleksander, 2006-2014",IDC_STATIC,73,82,120,
+    LTEXT           "Shengalts Aleksander, 2006-2017",IDC_STATIC,73,82,120,
                     12,NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -996,7 +1009,7 @@ BEGIN
                             "B³¹d krytyczny: za ma³o pamiêci. Zaleca siê zakoñczenie programu."
     MSG_ERROR_BINARY        """%s"" jest plikiem binarnym. Kontynuowaæ?"
     MSG_ERROR_IO            "B³¹d wejœcia/wyjœcia."
-    MSG_ERROR_SYNTAX        "B³¹d sk³adni."
+    MSG_ERROR_SYNTAX        "B³¹d sk³adni (%d)."
     MSG_ERROR_PRINT         "Nie mo¿na wydrukowaæ dokumentu."
     MSG_ERROR_RUN           "Nie mo¿na uruchomiæ programu."
     MSG_ERROR_LOAD_DLL      "Nie mo¿na wczytaæ ""%s""."
@@ -1101,6 +1114,7 @@ BEGIN
     STR_ONLYMODIFIED        "Zmienione"
     STR_ONLYUNMODIFIED      "Niezmienione"
     STR_INVERTSELECTION     "Odwróæ zaznaczenie"
+    STR_NEWLINEDOT          ". dopasowuje \\n"
     STR_MESSAGEBOX_OK       "OK"
     STR_MESSAGEBOX_YES      "&Tak"
     STR_MESSAGEBOX_NO       "&Nie"

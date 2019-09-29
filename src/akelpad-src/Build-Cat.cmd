@@ -2,6 +2,8 @@
 set VCDIR=c:\Program Files\Microsoft Visual C++ Toolkit 2003
 set MSSDK=c:\Program Files\Microsoft Platform SDK
 set CLFLAGS=/Wall /WX /wd4100 /wd4201 /wd4204 /wd4255 /wd4310 /wd4619 /wd4668 /wd4701 /wd4706 /wd4711 /wd4820 /wd4826
+set LANGNAME=Catalan
+set LANGID=0x403
 set BIT=32
 
 ::### Set paths ###::
@@ -21,17 +23,17 @@ if "%BIT%" == "32" (
 if "%VCDIR%" == "%VCDIR:2003=%" (
   if "%VCDIR%" == "%VCDIR:VC98=%" set CLFLAGS=%CLFLAGS% /GS-
 )
-if exist RegExpTest.exe del RegExpTest.exe
-cl /O1 %CLFLAGS% RegExpTest.c /link kernel32.lib user32.lib /SUBSYSTEM:WINDOWS /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:_WinMain
+rc /R /DAKELEDIT_STATICBUILD /DRC_EXEVERSION /DRC_VERSIONLANGID=%LANGID% /DRC_VERSIONBIT=%BIT% /I "AkelEdit\Resources" /Fo"AkelPad.res" "AkelFiles\Langs\Resources\%LANGNAME%.rc"
+if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
+cl /O1 %CLFLAGS% /DAKELEDIT_STATICBUILD /DRC_VERSIONLANGID=%LANGID% AkelPad.c Edit.c AkelEdit\AkelEdit.c AkelPad.res /link kernel32.lib user32.lib gdi32.lib advapi32.lib shell32.lib comctl32.lib comdlg32.lib ole32.lib oleaut32.lib uuid.lib imm32.lib version.lib /SUBSYSTEM:WINDOWS /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:_WinMain /OUT:AkelPad.exe
 if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
 
 ::### Clean up ###::
-if exist RegExpTest.obj del RegExpTest.obj
+if exist AkelPad.obj del AkelPad.obj
+if exist Edit.obj del Edit.obj
+if exist AkelEdit.obj del AkelEdit.obj
+if exist AkelPad.res del AkelPad.res
 
 ::### End ###::
-if exist RegExpTest.exe (
-  start RegExpTest.exe
-) else (
-  if not "%1" == "/S" @PAUSE
-  if defined EXITCODE exit %2 %EXITCODE%
-)
+if not "%1" == "/S" @PAUSE
+if defined EXITCODE exit %2 %EXITCODE%

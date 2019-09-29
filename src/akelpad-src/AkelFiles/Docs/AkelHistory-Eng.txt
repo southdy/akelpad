@@ -1,5 +1,154 @@
 
-AkelPad 4.9.0 ()
+AkelPad 4.9.9 ()
+----------------------------
+Changed: during codepage recognition character "\xF1" now refers to 1251.
+Changed: codepage recognition in "Recode" dialog in case of failure by
+         values of "Ñodepage recognition" settings, tries to recognize by
+         all encodings from the user list.
+
+Added: possibility to save recent files and search history in ini file.
+       Now program can be completely portable.
+Added: possibility to use x86 and x64 version with the same settings. For this:
+       - 64-bit AkelPad.exe rename to AkelPad64.exe. This name is used by AkelUpdater
+         to update 64-bit version.
+       - 32-bit AkelPad.exe and 64-bit AkelPad64.exe are in the same folder.
+       - create a folder "[AkelPad]\AkelFiles\Langs64\" for 64-bit dll files.
+       - create a folder "[AkelPad]\AkelFiles\Plugs64\" for 64-bit dll files.
+         Settings of all plugins will continue to be stored in "[AkelPad]\AkelFiles\Plugs".
+       - 64-bit AkelAdmin.exe rename to AkelAdmin64.exe.
+Added: "Settings..." dialog now resizable.
+Added: possibility to set negative line gap.
+Added: manual flag 268435456 in the parameter "TabOptionsMDI" - close modified tabs first
+       on exit.
+Added: optional parameter for command 4321:
+       1 - close all modified tabs.
+Added: optional parameter for commands 4153,4154:
+       1 - cut/copy word under caret, if no selection;
+       2 - cut/copy line under caret, if no selection;
+       4 - cut/copy unwrapped line under caret, if no selection.
+Added: optional parameter that specifies the new line format for commands 4153,4154,4155.
+
+Fixed: reopening file with BOM, which has been deleted in third-party program.
+Fixed: file symbolic link opening with "Watch file change" option.
+Fixed: command line parameter /MainClass ignored option "Don't open a program twice".
+
+
+AkelPad 4.9.8 (Jul 18, 2016)
+----------------------------
+Added: flag 128 in the manual parameter "PaintOptions" - unit of vertical scrolling is line
+       (default is pixel).
+Added: optional parameter for commands 4103,4106:
+       1 - force to use last directory.
+
+
+AkelPad 4.9.7 (Dec 13, 2015)
+----------------------------
+Changed: plugin architecture. Update plugins.
+Changed: "Replace all" with up direction.
+
+Added: option to find/replace dialog ". matches \n".
+Added: Catalan language module (Hiro5).
+Added: command line parameter /NewInstance - force create new program instance.
+Added: command line parameter /MainClass("MyAkelPad4") - set class name for a new program
+       instance.
+Added: possibility to set \0 symbol in delimiters.
+Added: error position in regular expression error message.
+
+
+AkelPad 4.9.6 (Sep 14, 2015)
+----------------------------
+Fixed: print text with nested syntax highlighting rules.
+Fixed: text scrolling to caret while dragging a file on edit window.
+
+
+AkelPad 4.9.5 (Sep 11, 2015)
+----------------------------
+Added: possibility to use nested syntax highlighting rules.
+Added: alternative Windows notepad replacement (via registry) in installer.
+Added: Greek language module (Johnakiss).
+Added: Uzbek language module (Shamsiddinov Zafar).
+Added: option "Silently close unsaved empty tab (MDI)" now also work in SDI mode.
+
+Fixed: releasing caret positions for commands 4199, 4200 when word wrap changed.
+Fixed: possible transfer of the Enter pressing to another process when closing dialog
+       created by plugin.
+Fixed: notepad replacement by installer on x64 systems.
+Fixed: parsing command line parameter /Z with MS Notepad compatibility mode on.
+
+
+AkelPad 4.9.4 (Jun 03, 2015)
+----------------------------
+Changed: no tab icon sizing if screen scale other than 96 dpi.
+Changed: switching between modeless dialogs with commands 4332 and 4333.
+Changed: selection restoring after "Replace all" with using regular expressions.
+
+Added: optional parameter for commands 4166,4170:
+       1 - delete space/tabulation in single line selection.
+
+Fixed: active column painting.
+Fixed: cycle search with down or up direction when the caret is inside text for search.
+Fixed: left and top margins have been displaced by 1 pixel.
+
+
+AkelPad 4.9.3 (Mar 25, 2015)
+----------------------------
+Added: metacharacter \K - exclude previous symbols from result.
+Added: now commands 4199, 4200 move caret also on undo positions.
+
+Fixed: AKD_DLLUNLOAD processing of unloading signal for outdated instance.
+Fixed: print multiple copies on Win7.
+Fixed: WordBreak parameter.
+Fixed: active column painting.
+Fixed: system menu opening in modeless dialogs.
+Fixed: middle mouse button click cause new tab creation when menu is opened.
+
+
+AkelPad 4.9.2 (Jan 05, 2014)
+----------------------------
+Changed: massive repainting optimizations to reduce flickering.
+
+Added: possibility to call Scripts plugin method directly from /If(). For example:
+       /If(`AkelPad.Constants._X64 == 1`, `/Quit`, ``)
+Added: possibility to use /*comment*/ in command line method parameters.
+
+Fixed: buttons that control the size of the frame didn't work (MDI).
+Fixed: main window flickering on Win7.
+Fixed: variables usage in "Execute" item.
+Fixed: command "Close all but active" (PMDI).
+Fixed: string selection from list in find/replace dialog, didn't restore the "Beginning" item.
+
+
+AkelPad 4.9.1 (Dec 15, 2014)
+----------------------------
+Changed: plugin architecture. Update plugins.
+Changed: moved SmartSel::altSmartHome, SmartSel::altSmartEnd, SmartSel::altSmartUpDown,
+         SmartSel::altNoSelEOL to settings dialog SmartSel::Settings. To remove SmartSel
+         messages at program start, go to the plugins dialog (Alt+P) and click OK.
+Changed: inverted action of case changing commands 4175-4180 - now default is
+         case changing for the current word if no selection. Optional parameter
+         with code 1 now changes case for all text, if no selection.
+Changed: flag 64 of manual parameter "MouseOptions" now applies for any types of line
+         mouse selection.
+Changed: when active split window is closed selection and scrolling is retained.
+
+Added: scripts updating in AkelUpdater.
+Added: command line method /If() to use code by condition.
+Added: command line method /Var() to change variables usage for the following command line
+       methods.
+Added: parameter for show window in specified style in command line method /Exec().
+Added: command 4322 and menu item - clone current tab.
+Added: command 4323 and menu item - copy current tab file path.
+Added: setting for saving position of modeless dialogs ("Recode...", "Find...",
+       "Replace...", "Go to...").
+Added: manual parameter "FixedCharWidth" - defines fixed character width. All symbols,
+       including proportional fonts, will be paint in this width.
+
+Fixed: command 4110 didn't work for SDI.
+Fixed: switching on previous tab after closing current one (PMDI).
+Fixed: main window resizing on Win7 with aero cause black flickering.
+
+
+AkelPad 4.9.0 (Sep 08, 2014)
 ----------------------------
 Changed: regular expression quantifiers now have classic greediness. To make it
          possessive (old behaviour) use "+" after quantifier, like, "\d*+".

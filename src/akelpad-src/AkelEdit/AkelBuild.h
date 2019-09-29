@@ -7,6 +7,7 @@
 #include <shlobj.h>
 #include <imm.h>
 #include "AkelEdit.h"
+#include "RegExpFunc.h"
 
 
 //// Defines
@@ -59,6 +60,7 @@
 //Highlight search types
 #define AEHF_ISFIRSTCHAR    0x00000001
 #define AEHF_FINDFIRSTCHAR  0x00000002
+#define AEHF_FINDCHILD      0x00000004
 
 //AE_HighlightIsDelimiter flags
 #define AEHID_BACK          0x00000001  //Check backward.
@@ -77,10 +79,13 @@
 #define AECIL_USELINEBEGINPOS  0x00000002
 #define AECIL_USELINEENDPOS    0x00000004
 #define AECIL_USECARETPOS      0x00000008
-
 #define AECIL_ALLPOS          (AECIL_USELINEBEGINPOS |\
                                AECIL_USELINEENDPOS   |\
                                AECIL_USECARETPOS)
+
+//AE_GetNextBreak, AE_GetPrevBreak spaces flags
+#define AEWBS_SPACE            0x00000001
+#define AEWBS_TAB              0x00000002
 
 //Alt+NumPad input
 #define AEAC_NONE       0
@@ -166,6 +171,7 @@ typedef struct _AEUNDOITEM {
   wchar_t *wpText;
   UINT_PTR dwTextLen;
   int nNewLine;
+  int nItemId;
 } AEUNDOITEM;
 
 //"AkelEditText" clipboard
@@ -175,15 +181,6 @@ typedef struct {
   __int64 dwAnsiLen64;
   __int64 dwUnicodeLen64;
 } AECLIPBOARDINFO;
-
-//Visited URLs
-typedef struct _AEURLITEM {
-  struct _AEURLITEM *next;
-  struct _AEURLITEM *prev;
-  wchar_t *pUrlText;
-  INT_PTR nUrlTextLen;
-  int nVisitCount;
-} AEURLITEM;
 
 
 //// OLE Drag'n'Drop
@@ -322,6 +319,8 @@ typedef struct _AEQUOTESTART {
   int nQuoteStartLen;
   wchar_t chEscape;
   DWORD dwFlags;
+  int nRuleID;
+  int nParentID;
 
   //Stack with the same pQuoteStart.
   AESTACKQUOTEITEMHANDLE hQuoteItemHandleStack;
@@ -336,6 +335,7 @@ typedef struct _AETHEMEITEMW {
   struct _AETHEMEITEMW *next;
   struct _AETHEMEITEMW *prev;
   wchar_t wszThemeName[MAX_PATH];
+  WPARAM wParam;                      //Value passed to WPARAM of AEM_HLCREATETHEME.
   AESTACKDELIM hDelimiterStack;
   AESTACKWORD hWordStack;
   AESTACKQUOTE hQuoteStack;
@@ -451,6 +451,7 @@ typedef struct {
 typedef struct {
   AEUNDOITEM *first;
   AEUNDOITEM *last;
+  int nMaxItemId;
 } AESTACKUNDO;
 
 typedef struct {
@@ -458,11 +459,6 @@ typedef struct {
   AEUNDOITEM *last;
   DWORD dwUndoCount;
 } AEUNDOATTACH;
-
-typedef struct {
-  AEURLITEM *first;
-  AEURLITEM *last;
-} AESTACKURL;
 
 typedef struct {
   AEERASE *first;
@@ -489,10 +485,14 @@ typedef struct {
   int nPointSize;
   int nCharHeight;
   int nLineGap;
+  int nMaxCharWidth;
   int nAveCharWidth;
   int nSpaceCharWidth;
   int nTabWidth;
   int nTabStop;
+  int nInitFixedCharWidth;
+  int nFixedCharWidth;
+  int nFixedTabWidth;
   WORD *lpCharWidths;
   AELINEINDEX liMaxWidthLine;
 
@@ -512,6 +512,7 @@ typedef struct {
   DWORD dwWordWrap;
   DWORD dwWrapLimit;
   wchar_t wszWrapDelimiters[AEMAX_DELIMLENGTH];
+  int nWrapDelimitersLen;
 
   //Undo/Redo
   AESTACKUNDO hUndoStack;
@@ -526,7 +527,7 @@ typedef struct {
   DWORD dwUndoCount;
 
   //Visited URLs
-  AESTACKURL hUrlStack;
+  AESTACKURLVISIT hUrlVisitStack;
 
   //Highlight (default window theme)
   AESTACKDELIM hDelimiterStack;
@@ -539,7 +540,10 @@ typedef struct {
   //Folding
   AESTACKFOLD hFoldsStack;
   int nFoldAllCount;
+  int nFoldCollapseCount;
   int nFoldColorCount;
+  int nFoldWithIdCount;
+  int nFoldWithThemeCount;
   int nHideMinLineOffset;
   int nHideMaxLineOffset;
   AEFOLD *lpFindFoldLastCall;
@@ -557,6 +561,7 @@ typedef struct {
   int nOutputNewLine;
   int nVScrollLock;
   int nHScrollLock;
+  DWORD dwVScrollMaxOffset;
   BOOL bHideSelection;
   DWORD dwLockUpdate;
   BOOL bHeapSerialize;
@@ -589,8 +594,11 @@ typedef struct {
   int nWordDelimitersLen;
   DWORD dwWordBreak;
   wchar_t wszUrlLeftDelimiters[AEMAX_DELIMLENGTH];
+  int nUrlLeftDelimitersLen;
   wchar_t wszUrlRightDelimiters[AEMAX_DELIMLENGTH];
+  int nUrlRightDelimitersLen;
   wchar_t wszUrlPrefixes[AEMAX_DELIMLENGTH];
+  int nUrlPrefixesLen;
   wchar_t *lpUrlPrefixes[32];
   DWORD dwUrlMaxLength;
   AETHEMEITEMW *lpActiveTheme;
@@ -601,10 +609,14 @@ typedef struct _AKELEDIT {
   struct _AKELEDIT *next;
   struct _AKELEDIT *prev;
 
+  //Thread
+  int nThreadCount;
+  HANDLE hThreadWork;
+  HANDLE hThreadMutex;
+
   //Text
   AKELTEXT *ptxt;
   AKELTEXT txt;
-  BOOL bSkipMessages;
 
   //Options
   AKELOPTIONS *popt;
@@ -653,6 +665,7 @@ typedef struct _AKELEDIT {
   DWORD dwImeChar;
   BOOL bImeComposition;
   int nAltChar;
+  BOOL bBeepEnable;
 
   //Notification
   DWORD dwNotifyFlags;
@@ -758,10 +771,6 @@ typedef struct {
   #define AE_FirstCollapsibleLine(ae, lpFold)  (((AEFOLD *)lpFold)->lpMinPoint->ciPoint.nLine + ((AKELEDIT *)ae)->ptxt->nHideMinLineOffset)
 #endif
 
-#ifndef AE_LastCollapsibleLine
-  #define AE_LastCollapsibleLine(ae, lpFold)  (((AEFOLD *)lpFold)->lpMaxPoint->ciPoint.nLine + ((AKELEDIT *)ae)->ptxt->nHideMaxLineOffset)
-#endif
-
 
 //// Functions prototypes
 
@@ -787,6 +796,7 @@ int AE_HeapStackDelete(AKELEDIT *ae, stack **first, stack **last, stack *element
 void AE_HeapStackClear(AKELEDIT *ae, stack **first, stack **last);
 AKELEDIT* AE_StackWindowInsert(AESTACKEDIT *hStack);
 AKELEDIT* AE_StackWindowGet(AESTACKEDIT *hStack, HWND hWndEdit);
+BOOL AE_StackWindowValid(AESTACKEDIT *hStack, AKELEDIT *ae);
 void AE_StackWindowMakeFirst(AESTACKEDIT *hStack, AKELEDIT *ae);
 void AE_StackWindowFree(AESTACKEDIT *hStack);
 AECLONE* AE_StackCloneIndex(AKELEDIT *ae, DWORD dwIndex);
@@ -820,15 +830,18 @@ AEPENITEM* AE_StackPenItemGet(HSTACK *hStack, COLORREF crPenColor, COLORREF crIn
 void AE_StackPenItemsFree(HSTACK *hStack);
 AEFOLD* AE_StackFoldInsert(AKELEDIT *ae, const AEFOLD *lpFold);
 void AE_StackFindFold(AKELEDIT *ae, DWORD dwFlags, UINT_PTR dwFindIt, AEFOLD *lpForce, AEFOLD **lpParentOut, AEFOLD **lpPrevSublingOut);
-AEFOLD* AE_StackIsLineCollapsed(AKELEDIT *ae, int nLine);
-int AE_StackLineCollapse(AKELEDIT *ae, int nLine, DWORD dwFlags);
-int AE_StackFoldCollapse(AKELEDIT *ae, AEFOLD *lpFold, DWORD dwFlags);
-void AE_StackFoldScroll(AKELEDIT *ae, AEFOLD *lpFold, DWORD dwFlags);
-INT_PTR AE_StackFoldUpdate(AKELEDIT *ae, int nFirstVisibleLine);
 BOOL AE_StackFoldIsValid(AKELEDIT *ae, AEFOLD *lpFold);
 BOOL AE_StackFoldDelete(AKELEDIT *ae, AEFOLD *lpFold);
 int AE_StackFoldFree(AKELEDIT *ae);
-INT_PTR AE_VPos(AKELEDIT *ae, INT_PTR nValue, DWORD dwFlags);
+int AE_LastCollapsibleLine(AKELEDIT *ae, AEFOLD *lpFold);
+AEFOLD* AE_IsLineCollapsed(AKELEDIT *ae, int nLine);
+int AE_LineCollapse(AKELEDIT *ae, int nLine, DWORD dwFlags);
+int AE_FoldCollapse(AKELEDIT *ae, AEFOLD *lpFold, DWORD dwFlags);
+void AE_FoldScroll(AKELEDIT *ae, AEFOLD *lpFold, DWORD dwFlags);
+INT_PTR AE_FoldUpdate(AKELEDIT *ae, int nFirstVisibleLine);
+int AE_LineFromVPos(AKELEDIT *ae, INT_PTR nVPos);
+INT_PTR AE_VPosFromLine(AKELEDIT *ae, int nLine);
+INT_PTR AE_GetVScrollMax(AKELEDIT *ae);
 AEPOINT* AE_StackPointInsert(AKELEDIT *ae, AECHARINDEX *ciPoint);
 void AE_StackPointUnset(AKELEDIT *ae, DWORD dwFlags);
 void AE_StackPointUnreserve(AKELEDIT *ae);
@@ -839,7 +852,9 @@ AEUNDOITEM* AE_StackUndoItemInsert(AKELEDIT *ae);
 void AE_StackUndoItemDelete(AKELEDIT *ae, AEUNDOITEM *lpItem);
 void AE_StackRedoDeleteAll(AKELEDIT *ae, AEUNDOITEM *lpItem);
 UINT_PTR AE_StackUndoSize(AKELEDIT *ae);
+void AE_StackUndoResetId(AKELEDIT *ae);
 int AE_StackIsRangeModified(AKELEDIT *ae, const CHARRANGE64 *lpcrRange);
+INT_PTR AE_StackGetUndoPos(AKELEDIT *ae, const AEUNDOITEM *lpCurrentUndo, const AEUNDOITEM *lpUndoItem);
 AEUNDOATTACH* AE_StackUndoDetach(AKELEDIT *ae);
 BOOL AE_StackUndoAttach(AKELEDIT *ae, AEUNDOATTACH *hUndoAttach);
 wchar_t* AE_GetAllTextForUndo(AKELEDIT *ae, UINT_PTR *lpdwUndoTextLen);
@@ -850,11 +865,13 @@ AELINEDATA* AE_StackLineInsertAfter(AKELEDIT *ae, AELINEDATA *lpLine);
 void AE_StackLineDelete(AKELEDIT *ae, AELINEDATA *lpElement);
 void AE_StackLineFree(AKELEDIT *ae);
 AELINEDATA* AE_GetLineData(AKELEDIT *ae, int nLine);
-int AE_GetWrapLine(AKELEDIT *ae, int nLine, AECHARINDEX *ciChar);
+int AE_GetLineNumber(AKELEDIT *ae, int nType, INT_PTR nCharOffset);
+int AE_GetWrapLine(AKELEDIT *ae, int nLine, AECHARINDEX *ciCharOut);
 int AE_GetUnwrapLine(AKELEDIT *ae, int nLine);
 void AE_RichOffsetToAkelIndex(AKELEDIT *ae, INT_PTR nOffset, AECHARINDEX *ciCharIndex);
 INT_PTR AE_AkelIndexToRichOffset(AKELEDIT *ae, const AECHARINDEX *ciCharIndex);
 AELINEDATA* AE_GetIndex(AKELEDIT *ae, int nType, const AECHARINDEX *ciCharIn, AECHARINDEX *ciCharOut);
+INT_PTR AE_GetRichOffset(AKELEDIT *ae, int nType, INT_PTR nCharOffsetOrLine);
 INT_PTR AE_IndexSubtract(AKELEDIT *ae, const AECHARINDEX *ciChar1, const AECHARINDEX *ciChar2, int nNewLine, BOOL bColumnSel, BOOL bFillSpaces);
 UINT_PTR AE_IndexOffset(AKELEDIT *ae, const AECHARINDEX *ciCharIn, AECHARINDEX *ciCharOut, INT_PTR nOffset, int nNewLine);
 BOOL AE_IndexNormalize(AECHARINDEX *ciChar);
@@ -866,6 +883,8 @@ int AE_LineUnwrap(AKELEDIT *ae, AELINEINDEX *liLine, DWORD dwMaxWidth, AEPOINT *
 void AE_CalcLinesWidth(AKELEDIT *ae, const AELINEINDEX *liStartLine, const AELINEINDEX *liEndLine, DWORD dwFlags);
 int AE_CheckCodepage(AKELEDIT *ae, int nCodePage, int *lpdwCharInLine);
 void AE_SetDrawRect(AKELEDIT *ae, const RECT *lprcDraw, BOOL bRedraw);
+void AE_GetFontCharWidth(AKELEDIT *ae, HDC hDC);
+int AE_GetFixedCharWidth(AKELEDIT *ae);
 void AE_SetEditFontA(AKELEDIT *ae, HFONT hFont, BOOL bRedraw);
 void AE_SetEditFontW(AKELEDIT *ae, HFONT hFont, BOOL bRedraw);
 void AE_GetLineSelection(AKELEDIT *ae, const AELINEINDEX *liLine, const AECHARINDEX *ciSelStart, const AECHARINDEX *ciSelEnd, INT_PTR nSelStartX, INT_PTR nSelEndX, int *nSelStartIndexInLine, int *nSelEndIndexInLine, BOOL bColumnSel);
@@ -884,20 +903,20 @@ DWORD AE_IsPointOnMargin(AKELEDIT *ae, INT_PTR nClientX, INT_PTR nClientY);
 BOOL AE_IsPointOnSelection(AKELEDIT *ae, INT_PTR nClientX, INT_PTR nClientY);
 DWORD AE_IsPointOnUrl(AKELEDIT *ae, INT_PTR nClientX, INT_PTR nClientY, AECHARRANGE *crLink);
 BOOL AE_IsPointOnMarker(AKELEDIT *ae, INT_PTR nClientX, INT_PTR nClientY);
-AEURLITEM* AE_UrlVisitInsert(AKELEDIT *ae, const AECHARRANGE *crUrl);
-AEURLITEM* AE_UrlVisitGet(AKELEDIT *ae, const AECHARRANGE *crUrl);
-void AE_UrlVisitDelete(AKELEDIT *ae, AEURLITEM *lpUrlItem);
+AEURLVISIT* AE_UrlVisitInsert(AKELEDIT *ae, const AECHARRANGE *crUrl);
+AEURLVISIT* AE_UrlVisitGetByRange(AKELEDIT *ae, const AECHARRANGE *crUrl);
+AEURLVISIT* AE_UrlVisitGetByText(AKELEDIT *ae, const wchar_t *wpText);
+void AE_UrlVisitDelete(AKELEDIT *ae, AEURLVISIT *lpUrlVisit);
 void AE_UrlVisitFree(AKELEDIT *ae);
 DWORD AE_HighlightFindUrl(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, int nLastLine, AECHARRANGE *crLink);
 BOOL AE_HighlightFindMarkText(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEMARKTEXTMATCH *mtm);
 AEMARKTEXTITEMW* AE_HighlightIsMarkText(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARINDEX *ciChar, AECHARINDEX *ciMaxRE, AESTACKMARKTEXT *lpMarkTextStack);
 INT_PTR AE_HighlightFindMarkRange(AKELEDIT *ae, INT_PTR nCharOffset, AEMARKRANGEMATCH *mrm);
-int AE_HighlightFindQuote(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEQUOTEMATCH *qm);
-BOOL AE_HighlightFindQuoteRE(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEQUOTEMATCH *qm);
+INT_PTR AE_HighlightFindQuote(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEHLPAINT *hlp);
 int AE_HighlightFindWord(AKELEDIT *ae, const AECHARINDEX *ciChar, INT_PTR nCharOffset, DWORD dwSearchType, AEWORDMATCH *wm, AEQUOTEMATCH *qm, AEFOLDMATCH *fm);
-AEDELIMITEMW* AE_HighlightIsDelimiter(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARINDEX *ciChar, DWORD dwFlags);
-AEWORDITEMW* AE_HighlightIsWord(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARRANGE *crWord, int nWordLen);
-AETHEMEITEMW* AE_HighlightCreateTheme(wchar_t *wpThemeName);
+AEDELIMITEMW* AE_HighlightIsDelimiter(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARINDEX *ciChar, DWORD dwFlags, AEQUOTEITEMW *lpQuote, AEFOLDMATCH *fm);
+AEWORDITEMW* AE_HighlightIsWord(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARRANGE *crWord, int nWordLen, AEQUOTEITEMW *lpQuote, AEFOLDMATCH *fm);
+AETHEMEITEMW* AE_HighlightCreateTheme(WPARAM wParam, wchar_t *wpThemeName);
 AETHEMEITEMW* AE_HighlightGetTheme(wchar_t *wpThemeName);
 BOOL AE_HighlightIsThemeExists(AETHEMEITEMW *aeti);
 void AE_HighlightDeleteTheme(AKELEDIT *ae, AETHEMEITEMW *aeti);
@@ -948,9 +967,13 @@ void AE_FillRect(AKELEDIT *ae, HDC hDC, const RECT *lpRect, HBRUSH hbr);
 void AE_FillRectWithBorder(AKELEDIT *ae, HDC hDC, const RECT *lpRect, HBRUSH hbrDefaultBk, HBRUSH hbrBorderTop, HBRUSH hbrBorderBottom);
 void AE_Paint(AKELEDIT *ae, const RECT *lprcUpdate);
 void AE_PaintTextOut(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp);
+REGROUP* AE_PatCharInGroup(STACKREGROUP *hStack, const AECHARINDEX *ciChar, REGROUP **lppREGroupEnd);
 void AE_PaintCheckHighlightOpenItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp, int nLastDrawLine);
 void AE_PaintCheckHighlightCloseItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp);
 void AE_PaintCheckHighlightCleanUp(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp, AECHARINDEX *ciChar);
+void AE_PaintCheckHighlightReset(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp, AECHARINDEX *ciChar);
+int AE_HighlightAllowed(AEQUOTEITEMW *lpQuote, AEFOLDMATCH *fm, int nParentID, int nQuoteRuleID, const AECHARINDEX *ciChar);
+void AE_SetDefaultStyle(AEHLPAINT *hlp, int nParentType);
 void AE_GetHighLight(AKELEDIT *ae, AEGETHIGHLIGHT *gh);
 void AE_MButtonDraw(AKELEDIT *ae);
 void AE_MButtonErase(AKELEDIT *ae);
@@ -981,14 +1004,15 @@ BOOL AE_IsSpacesFromLeft(const AECHARINDEX *ciChar);
 BOOL AE_IsSpacesFromRight(const AECHARINDEX *ciChar);
 BOOL AE_IsEscaped(const AECHARINDEX *ciChar, wchar_t wchEscape);
 BOOL AE_IsDelimiter(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwType);
-BOOL AE_IsInDelimiterList(const wchar_t *wpList, wchar_t c, BOOL bMatchCase);
-BOOL AE_IsSpace(wchar_t c);
+BOOL AE_IsInDelimiterList(const wchar_t *wpList, int nListLen, wchar_t c);
+BOOL AE_IsSpace(wchar_t c, DWORD dwSpacesFlags);
 int AE_GetUrlPrefixes(AKELEDIT *ae);
 UINT_PTR AE_GetTextRangeAnsi(AKELEDIT *ae, int nCodePage, const char *lpDefaultChar, BOOL *lpUsedDefaultChar, const AECHARINDEX *ciRangeStart, const AECHARINDEX *ciRangeEnd, char *szBuffer, UINT_PTR dwBufferSize, int nNewLine, BOOL bColumnSel, BOOL bFillSpaces);
 UINT_PTR AE_GetTextRange(AKELEDIT *ae, const AECHARINDEX *ciRangeStart, const AECHARINDEX *ciRangeEnd, wchar_t *wszBuffer, UINT_PTR dwBufferSize, int nNewLine, BOOL bColumnSel, BOOL bFillSpaces);
 UINT_PTR AE_SetTextAnsi(AKELEDIT *ae, int nCodePage, const char *pText, UINT_PTR dwTextLen, int nNewLine);
 UINT_PTR AE_SetText(AKELEDIT *ae, const wchar_t *wpText, UINT_PTR dwTextLen, int nNewLine, BOOL bOnInitWindow);
 UINT_PTR AE_StreamIn(AKELEDIT *ae, DWORD dwFlags, AESTREAMIN *aesi);
+void AE_FixEdit(AKELEDIT *ae, BOOL bJoinNewLines);
 int AE_JoinNewLines(AKELEDIT *ae);
 UINT_PTR AE_StreamOut(AKELEDIT *ae, DWORD dwFlags, AESTREAMOUT *aeso);
 BOOL AE_StreamOutHelper(AESTREAMOUT *aeso, AECHARINDEX *ciCount, const AECHARINDEX *ciEnd, wchar_t *wszBuf, DWORD dwBufLen, DWORD *dwBufCount, UINT_PTR *dwResult);
@@ -1012,16 +1036,18 @@ BOOL AE_GetModify(AKELEDIT *ae);
 void AE_SetModify(AKELEDIT *ae, BOOL bState);
 void AE_EmptyUndoBuffer(AKELEDIT *ae);
 BOOL AE_IsReadOnly(AKELEDIT *ae);
+BOOL AE_MessageBeep(AKELEDIT *ae, UINT uType);
 BOOL AE_KeyDown(AKELEDIT *ae, int nVk, BOOL bAlt, BOOL bShift, BOOL bControl);
 void AE_ImeComplete(AKELEDIT *ae);
 BOOL AE_EditCanPaste(AKELEDIT *ae);
 BOOL AE_EditCanRedo(AKELEDIT *ae);
 BOOL AE_EditCanUndo(AKELEDIT *ae);
-void AE_EditUndo(AKELEDIT *ae);
-void AE_EditRedo(AKELEDIT *ae);
-void AE_EditCut(AKELEDIT *ae);
-void AE_EditCopyToClipboard(AKELEDIT *ae);
-BOOL AE_EditPasteFromClipboard(AKELEDIT *ae, DWORD dwFlags);
+BOOL AE_EditUndo(AKELEDIT *ae);
+BOOL AE_EditRedo(AKELEDIT *ae);
+BOOL AE_NoSelectionRange(AKELEDIT *ae, AECHARRANGE *cr, DWORD dwFlags);
+BOOL AE_EditCut(AKELEDIT *ae, DWORD dwFlags, int nNewLine);
+BOOL AE_EditCopyToClipboard(AKELEDIT *ae, AECHARRANGE *cr, int nNewLine, BOOL bColumnSel);
+INT_PTR AE_EditPasteFromClipboard(AKELEDIT *ae, DWORD dwFlags, int nNewLine);
 void AE_EditChar(AKELEDIT *ae, WPARAM wParam, BOOL bUnicode);
 void AE_EditKeyReturn(AKELEDIT *ae);
 void AE_EditKeyBackspace(AKELEDIT *ae, BOOL bControl);
@@ -1048,7 +1074,7 @@ void AE_NotifyVScroll(AKELEDIT *ae);
 void AE_NotifySetRect(AKELEDIT *ae);
 void AE_NotifyPaint(AKELEDIT *ae, DWORD dwType, AENPAINT *pnt);
 void AE_NotifyMaxText(AKELEDIT *ae);
-BOOL AE_NotifyProgress(AKELEDIT *ae, DWORD dwType, DWORD dwTimeElapsed, INT_PTR nCurrent, INT_PTR nMaximum);
+DWORD AE_NotifyProgress(AKELEDIT *ae, DWORD dwType, DWORD dwTimeElapsed, INT_PTR nCurrent, INT_PTR nMaximum);
 void AE_NotifyModify(AKELEDIT *ae);
 void AE_NotifySelChanging(AKELEDIT *ae, DWORD dwType);
 void AE_NotifySelChanged(AKELEDIT *ae);

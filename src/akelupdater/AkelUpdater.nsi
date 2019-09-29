@@ -1,5 +1,5 @@
 !define PRODUCT_NAME "AkelUpdater"
-!define PRODUCT_VERSION "4.0"
+!define PRODUCT_VERSION "6.8"
 
 Name "AkelUpdater"
 OutFile "AkelUpdater.exe"
@@ -9,7 +9,7 @@ RequestExecutionLevel user
 
 ############  File info  ############
 VIAddVersionKey FileDescription "AkelPad text editor updater"
-VIAddVersionKey LegalCopyright "© 2014 Shengalts Aleksander aka Instructor"
+VIAddVersionKey LegalCopyright "© 2018 Shengalts Aleksander aka Instructor"
 VIAddVersionKey ProductName "${PRODUCT_NAME}"
 VIAddVersionKey FileVersion "${PRODUCT_VERSION}"
 VIAddVersionKey Comments ""
@@ -75,10 +75,6 @@ LangString not_in_folder ${LANG_ENGLISH} 'AkelUpdater should be in AkelFiles fol
 LangString not_in_folder ${LANG_RUSSIAN} 'AkelUpdater должен находиться в папке AkelFiles.'
 LangString download_error ${LANG_ENGLISH} 'Download error'
 LangString download_error ${LANG_RUSSIAN} 'Ошибка скачивания'
-LangString open_file_error ${LANG_ENGLISH} 'File open error.'
-LangString open_file_error ${LANG_RUSSIAN} 'Ошибка открытия файла.'
-LangString nothing_selected ${LANG_ENGLISH} 'Nothing is selected.'
-LangString nothing_selected ${LANG_RUSSIAN} 'Ничего не выбрано.'
 LangString download_finished ${LANG_ENGLISH} 'Updates downloading finished.'
 LangString download_finished ${LANG_RUSSIAN} 'Скачивание обновлений закончено.'
 LangString done ${LANG_ENGLISH} 'Done'
@@ -87,6 +83,10 @@ LangString language ${LANG_RUSSIAN} 'языковой модуль'
 LangString language ${LANG_ENGLISH} 'language module'
 LangString plugin ${LANG_RUSSIAN} 'плагин'
 LangString plugin ${LANG_ENGLISH} 'plugin'
+LangString script ${LANG_RUSSIAN} 'скрипт'
+LangString script ${LANG_ENGLISH} 'script'
+LangString for_script ${LANG_RUSSIAN} 'для скрипта'
+LangString for_script ${LANG_ENGLISH} 'for script'
 LangString error ${LANG_ENGLISH} 'Error'
 LangString error ${LANG_RUSSIAN} 'Ошибка'
 LangString close ${LANG_ENGLISH} '&Close'
@@ -108,34 +108,46 @@ Var SAVEDIR
 Var AKELPADDIR
 Var AKELFILESDIR
 Var AKELLANGSDIR
-Var AKELPLUGSDIR
-Var AKELPLUGIN
+Var AKELSCRIPTSDIR
+Var LISTITEM
+Var ITEMTYPE
+Var ITEMPACK
+Var ITEM64
+Var ITEMNAME
+Var EXEBIT
 Var EXEVERSIONFULL
 Var EXEVERSIONMAJOR
-Var EXEBIT
+Var EXEVERSIONFULL64
+Var EXEVERSIONMAJOR64
+Var DL_EXEBIT
+Var DL_PATH64
+Var DL_EXEVERSIONFULL
+Var DL_EXEVERSIONMAJOR
+Var DL_PLUGINCOUNT
 Var BITSUFFIXMINUS
 Var BITSUFFIXSLASH
 Var PLUGINCOUNT
+Var PLUGINCOUNT64
+Var SCRIPTCOUNT
 Var PLUGINCOPY
 Var PLUGINCOPIES
-Var NOSUPPORT64BIT
-Var UPDATENAME
-Var UPDATENEWVER
-Var UPDATECURVER
-Var UPDATECOMPARE
+Var SCRIPTSPACK
+Var EXTENSION
+Var WORDCOUNT
 Var LANGEXIST
 Var ZIPMIRROR
 Var ZIPLANG
+Var ONTOP
 Var DLONLY
 Var AUTO
 Var NORUN
 Var NOCOPIES
+Var DLSCRIPTSPROC
 Var ZIPXLANG
 Var UNZIP
 Var NOTEPAD
-Var FILEHANDLE
-Var FILELINE
 Var LASTEXTRACTERROR
+Var DEBUG
 
 Function .onInit
   #Help message
@@ -156,6 +168,9 @@ Function .onInit
      |$\n\
      |   /LANG=[eng|rus]$\n\
      |     Select language.$\n\
+     |$\n\
+     |   /ONTOP$\n\
+     |     Set dialog always on top.$\n\
      |$\n\
      |   /BIT=[32|64]$\n\
      |     Update to 32-bit or to 64-bit version. If not specified it will be autodetected.$\n\
@@ -185,7 +200,7 @@ Function .onInit
 
   StrCpy $AKELFILESDIR $EXEDIR
   StrCpy $AKELLANGSDIR "$AKELFILESDIR\Langs"
-  StrCpy $AKELPLUGSDIR "$AKELFILESDIR\Plugs"
+  StrCpy $AKELSCRIPTSDIR "$AKELFILESDIR\Plugs\Scripts"
   ${GetParent} $EXEDIR $AKELPADDIR
   ${GetFileName} $EXEDIR $0
   ${If} $0 != "AkelFiles"
@@ -194,9 +209,16 @@ Function .onInit
   ${EndIf}
 
   InitPluginsDir
-  StrCpy $SAVEDIR $PLUGINSDIR
+  ;CopyFiles /SILENT "c:\a\VC\akelpad_4\AkelUpdater\Source\Debug\AkelUpdater.dll" "$PLUGINSDIR"
+  StrCpy $DEBUG 0
+  ${If} $DEBUG == 1
+    StrCpy $SAVEDIR $AKELPADDIR
+  ${Else}
+    StrCpy $SAVEDIR $PLUGINSDIR
+  ${EndIf}
   StrCpy $EXEBIT 0
   StrCpy $ZIPLANG $(lng)
+  StrCpy $ONTOP 0
   StrCpy $DLONLY 0
   StrCpy $AUTO 0
   StrCpy $NORUN 0
@@ -258,6 +280,11 @@ Function .onInit
     StrCpy $SAVEDIR $0
   ${EndIf}
 
+  ${GetOptions} $PARAMETERS "/ONTOP" $0
+  ${IfNot} ${Errors}
+    StrCpy $ONTOP 1
+  ${EndIf}
+
   ${GetOptions} $PARAMETERS "/DLONLY" $0
   ${IfNot} ${Errors}
     StrCpy $DLONLY 1
@@ -284,16 +311,23 @@ Function .onInit
   ${EndIf}
 
   ;Download "versions.lst"
-  ;File "/oname=$PLUGINSDIR\versions.lst" "versions.lst"
-  inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
-             $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
-             /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
-             "http://akelpad.sourceforge.net/img/versions.lst" "$PLUGINSDIR\versions.lst" /END
-  Pop $0
-  ${If} $0 != "OK"
-    MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
-    Quit
+  ${If} $DEBUG == 1
+    CopyFiles /SILENT "$AKELPADDIR\versions.lst" "$PLUGINSDIR"
+    CopyFiles /SILENT "$AKELPADDIR\*.ini" "$PLUGINSDIR"
+  ${Else}
+    inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
+               $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
+               /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
+               "http://akelpad.sourceforge.net/img/versions.lst" "$PLUGINSDIR\versions.lst" /END
+    Pop $0
+    ${If} $0 != "OK"
+      MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
+      Quit
+    ${EndIf}
   ${EndIf}
+
+  ;Extract helper
+  File "/oname=$PLUGINSDIR\AkelUpdaterHelp.exe" "AkelUpdaterHelp.exe"
 
   ;Initialize AkelUpdater.dll variables
   AkelUpdater::Init /NOUNLOAD
@@ -301,36 +335,18 @@ Function .onInit
   ${If} $EXEBIT == "0"
     StrCpy $EXEBIT $0
   ${EndIf}
-  ${If} $EXEBIT == "64"
-    StrCpy $BITSUFFIXMINUS "-x64"
-    StrCpy $BITSUFFIXSLASH "/x64"
-  ${Else}
-    StrCpy $BITSUFFIXMINUS ""
-    StrCpy $BITSUFFIXSLASH ""
-  ${EndIf}
 
-  ;Extract helper
-  ${If} $EXEBIT == "64"
-  ${AndIf} $NOCOPIES == 0
-    File "/oname=$PLUGINSDIR\AkelUpdaterHelp.exe" "AkelUpdaterHelp.exe"
-  ${EndIf}
+  ;When user press "Scripts" call this address
+  GetFunctionAddress $DLSCRIPTSPROC DownloadScriptsProc
 
-  ;Fill stack with versions
-  Call FillStack
-  ${If} ${Errors}
-    MessageBox MB_OK|MB_ICONEXCLAMATION '$(open_file_error)'
+  ;Show dialog (Result: $0="ExeVersion|ExeVersion64|DllCount|DllCount64|ScriptCount", $1="Download mirror", $2="Language")
+  AkelUpdater::List ${PRODUCT_VERSION} $ZIPLANG $ONTOP $EXEBIT $AUTO $NOCOPIES $PLUGINSDIR $DLSCRIPTSPROC "AkelUpdaterHelp.exe"
+  Pop $R0
+  ${If} $R0 == 0
     Quit
   ${EndIf}
-
-  ;Show dialog (Result: $0="ExeVersion|DllCount", $1="Download mirror", $2="Language")
-  AkelUpdater::List ${PRODUCT_VERSION} $ZIPLANG $EXEBIT $AUTO $NOCOPIES "$PLUGINSDIR\AkelUpdaterHelp.exe"
   StrCpy $ZIPMIRROR $1
   StrCpy $ZIPLANG $2
-
-  ${If} $0 == "0|0"
-    MessageBox MB_OK|MB_ICONEXCLAMATION '$(nothing_selected)'
-    Quit
-  ${EndIf}
 
   ${WordFind} "$0" "|" "E+1" $EXEVERSIONFULL
   ${If} ${Errors}
@@ -338,7 +354,23 @@ Function .onInit
   ${EndIf}
   StrCpy $EXEVERSIONMAJOR $EXEVERSIONFULL 1
 
-  ${WordFind} "$0" "|" "E+2" $PLUGINCOUNT
+  ${WordFind} "$0" "|" "E+2" $EXEVERSIONFULL64
+  ${If} ${Errors}
+    Quit
+  ${EndIf}
+  StrCpy $EXEVERSIONMAJOR64 $EXEVERSIONFULL64 1
+
+  ${WordFind} "$0" "|" "E+3" $PLUGINCOUNT
+  ${If} ${Errors}
+    Quit
+  ${EndIf}
+
+  ${WordFind} "$0" "|" "E+4" $PLUGINCOUNT64
+  ${If} ${Errors}
+    Quit
+  ${EndIf}
+
+  ${WordFind} "$0" "|" "E+5" $SCRIPTCOUNT
   ${If} ${Errors}
     Quit
   ${EndIf}
@@ -363,48 +395,20 @@ Function .onInit
     Quit
   ${EndIf}
 
-  ;Download "AkelPad-x.x.x-bin-lng.zip"
-  ${If} $EXEVERSIONFULL != 0
-    ;File "/oname=$SAVEDIR\AkelPad-4.2.1-bin-eng.zip" "AkelPad-4.2.1-bin-eng.zip"
-    inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
-               $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
-               /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
-               "http://$ZIPMIRROR.dl.sourceforge.net/project/akelpad/AkelPad%20$EXEVERSIONMAJOR/$EXEVERSIONFULL$BITSUFFIXSLASH/AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" "$SAVEDIR\AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" /end
-    Pop $0
-    ${If} $0 != "OK"
-      MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
-      Quit
-    ${EndIf}
+  ;Download
+  StrCpy $DL_EXEBIT $EXEBIT
+  StrCpy $DL_PATH64 ""
+  StrCpy $DL_EXEVERSIONFULL $EXEVERSIONFULL
+  StrCpy $DL_EXEVERSIONMAJOR $EXEVERSIONMAJOR
+  StrCpy $DL_PLUGINCOUNT $PLUGINCOUNT
+  Call DownloadZip
 
-    ;Download "LangsPack.zip"
-    ${If} ${FileExists} "$AKELLANGSDIR\*.dll"
-      StrCpy $LANGEXIST "true"
-      ;File "/oname=$SAVEDIR\LangsPack.zip" "LangsPack.zip"
-      inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
-                 $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
-                 /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
-                 "http://akelpad.sourceforge.net/files/langs/LangsPack$BITSUFFIXMINUS.zip" "$SAVEDIR\LangsPack$BITSUFFIXMINUS.zip" /end
-      Pop $0
-      ${If} $0 != "OK"
-        MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
-        Quit
-      ${EndIf}
-    ${EndIf}
-  ${EndIf}
-
-  ;Download "PlugsPack.zip"
-  ${If} $PLUGINCOUNT != 0
-    ;File "/oname=$SAVEDIR\PlugsPack.zip" "PlugsPack.zip"
-    inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
-               $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
-               /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
-               "http://akelpad.sourceforge.net/files/plugs/PlugsPack$BITSUFFIXMINUS.zip" "$SAVEDIR\PlugsPack$BITSUFFIXMINUS.zip" /end
-    Pop $0
-    ${If} $0 != "OK"
-      MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
-      Quit
-    ${EndIf}
-  ${EndIf}
+  StrCpy $DL_EXEBIT "64"
+  StrCpy $DL_PATH64 "64"
+  StrCpy $DL_EXEVERSIONFULL $EXEVERSIONFULL64
+  StrCpy $DL_EXEVERSIONMAJOR $EXEVERSIONMAJOR64
+  StrCpy $DL_PLUGINCOUNT $PLUGINCOUNT64
+  Call DownloadZip
 
   ;Exit if update not required
   ${If} $DLONLY == 1
@@ -413,88 +417,105 @@ Function .onInit
   ${EndIf}
 FunctionEnd
 
-Function FillStack
-  FileOpen $FILEHANDLE "$PLUGINSDIR\versions.lst" r
-  ${If} ${Errors}
-    return
+Function DownloadScriptsProc
+  Pop $SCRIPTSPACK
+  Pop $EXTENSION
+
+  ${If} $DEBUG == 1
+    Return
   ${EndIf}
 
-  ${Do}
-    FileRead $FILEHANDLE $FILELINE
-    ${If} ${Errors}
-      ${Break}
+  ${If} $EXTENSION == "zip"
+    ;Create save to directory
+    CreateDirectory $SAVEDIR
+    ${IfNot} ${FileExists} "$SAVEDIR\*.*"
+      MessageBox MB_OK|MB_ICONEXCLAMATION '$(dir_not_exist): "$SAVEDIR"'
+      Quit
     ${EndIf}
+  ${EndIf}
 
-    ${If} $EXEBIT == 64
-      ${If} $NOSUPPORT64BIT == ''
-        ${WordFind} "$FILELINE" "$$NoSupport64Bit=" "E+1}" $NOSUPPORT64BIT
-        ${If} ${Errors}
-          StrCpy $NOSUPPORT64BIT ''
-        ${Else}
-          ${Continue}
+  ;Download "KDJ.ini" (or "KDJ.zip"), "Infocatcher.ini" (or "Infocatcher.zip") and so on
+  ${If} $SCRIPTSPACK != ""
+    ;Add urls for inetc::get
+    Push "/END"
+    StrCpy $WORDCOUNT 1
+    ${Do}
+      ;KDJ|Infocatcher|Instructor|VladSh
+      ${WordFind} "$SCRIPTSPACK" "|" "E-$WORDCOUNT" $1
+      ${If} ${Errors}
+        ${Break}
+      ${EndIf}
+      ${If} $EXTENSION == "zip"
+        Push "$SAVEDIR\$1.$EXTENSION"
+      ${Else}
+        Push "$PLUGINSDIR\$1.$EXTENSION"
+      ${EndIf}
+      Push "http://akelpad.sourceforge.net/files/plugs/Scripts/$1.$EXTENSION"
+      IntOp $WORDCOUNT $WORDCOUNT + 1
+    ${Loop}
+    inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
+                       $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
+                       /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)"
+    Pop $0
+    ${If} $0 != "OK"
+      MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
+      Quit
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+Function DownloadZip
+  ${If} $DL_EXEBIT == "64"
+    StrCpy $BITSUFFIXMINUS "-x64"
+    StrCpy $BITSUFFIXSLASH "/x64"
+  ${Else}
+    StrCpy $BITSUFFIXMINUS ""
+    StrCpy $BITSUFFIXSLASH ""
+  ${EndIf}
+
+  ;Download "AkelPad-x.x.x-bin-lng.zip"
+  ${If} $DL_EXEVERSIONFULL != 0
+    ${If} $DEBUG != 1
+      inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
+                 $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
+                 /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
+                 "http://$ZIPMIRROR.dl.sourceforge.net/project/akelpad/AkelPad%20$DL_EXEVERSIONMAJOR/$DL_EXEVERSIONFULL$BITSUFFIXSLASH/AkelPad-$DL_EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" "$SAVEDIR\AkelPad-$DL_EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" /end
+      Pop $0
+      ${If} $0 != "OK"
+        MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
+        Quit
+      ${EndIf}
+
+      ;Download "LangsPack.zip"
+      ${If} ${FileExists} "$AKELLANGSDIR$DL_PATH64\*.dll"
+        StrCpy $LANGEXIST "true"
+        inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
+                   $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
+                   /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
+                   "http://akelpad.sourceforge.net/files/langs/LangsPack$BITSUFFIXMINUS.zip" "$SAVEDIR\LangsPack$BITSUFFIXMINUS.zip" /end
+        Pop $0
+        ${If} $0 != "OK"
+          MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
+          Quit
         ${EndIf}
       ${EndIf}
     ${EndIf}
+  ${EndIf}
 
-    ${WordFind2X} "$FILELINE" "$$" "Ver=" "E+1" $UPDATENAME
-    ${If} ${Errors}
-      ${Continue}
-    ${EndIf}
-
-    ${WordFind2X} "$FILELINE" "'" "'" "E+1" $UPDATENEWVER
-    ${If} ${Errors}
-      ${Continue}
-    ${EndIf}
-
-    ${If} $EXEBIT == 64
-      ${WordFind} "$NOSUPPORT64BIT" "$UPDATENAME" "E+1{" $0
-      ${IfNot} ${Errors}
-        ${Continue}
+  ;Download "PlugsPack.zip"
+  ${If} $DL_PLUGINCOUNT != 0
+    ${If} $DEBUG != 1
+      inetc::get /CAPTION "${PRODUCT_NAME}" /POPUP "" \
+                 $PROXYPARAM "$PROXYVALUE" $LOGINPARAM "$LOGINVALUE" $PASSWORDPARAM "$PASSWORDVALUE" \
+                 /TRANSLATE "$(url)" "$(downloading)" "$(connecting)" "$(file_name)" "$(received)" "$(file_size)" "$(remaining_time)" "$(total_time)" \
+                 "http://akelpad.sourceforge.net/files/plugs/PlugsPack$BITSUFFIXMINUS.zip" "$SAVEDIR\PlugsPack$BITSUFFIXMINUS.zip" /end
+      Pop $0
+      ${If} $0 != "OK"
+        MessageBox MB_OK|MB_ICONEXCLAMATION '$(download_error): $0'
+        Quit
       ${EndIf}
     ${EndIf}
-
-    StrCpy $0 $UPDATENAME -1
-    ${If} $0 == "AkelPad"
-      StrCpy $NOTEPAD 0
-      ${GetFileVersion} "$AKELPADDIR\AkelPad.exe" $UPDATECURVER
-      ${If} ${Errors}
-        ${GetFileVersion} "$AKELPADDIR\notepad.exe" $UPDATECURVER
-        IfErrors Empty
-        StrCpy $NOTEPAD 1
-      ${EndIf}
-
-      StrCpy $0 $UPDATENAME '' -1
-      StrCpy $1 $UPDATECURVER 1
-      ${If} $0 == $1
-        StrCpy $UPDATENAME $UPDATENAME -1
-        StrCpy $UPDATECURVER $UPDATECURVER -2
-      ${Else}
-        ${Continue}
-      ${EndIf}
-    ${Else}
-      ${GetFileVersion} "$AKELPLUGSDIR\$UPDATENAME.dll" $UPDATECURVER
-      StrCpy $UPDATECURVER $UPDATECURVER -4
-      IfErrors Empty
-    ${EndIf}
-
-    ${VersionCompare} "$UPDATENEWVER" "$UPDATECURVER" $UPDATECOMPARE
-    ;0  Versions are equal
-    ;1  Version1 is newer
-    ;2  Version2 is newer
-    goto PushString
-
-    Empty:
-    StrCpy $UPDATECURVER ""
-    StrCpy $UPDATECOMPARE 3
-
-    PushString:
-    Push $UPDATECOMPARE
-    Push $UPDATECURVER
-    Push $UPDATENEWVER
-    Push $UPDATENAME
-  ${Loop}
-
-  FileClose $FILEHANDLE
+  ${EndIf}
 FunctionEnd
 
 Section
@@ -511,98 +532,188 @@ Section
     SendMessage $0 ${BM_SETCHECK} 1 0
   ${EndIf}
 
-  ;Extract "AkelPad-x.x.x-bin-lng.zip"
-  ${While} $EXEVERSIONFULL != 0
-    Push /END
-    AkelUpdater::ParseAndPush "$UNZIP"
-    nsUnzip::Extract "$SAVEDIR\AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" "/d=$AKELPADDIR"
-    Pop $0
-    ${If} $0 != 0
-      DetailPrint "$(error) ($0): AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip"
-      StrCpy $LASTEXTRACTERROR $0
-      ${Break}
-    ${EndIf}
-    DetailPrint "$(done): AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip"
-
-    ${If} $NOTEPAD == 1
-      SetDetailsPrint textonly
-      CopyFiles /SILENT "$AKELPADDIR\AkelPad.exe" "$AKELPADDIR\notepad.exe"
-      Delete "$AKELPADDIR\AkelPad.exe"
-      SetDetailsPrint both
-    ${EndIf}
-
-    ${Break}
-  ${EndWhile}
-
-  ${If} $ZIPLANG == eng
-    StrCpy $ZIPXLANG rus
-  ${ElseIf} $ZIPLANG == rus
-    StrCpy $ZIPXLANG eng
+  ;Detect notepad replacement
+  ${If} ${FileExists} "$AKELPADDIR\notepad.exe"
+  ${AndIfNot} ${FileExists} "$AKELPADDIR\AkelPad.exe"
+    StrCpy $NOTEPAD "1"
   ${EndIf}
 
-  ;Extract "LangsPack.zip"
-  ${If} $LANGEXIST == "true"
-    GetFunctionAddress $0 ServiceCallback
-    Push /END
-    AkelUpdater::ParseAndPush "$UNZIP"
-    nsUnzip::Extract "$SAVEDIR\LangsPack$BITSUFFIXMINUS.zip" "/d=$AKELFILESDIR" /callS=$0 /e "Langs\*"
-    Pop $0
-    ${If} $0 != 0
-      DetailPrint "$(error) ($0): LangsPack$BITSUFFIXMINUS.zip"
-      StrCpy $LASTEXTRACTERROR $0
-    ${EndIf}
+  ;Extract
+  ${If} $EXEVERSIONFULL != 0
+  ${OrIf} $PLUGINCOUNT != 0
+  ${OrIf} $SCRIPTCOUNT != 0
+    StrCpy $DL_EXEBIT $EXEBIT
+    StrCpy $DL_EXEVERSIONFULL $EXEVERSIONFULL
+    StrCpy $DL_PATH64 ""
+    Call ExtractZip
   ${EndIf}
 
-  ;Get AkelUpdater::List items
-  ${Do}
-    Pop $AKELPLUGIN
-    ${If} ${Errors}
-      ${Break}
-    ${EndIf}
-
-    ${WordFind} "$AKELPLUGIN" "|" "E+1}" $PLUGINCOPIES
-    ${If} ${Errors}
-      StrCpy $PLUGINCOPIES ''
-    ${EndIf}
-    ${WordFind} "$AKELPLUGIN" "|" "+1{" $AKELPLUGIN
-
-    ;Update plugin
-    Push /END
-    AkelUpdater::ParseAndPush "$UNZIP"
-    IfFileExists "$AKELFILESDIR\Docs\$AKELPLUGIN-$ZIPXLANG.txt" +2
-    Push "/x=Docs\$AKELPLUGIN-$ZIPXLANG.txt"
-    nsUnzip::Extract "$SAVEDIR\PlugsPack$BITSUFFIXMINUS.zip" "/d=$AKELFILESDIR" /C "Docs\$AKELPLUGIN*" "Plugs\$AKELPLUGIN*"
-    Pop $0
-    ${If} $0 != 0
-      DetailPrint "$(error) ($0): $AKELPLUGIN $(plugin)"
-      StrCpy $LASTEXTRACTERROR $0
-      ${Continue}
-    ${Else}
-      DetailPrint "$(done): $AKELPLUGIN $(plugin)"
-    ${EndIf}
-
-    ;Update plugin copies
-    ${Do}
-      ${If} $PLUGINCOPIES == ''
-        ${Break}
-      ${EndIf}
-      ${WordFind} "$PLUGINCOPIES" "|" "+1{" $PLUGINCOPY
-      ${WordFind} "$PLUGINCOPIES" "|" "E+1}" $PLUGINCOPIES
-      ${If} ${Errors}
-        StrCpy $PLUGINCOPIES ''
-      ${EndIf}
-      SetDetailsPrint textonly
-      CopyFiles /SILENT "$AKELPLUGSDIR\$AKELPLUGIN.dll" "$AKELPLUGSDIR\$PLUGINCOPY.dll"
-      SetDetailsPrint both
-      DetailPrint "$(done): $PLUGINCOPY ($AKELPLUGIN $(plugin))"
-    ${Loop}
-  ${Loop}
+  ${If} $EXEVERSIONFULL64 != 0
+  ${OrIf} $PLUGINCOUNT64 != 0
+    StrCpy $DL_EXEBIT "64"
+    StrCpy $DL_EXEVERSIONFULL $EXEVERSIONFULL64
+    StrCpy $DL_PATH64 "64"
+    Call ExtractZip
+  ${EndIf}
 
   ${If} $AUTO == 1
     Call .onInstSuccess
     Quit
   ${EndIf}
 SectionEnd
+
+Function ExtractZip
+  ${If} $DL_EXEBIT == "64"
+    StrCpy $BITSUFFIXMINUS "-x64"
+    StrCpy $BITSUFFIXSLASH "/x64"
+  ${Else}
+    StrCpy $BITSUFFIXMINUS ""
+    StrCpy $BITSUFFIXSLASH ""
+  ${EndIf}
+
+  ;Extract "AkelPad-x.x.x-bin-lng.zip"
+  ${While} $DL_EXEVERSIONFULL != 0
+    Push /END
+    AkelUpdater::ParseAndPush "$UNZIP"
+    ${If} $DL_PATH64 == "64"
+      nsUnzip::Extract "$SAVEDIR\AkelPad-$DL_EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" /C "AkelPad.exe" "/d=$PLUGINSDIR\64"
+      Pop $0
+
+      SetDetailsPrint textonly
+      CopyFiles /SILENT "$PLUGINSDIR\64\AkelPad.exe" "$AKELPADDIR\AkelPad64.exe"
+      SetDetailsPrint both
+    ${Else}
+      nsUnzip::Extract "$SAVEDIR\AkelPad-$DL_EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip" "/d=$AKELPADDIR"
+      Pop $0
+    ${EndIf}
+    ${If} $0 != 0
+      DetailPrint "$(error) ($0): AkelPad-$DL_EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip"
+      StrCpy $LASTEXTRACTERROR $0
+      ${Break}
+    ${EndIf}
+    DetailPrint "$(done): AkelPad-$DL_EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip"
+
+    ${If} $NOTEPAD == 1
+    ${AndIf} $DL_PATH64 == ""
+      SetDetailsPrint textonly
+      CopyFiles /SILENT "$AKELPADDIR\AkelPad.exe" "$AKELPADDIR\notepad.exe"
+      Delete "$AKELPADDIR\AkelPad.exe"
+      SetDetailsPrint both
+    ${EndIf}
+
+    ;Extract "LangsPack.zip"
+    ${If} $LANGEXIST == "true"
+      GetFunctionAddress $0 ServiceCallback
+      Push /END
+      AkelUpdater::ParseAndPush "$UNZIP"
+      nsUnzip::Extract "$SAVEDIR\LangsPack$BITSUFFIXMINUS.zip" "/d=$AKELFILESDIR\Langs$DL_PATH64" /callS=$0 /e /j "Langs\*"
+      Pop $0
+      ${If} $0 != 0
+        DetailPrint "$(error) ($0): LangsPack$BITSUFFIXMINUS.zip"
+        StrCpy $LASTEXTRACTERROR $0
+      ${EndIf}
+    ${EndIf}
+
+    ${Break}
+  ${EndWhile}
+
+  ;Get AkelUpdater::List items
+  ${If} $ZIPLANG == eng
+    StrCpy $ZIPXLANG rus
+  ${ElseIf} $ZIPLANG == rus
+    StrCpy $ZIPXLANG eng
+  ${EndIf}
+
+  ${Do}
+    Pop $LISTITEM
+    ${If} ${Errors}
+      ${Break}
+    ${EndIf}
+
+    ${WordFind} "$LISTITEM" "|" "+1" $ITEMTYPE
+    ${WordFind} "$LISTITEM" "|" "+2" $ITEMPACK
+    ${WordFind} "$LISTITEM" "|" "+3" $ITEM64
+    ${WordFind} "$LISTITEM" "|" "+4" $ITEMNAME
+    ${WordFind} "$LISTITEM" "|" "E+4}" $PLUGINCOPIES
+    ${If} ${Errors}
+      StrCpy $PLUGINCOPIES ''
+    ${EndIf}
+
+    ;We pop all items from stack in first ExtractZip call
+    ${If} $ITEMPACK == "PlugsPack64"
+      ${If} $ITEM64 == "1"
+        StrCpy $DL_PATH64 "64"
+      ${Else}
+        StrCpy $DL_PATH64 ""
+      ${EndIf}
+      StrCpy $BITSUFFIXMINUS "-x64"
+      StrCpy $BITSUFFIXSLASH "/x64"
+    ${Else}
+      StrCpy $DL_PATH64 ""
+      StrCpy $BITSUFFIXMINUS ""
+      StrCpy $BITSUFFIXSLASH ""
+    ${EndIf}
+
+    ${If} $ITEMTYPE == 3
+    ${OrIf} $ITEMTYPE == 4
+      ;Update script
+      ${If} $ITEMTYPE == 3
+        StrCpy $R0 $(script)
+      ${Elseif} $ITEMTYPE == 4
+        StrCpy $R0 $(for_script)
+      ${EndIf}
+      Push /END
+      AkelUpdater::ParseAndPush "$UNZIP"
+      nsUnzip::Extract "$SAVEDIR\$ITEMPACK.zip" "/d=$AKELSCRIPTSDIR" /C "$ITEMNAME"
+      Pop $0
+      ${If} $0 != 0
+        DetailPrint "$(error) ($0): $ITEMNAME $R0"
+        StrCpy $LASTEXTRACTERROR $0
+        ${Continue}
+      ${Else}
+        DetailPrint "$(done): $ITEMNAME $R0"
+      ${EndIf}
+    ${ElseIf} $ITEMTYPE == 2
+      ;Update plugin
+      Push /END
+      AkelUpdater::ParseAndPush "$UNZIP"
+      IfFileExists "$AKELFILESDIR\Docs\$ITEMNAME-$ZIPXLANG.txt" +2
+      Push "/x=Docs\$ITEMNAME-$ZIPXLANG.txt"
+
+      ${If} $DL_PATH64 == "64"
+        nsUnzip::Extract "$SAVEDIR\PlugsPack$BITSUFFIXMINUS.zip" "/d=$AKELFILESDIR\Plugs$DL_PATH64" /C /j "Plugs\$ITEMNAME.dll"
+        Pop $0
+      ${Else}
+        nsUnzip::Extract "$SAVEDIR\PlugsPack$BITSUFFIXMINUS.zip" "/d=$AKELFILESDIR" /C "Docs\$ITEMNAME*" "Plugs\$ITEMNAME*"
+        Pop $0
+      ${EndIf}
+
+      ${If} $0 != 0
+        DetailPrint "$(error) ($0): $ITEMNAME$DL_PATH64 $(plugin)"
+        StrCpy $LASTEXTRACTERROR $0
+        ${Continue}
+      ${Else}
+        DetailPrint "$(done): $ITEMNAME$DL_PATH64 $(plugin)"
+      ${EndIf}
+
+      ;Update plugin copies
+      ${Do}
+        ${If} $PLUGINCOPIES == ''
+          ${Break}
+        ${EndIf}
+        ${WordFind} "$PLUGINCOPIES" "|" "+1{" $PLUGINCOPY
+        ${WordFind} "$PLUGINCOPIES" "|" "E+1}" $PLUGINCOPIES
+        ${If} ${Errors}
+          StrCpy $PLUGINCOPIES ''
+        ${EndIf}
+        SetDetailsPrint textonly
+        CopyFiles /SILENT "$AKELFILESDIR\Plugs$DL_PATH64\$ITEMNAME.dll" "$AKELFILESDIR\Plugs$DL_PATH64\$PLUGINCOPY.dll"
+        SetDetailsPrint both
+        DetailPrint "$(done): $PLUGINCOPY ($ITEMNAME$DL_PATH64 $(plugin))"
+      ${Loop}
+    ${EndIf}
+  ${Loop}
+FunctionEnd
 
 Function .onInstSuccess
   GetDlgItem $0 $HWNDPARENT 2001
@@ -626,7 +737,7 @@ Function ServiceCallback
   Pop $5  ;Entry CRC: ff00ff00
 
   ${GetBaseName} "$2" $R0
-  DetailPrint "$(done): $R0 $(language)"
+  DetailPrint "$(done): $R0$DL_PATH64 $(language)"
 
   #Use "SetErrors" for stop extracting
 FunctionEnd
