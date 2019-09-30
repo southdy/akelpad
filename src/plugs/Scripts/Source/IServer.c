@@ -108,30 +108,30 @@ HRESULT LoadTypeInfoFromFile(const GUID *guid, ITypeInfo **ppTypeInfo)
 
 //// IClassFactory
 
-HRESULT STDMETHODCALLTYPE Class_QueryInterface(IClassFactory *this, REFIID factoryGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE Class_QueryInterface(IClassFactory *This, const IID * factoryGuid, void **ppv)
 {
   if (AKD_IsEqualIID(factoryGuid, &IID_IUnknown) || AKD_IsEqualIID(factoryGuid, &IID_IClassFactory))
   {
-    this->lpVtbl->AddRef(this);
-    *ppv=this;
+    This->lpVtbl->AddRef(This);
+    *ppv=This;
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE Class_AddRef(IClassFactory *this)
+ULONG STDMETHODCALLTYPE Class_AddRef(IClassFactory *This)
 {
   InterlockedIncrement(&g_nObjs);
   return 1;
 }
 
-ULONG STDMETHODCALLTYPE Class_Release(IClassFactory *this)
+ULONG STDMETHODCALLTYPE Class_Release(IClassFactory *This)
 {
   return InterlockedDecrement(&g_nObjs);
 }
 
-HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *this, IUnknown *punkOuter, REFIID vTableGuid, void **objHandle)
+HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *This, IUnknown *punkOuter, const IID * vTableGuid, void **objHandle)
 {
   IRealDocument *objIDocument;
   IRealWScript *objIWScript;
@@ -201,7 +201,7 @@ HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *this, IUnknown *pu
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Class_LockServer(IClassFactory *this, BOOL flock)
+HRESULT STDMETHODCALLTYPE Class_LockServer(IClassFactory *This, BOOL flock)
 {
   if (flock)
     InterlockedIncrement(&g_nLocks);
@@ -221,7 +221,7 @@ BOOL AKD_IsEqualIID(const GUID *rguid1, const GUID *rguid2)
 
 //// Extern functions
 
-HRESULT WINAPI DllGetClassObject(REFCLSID objGuid, REFIID factoryGuid, void **factoryHandle)
+HRESULT WINAPI DllGetClassObject(REFCLSID objGuid, const IID * factoryGuid, void **factoryHandle)
 {
   if (AKD_IsEqualIID(objGuid, &CLSID_IDocument))
   {

@@ -141,44 +141,44 @@ CALLBACKBUSYNESS g_cbHook[]={{(INT_PTR)HookCallback1Proc,  FALSE},
 
 //// IDocument
 
-HRESULT STDMETHODCALLTYPE Document_QueryInterface(IDocument *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE Document_QueryInterface(IDocument *This, const IID * vTableGuid, void **ppv)
 {
   if (AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IDocument) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE Document_AddRef(IDocument *this)
+ULONG STDMETHODCALLTYPE Document_AddRef(IDocument *This)
 {
-  return ++((IRealDocument *)this)->dwCount;
+  return ++((IRealDocument *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE Document_Release(IDocument *this)
+ULONG STDMETHODCALLTYPE Document_Release(IDocument *This)
 {
-  if (--((IRealDocument *)this)->dwCount == 0)
+  if (--((IRealDocument *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealDocument *)this)->dwCount;
+  return ((IRealDocument *)This)->dwCount;
 }
 
 
 //// IDispatch
 
-HRESULT STDMETHODCALLTYPE Document_GetTypeInfoCount(IDocument *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE Document_GetTypeInfoCount(IDocument *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetTypeInfo(IDocument *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE Document_GetTypeInfo(IDocument *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   HRESULT hr;
 
@@ -202,7 +202,7 @@ HRESULT STDMETHODCALLTYPE Document_GetTypeInfo(IDocument *this, UINT itinfo, LCI
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetIDsOfNames(IDocument *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE Document_GetIDsOfNames(IDocument *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   if (!g_DocumentTypeInfo)
   {
@@ -214,7 +214,7 @@ HRESULT STDMETHODCALLTYPE Document_GetIDsOfNames(IDocument *this, REFIID riid, L
   return DispGetIDsOfNames(g_DocumentTypeInfo, rgszNames, cNames, rgdispid);
 }
 
-HRESULT STDMETHODCALLTYPE Document_Invoke(IDocument *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE Document_Invoke(IDocument *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
   if (!AKD_IsEqualIID(riid, &IID_NULL))
     return DISP_E_UNKNOWNINTERFACE;
@@ -226,29 +226,29 @@ HRESULT STDMETHODCALLTYPE Document_Invoke(IDocument *this, DISPID dispid, REFIID
     if ((hr=LoadTypeInfoFromFile(NULL, NULL)) != S_OK)
       return hr;
   }
-  return DispInvoke(this, g_DocumentTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
+  return DispInvoke(This, g_DocumentTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
 }
 
 
 //// IDocument methods
 
-HRESULT STDMETHODCALLTYPE Document_Constants(IDocument *this, IDispatch **objConstants)
+HRESULT STDMETHODCALLTYPE Document_Constants(IDocument *This, IDispatch **objConstants)
 {
   return Class_CreateInstance(NULL, NULL, &IID_IConstants, (void **)objConstants);
 }
 
-HRESULT STDMETHODCALLTYPE Document_Global(IDocument *this, IDispatch **objGlobal)
+HRESULT STDMETHODCALLTYPE Document_Global(IDocument *This, IDispatch **objGlobal)
 {
   return Class_CreateInstance(NULL, NULL, &IID_IGlobal, (void **)objGlobal);
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetMainWnd(IDocument *this, VARIANT *vtWnd)
+HRESULT STDMETHODCALLTYPE Document_GetMainWnd(IDocument *This, VARIANT *vtWnd)
 {
   SetVariantInt(vtWnd, (INT_PTR)hMainWnd);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetAkelDir(IDocument *this, int nSubDir, BSTR *wpDir)
+HRESULT STDMETHODCALLTYPE Document_GetAkelDir(IDocument *This, int nSubDir, BSTR *wpDir)
 {
   HRESULT hr=NOERROR;
 
@@ -275,19 +275,19 @@ HRESULT STDMETHODCALLTYPE Document_GetAkelDir(IDocument *this, int nSubDir, BSTR
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetInstanceExe(IDocument *this, VARIANT *vtInstance)
+HRESULT STDMETHODCALLTYPE Document_GetInstanceExe(IDocument *This, VARIANT *vtInstance)
 {
   SetVariantInt(vtInstance, (INT_PTR)hInstanceEXE);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetInstanceDll(IDocument *this, VARIANT *vtInstance)
+HRESULT STDMETHODCALLTYPE Document_GetInstanceDll(IDocument *This, VARIANT *vtInstance)
 {
   SetVariantInt(vtInstance, (INT_PTR)hInstanceDLL);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetLangId(IDocument *this, int nType, int *nLangModule)
+HRESULT STDMETHODCALLTYPE Document_GetLangId(IDocument *This, int nType, int *nLangModule)
 {
   if (nType == LANGID_FULL)
     *nLangModule=(int)wLangModule;
@@ -298,13 +298,13 @@ HRESULT STDMETHODCALLTYPE Document_GetLangId(IDocument *this, int nType, int *nL
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_IsOldWindows(IDocument *this, BOOL *bIsOld)
+HRESULT STDMETHODCALLTYPE Document_IsOldWindows(IDocument *This, BOOL *bIsOld)
 {
   *bIsOld=bOldWindows;
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_IsAkelEdit(IDocument *this, VARIANT vtWnd, int *nIsAkelEdit)
+HRESULT STDMETHODCALLTYPE Document_IsAkelEdit(IDocument *This, VARIANT vtWnd, int *nIsAkelEdit)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
 
@@ -328,21 +328,21 @@ HRESULT STDMETHODCALLTYPE Document_IsAkelEdit(IDocument *this, VARIANT vtWnd, in
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_IsMDI(IDocument *this, int *nIsMDI)
+HRESULT STDMETHODCALLTYPE Document_IsMDI(IDocument *This, int *nIsMDI)
 {
   *nIsMDI=nMDI;
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditWnd(IDocument *this, VARIANT *vtWnd)
+HRESULT STDMETHODCALLTYPE Document_GetEditWnd(IDocument *This, VARIANT *vtWnd)
 {
-  SetVariantInt(vtWnd, (INT_PTR)GetCurEdit(this));
+  SetVariantInt(vtWnd, (INT_PTR)GetCurEdit(This));
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetEditWnd(IDocument *this, VARIANT vtWnd, VARIANT *vtWndResult)
+HRESULT STDMETHODCALLTYPE Document_SetEditWnd(IDocument *This, VARIANT vtWnd, VARIANT *vtWndResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   int nIsAkelEdit;
 
@@ -351,7 +351,7 @@ HRESULT STDMETHODCALLTYPE Document_SetEditWnd(IDocument *this, VARIANT vtWnd, VA
     if ((INT_PTR)hWnd == SEW_FOCUS)
       hWnd=(HWND)SendMessage(hMainWnd, AKD_GETFOCUS, 0, 0);
     SetVariantInt(&vtWnd, (INT_PTR)hWnd);
-    Document_IsAkelEdit(this, vtWnd, &nIsAkelEdit);
+    Document_IsAkelEdit(This, vtWnd, &nIsAkelEdit);
 
     if (nIsAkelEdit != ISAEW_NONE)
       lpScriptThread->hWndPluginEdit=hWnd;
@@ -364,9 +364,9 @@ HRESULT STDMETHODCALLTYPE Document_SetEditWnd(IDocument *this, VARIANT vtWnd, VA
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditDoc(IDocument *this, VARIANT *vtDoc)
+HRESULT STDMETHODCALLTYPE Document_GetEditDoc(IDocument *This, VARIANT *vtDoc)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   AEHDOC hDoc;
 
   if (lpScriptThread && lpScriptThread->hWndPluginEdit)
@@ -377,7 +377,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditDoc(IDocument *this, VARIANT *vtDoc)
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditFile(IDocument *this, VARIANT vtWnd, BSTR *wpFile)
+HRESULT STDMETHODCALLTYPE Document_GetEditFile(IDocument *This, VARIANT vtWnd, BSTR *wpFile)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
@@ -392,7 +392,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditFile(IDocument *this, VARIANT vtWnd, B
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetFilePath(IDocument *this, BSTR wpFile, int nPart, BSTR *wpPath)
+HRESULT STDMETHODCALLTYPE Document_GetFilePath(IDocument *This, BSTR wpFile, int nPart, BSTR *wpPath)
 {
   int nFileLen;
   HRESULT hr=NOERROR;
@@ -435,7 +435,7 @@ HRESULT STDMETHODCALLTYPE Document_GetFilePath(IDocument *this, BSTR wpFile, int
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditCodePage(IDocument *this, VARIANT vtWnd, int *nCodePage)
+HRESULT STDMETHODCALLTYPE Document_GetEditCodePage(IDocument *This, VARIANT vtWnd, int *nCodePage)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
@@ -447,7 +447,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditCodePage(IDocument *this, VARIANT vtWn
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditBOM(IDocument *this, VARIANT vtWnd, BOOL *bBOM)
+HRESULT STDMETHODCALLTYPE Document_GetEditBOM(IDocument *This, VARIANT vtWnd, BOOL *bBOM)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
@@ -459,7 +459,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditBOM(IDocument *this, VARIANT vtWnd, BO
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditNewLine(IDocument *this, VARIANT vtWnd, int *nNewLine)
+HRESULT STDMETHODCALLTYPE Document_GetEditNewLine(IDocument *This, VARIANT vtWnd, int *nNewLine)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
@@ -471,7 +471,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditNewLine(IDocument *this, VARIANT vtWnd
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditModified(IDocument *this, VARIANT vtWnd, BOOL *bModified)
+HRESULT STDMETHODCALLTYPE Document_GetEditModified(IDocument *This, VARIANT vtWnd, BOOL *bModified)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
@@ -483,7 +483,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditModified(IDocument *this, VARIANT vtWn
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetEditReadOnly(IDocument *this, VARIANT vtWnd, BOOL *bReadOnly)
+HRESULT STDMETHODCALLTYPE Document_GetEditReadOnly(IDocument *This, VARIANT vtWnd, BOOL *bReadOnly)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   EDITINFO ei;
@@ -495,7 +495,7 @@ HRESULT STDMETHODCALLTYPE Document_GetEditReadOnly(IDocument *this, VARIANT vtWn
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *this, VARIANT vtFrame, int nType, VARIANT vtData, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *This, VARIANT vtFrame, int nType, VARIANT vtData, BOOL *bResult)
 {
   FRAMEDATA *lpFrame=(FRAMEDATA *)GetVariantInt(&vtFrame, NULL);
   UINT_PTR dwData=GetVariantInt(&vtData, NULL);
@@ -508,9 +508,9 @@ HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *this, VARIANT vtFrame
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SendMessage(IDocument *this, VARIANT vtWnd, UINT uMsg, VARIANT vtWParam, VARIANT vtLParam, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_SendMessage(IDocument *This, VARIANT vtWnd, UINT uMsg, VARIANT vtWParam, VARIANT vtLParam, VARIANT *vtResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   VARIANT *pvtWParam=&vtWParam;
   VARIANT *pvtLParam=&vtLParam;
@@ -611,7 +611,7 @@ void CALLBACK SendMessageAsyncProc(HWND hWnd, UINT uMsg, UINT_PTR dwData, LRESUL
   mm->lResult=lResult;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MessageBox(IDocument *this, VARIANT vtWnd, BSTR pText, BSTR pCaption, UINT uType, SAFEARRAY **psa, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_MessageBox(IDocument *This, VARIANT vtWnd, BSTR pText, BSTR pCaption, UINT uType, SAFEARRAY **psa, int *nResult)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   DIALOGMESSAGEBOX dmb;
@@ -686,7 +686,7 @@ BUTTONMESSAGEBOX* FillButtonsArray(SAFEARRAY *psa, HICON *hIcon)
   return bmb;
 }
 
-HRESULT STDMETHODCALLTYPE Document_InputBox(IDocument *this, VARIANT vtWnd, BSTR wpCaption, BSTR wpLabel, BSTR wpEdit, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_InputBox(IDocument *This, VARIANT vtWnd, BSTR wpCaption, BSTR wpLabel, BSTR wpEdit, VARIANT *vtResult)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   INPUTBOX db;
@@ -790,35 +790,35 @@ BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   return FALSE;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetSelStart(IDocument *this, VARIANT *vtSelStart)
+HRESULT STDMETHODCALLTYPE Document_GetSelStart(IDocument *This, VARIANT *vtSelStart)
 {
   HWND hWndCurEdit;
   CHARRANGE64 cr={0};
 
-  if (hWndCurEdit=GetCurEdit(this))
+  if (hWndCurEdit=GetCurEdit(This))
     SendMessage(hWndCurEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
   SetVariantInt(vtSelStart, cr.cpMin);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetSelEnd(IDocument *this, VARIANT *vtSelEnd)
+HRESULT STDMETHODCALLTYPE Document_GetSelEnd(IDocument *This, VARIANT *vtSelEnd)
 {
   HWND hWndCurEdit;
   CHARRANGE64 cr={0};
 
-  if (hWndCurEdit=GetCurEdit(this))
+  if (hWndCurEdit=GetCurEdit(This))
     SendMessage(hWndCurEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
   SetVariantInt(vtSelEnd, cr.cpMax);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *this, VARIANT vtSelStart, VARIANT vtSelEnd, DWORD dwFlags, DWORD dwType)
+HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *This, VARIANT vtSelStart, VARIANT vtSelEnd, DWORD dwFlags, DWORD dwType)
 {
   INT_PTR nSelStart=GetVariantInt(&vtSelStart, NULL);
   INT_PTR nSelEnd=GetVariantInt(&vtSelEnd, NULL);
   HWND hWndCurEdit;
 
-  if (hWndCurEdit=GetCurEdit(this))
+  if (hWndCurEdit=GetCurEdit(This))
   {
     if (dwFlags)
     {
@@ -847,14 +847,14 @@ HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *this, VARIANT vtSelStart, V
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetSelText(IDocument *this, int nNewLine, BSTR *wpText)
+HRESULT STDMETHODCALLTYPE Document_GetSelText(IDocument *This, int nNewLine, BSTR *wpText)
 {
   HWND hWndCurEdit;
   CHARRANGE64 cr;
   HRESULT hr=NOERROR;
 
   *wpText=NULL;
-  if (hWndCurEdit=GetCurEdit(this))
+  if (hWndCurEdit=GetCurEdit(This))
   {
     SendMessage(hWndCurEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
     hr=GetTextRange(hWndCurEdit, cr.cpMin, cr.cpMax, nNewLine, -1, wpText);
@@ -862,7 +862,7 @@ HRESULT STDMETHODCALLTYPE Document_GetSelText(IDocument *this, int nNewLine, BST
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetTextRange(IDocument *this, VARIANT vtRangeStart, VARIANT vtRangeEnd, int nNewLine, BSTR *wpText)
+HRESULT STDMETHODCALLTYPE Document_GetTextRange(IDocument *This, VARIANT vtRangeStart, VARIANT vtRangeEnd, int nNewLine, BSTR *wpText)
 {
   INT_PTR nRangeStart=GetVariantInt(&vtRangeStart, NULL);
   INT_PTR nRangeEnd=GetVariantInt(&vtRangeEnd, NULL);
@@ -870,7 +870,7 @@ HRESULT STDMETHODCALLTYPE Document_GetTextRange(IDocument *this, VARIANT vtRange
   HRESULT hr=NOERROR;
 
   *wpText=NULL;
-  if (hWndCurEdit=GetCurEdit(this))
+  if (hWndCurEdit=GetCurEdit(This))
   {
     hr=GetTextRange(hWndCurEdit, nRangeStart, nRangeEnd, nNewLine, FALSE, wpText);
   }
@@ -915,11 +915,11 @@ HRESULT GetTextRange(HWND hWnd, INT_PTR nRangeStart, INT_PTR nRangeEnd, int nNew
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, int nSelect)
+HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *This, BSTR wpText, int nSelect)
 {
   HWND hWndCurEdit;
 
-  if (hWndCurEdit=GetCurEdit(this))
+  if (hWndCurEdit=GetCurEdit(This))
   {
     if (!(SendMessage(hWndCurEdit, AEM_GETOPTIONS, 0, 0) & AECO_READONLY))
     {
@@ -963,7 +963,7 @@ HRESULT STDMETHODCALLTYPE Document_ReplaceSel(IDocument *this, BSTR wpText, int 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_TextFind(IDocument *this, VARIANT vtWnd, BSTR wpFindIt, DWORD dwFlags, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_TextFind(IDocument *This, VARIANT vtWnd, BSTR wpFindIt, DWORD dwFlags, VARIANT *vtResult)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   TEXTFINDW tf;
@@ -978,7 +978,7 @@ HRESULT STDMETHODCALLTYPE Document_TextFind(IDocument *this, VARIANT vtWnd, BSTR
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_TextReplace(IDocument *this, VARIANT vtWnd, BSTR wpFindIt, BSTR wpReplaceWith, DWORD dwFindFlags, DWORD dwReplaceFlags, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_TextReplace(IDocument *This, VARIANT vtWnd, BSTR wpFindIt, BSTR wpReplaceWith, DWORD dwFindFlags, DWORD dwReplaceFlags, VARIANT *vtResult)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   TEXTREPLACEW tr;
@@ -998,7 +998,7 @@ HRESULT STDMETHODCALLTYPE Document_TextReplace(IDocument *this, VARIANT vtWnd, B
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetClipboardText(IDocument *this, BOOL bAnsi, BSTR *wpText)
+HRESULT STDMETHODCALLTYPE Document_GetClipboardText(IDocument *This, BOOL bAnsi, BSTR *wpText)
 {
   HRESULT hr=NOERROR;
   HGLOBAL hData;
@@ -1043,7 +1043,7 @@ HRESULT STDMETHODCALLTYPE Document_GetClipboardText(IDocument *this, BOOL bAnsi,
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SetClipboardText(IDocument *this, BSTR wpText)
+HRESULT STDMETHODCALLTYPE Document_SetClipboardText(IDocument *This, BSTR wpText)
 {
   HRESULT hr=NOERROR;
   HGLOBAL hDataA=NULL;
@@ -1087,7 +1087,7 @@ HRESULT STDMETHODCALLTYPE Document_SetClipboardText(IDocument *this, BSTR wpText
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_IsPluginRunning(IDocument *this, BSTR wpFunction, BOOL *bRunning)
+HRESULT STDMETHODCALLTYPE Document_IsPluginRunning(IDocument *This, BSTR wpFunction, BOOL *bRunning)
 {
   PLUGINFUNCTION *pf;
 
@@ -1098,32 +1098,32 @@ HRESULT STDMETHODCALLTYPE Document_IsPluginRunning(IDocument *this, BSTR wpFunct
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Call(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_Call(IDocument *This, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   return CallPlugin(0, 0, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallA(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_CallA(IDocument *This, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   return CallPlugin(0, PDS_STRANSI, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallW(IDocument *this, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_CallW(IDocument *This, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   return CallPlugin(0, PDS_STRWIDE, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallEx(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_CallEx(IDocument *This, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   return CallPlugin(dwFlags, 0, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallExA(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_CallExA(IDocument *This, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   return CallPlugin(dwFlags, PDS_STRANSI, wpFunction, psa, vtResult);
 }
 
-HRESULT STDMETHODCALLTYPE Document_CallExW(IDocument *this, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_CallExW(IDocument *This, DWORD dwFlags, BSTR wpFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
   return CallPlugin(dwFlags, PDS_STRWIDE, wpFunction, psa, vtResult);
 }
@@ -1231,7 +1231,7 @@ HRESULT CallPlugin(DWORD dwFlags, DWORD dwSupport, BSTR wpFunction, SAFEARRAY **
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wpWorkDir, int nWait, int nShowWindow, DWORD *dwExit)
+HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *This, BSTR wpCmdLine, BSTR wpWorkDir, int nWait, int nShowWindow, DWORD *dwExit)
 {
   STARTUPINFOW si;
   PROCESS_INFORMATION pi;
@@ -1286,19 +1286,19 @@ HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wp
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Command(IDocument *this, int nCommand, VARIANT vtLParam, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_Command(IDocument *This, int nCommand, VARIANT vtLParam, VARIANT *vtResult)
 {
   VARIANT vtWnd;
   VARIANT vtWParam;
 
   SetVariantInt(&vtWnd, (INT_PTR)hMainWnd);
   SetVariantInt(&vtWParam, nCommand);
-  Document_SendMessage(this, vtWnd, WM_COMMAND, vtWParam, vtLParam, vtResult);
+  Document_SendMessage(This, vtWnd, WM_COMMAND, vtWParam, vtLParam, vtResult);
 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Font(IDocument *this, BSTR wpFaceName, DWORD dwFontStyle, int nPointSize)
+HRESULT STDMETHODCALLTYPE Document_Font(IDocument *This, BSTR wpFaceName, DWORD dwFontStyle, int nPointSize)
 {
   HWND hWndCurEdit;
   LOGFONTW lfNew;
@@ -1333,7 +1333,7 @@ HRESULT STDMETHODCALLTYPE Document_Font(IDocument *this, BSTR wpFaceName, DWORD 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Recode(IDocument *this, int nCodePageFrom, int nCodePageTo)
+HRESULT STDMETHODCALLTYPE Document_Recode(IDocument *This, int nCodePageFrom, int nCodePageTo)
 {
   HWND hWndCurEdit;
   TEXTRECODE tr;
@@ -1348,9 +1348,9 @@ HRESULT STDMETHODCALLTYPE Document_Recode(IDocument *this, int nCodePageFrom, in
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Include(IDocument *this, BSTR wpFileName, DWORD dwFlags, int nCodePage, BOOL bBOM, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_Include(IDocument *This, BSTR wpFileName, DWORD dwFlags, int nCodePage, BOOL bBOM, BOOL *bResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   INCLUDEITEM *lpIncludeItem;
   wchar_t wszScriptInclude[MAX_PATH];
   wchar_t *wpContent=NULL;
@@ -1379,9 +1379,9 @@ HRESULT STDMETHODCALLTYPE Document_Include(IDocument *this, BSTR wpFileName, DWO
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_IsInclude(IDocument *this, BSTR *wpFileName)
+HRESULT STDMETHODCALLTYPE Document_IsInclude(IDocument *This, BSTR *wpFileName)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HRESULT hr=NOERROR;
 
   if (lpScriptThread->wszScriptInclude)
@@ -1394,7 +1394,7 @@ HRESULT STDMETHODCALLTYPE Document_IsInclude(IDocument *this, BSTR *wpFileName)
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_OpenFile(IDocument *this, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_OpenFile(IDocument *This, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, int *nResult)
 {
   OPENDOCUMENTW od;
 
@@ -1409,7 +1409,7 @@ HRESULT STDMETHODCALLTYPE Document_OpenFile(IDocument *this, BSTR wpFile, DWORD 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *this, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, VARIANT vtBytesMax, BSTR *wpText)
+HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *This, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, VARIANT vtBytesMax, BSTR *wpText)
 {
   INT_PTR nBytesMax=GetVariantInt(&vtBytesMax, NULL);
   wchar_t *wpContent=NULL;
@@ -1428,7 +1428,7 @@ HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *this, BSTR wpFile, DWORD 
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BSTR wpContent, VARIANT vtContentLen, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *This, VARIANT vtFile, BSTR wpContent, VARIANT vtContentLen, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult)
 {
   VARIANT *pvtFile=&vtFile;
   INT_PTR nContentLen=GetVariantInt(&vtContentLen, NULL);
@@ -1496,7 +1496,7 @@ HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BS
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *this, VARIANT vtWnd, BSTR wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags, VARIANT vtDoc, int *nResult)
+HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *This, VARIANT vtWnd, BSTR wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags, VARIANT vtDoc, int *nResult)
 {
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   AEHDOC hDoc=(AEHDOC)GetVariantInt(&vtDoc, NULL);
@@ -1519,9 +1519,9 @@ HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *this, VARIANT vtWnd, BSTR
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ScriptSettings(IDocument *this, IDispatch **objSet)
+HRESULT STDMETHODCALLTYPE Document_ScriptSettings(IDocument *This, IDispatch **objSet)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   IRealScriptSettings *lpSet;
 
   if (!objSet) return E_POINTER;
@@ -1540,9 +1540,9 @@ HRESULT STDMETHODCALLTYPE Document_ScriptSettings(IDocument *this, IDispatch **o
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SystemFunction(IDocument *this, IDispatch **objSys)
+HRESULT STDMETHODCALLTYPE Document_SystemFunction(IDocument *This, IDispatch **objSys)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   IRealSystemFunction *lpSys;
 
   if (!objSys) return E_POINTER;
@@ -1561,9 +1561,9 @@ HRESULT STDMETHODCALLTYPE Document_SystemFunction(IDocument *this, IDispatch **o
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemAlloc(IDocument *this, VARIANT vtSize, VARIANT *vtPointer)
+HRESULT STDMETHODCALLTYPE Document_MemAlloc(IDocument *This, VARIANT vtSize, VARIANT *vtPointer)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   UINT_PTR dwSize=GetVariantInt(&vtSize, NULL);
   POINTERITEM *lpElement=NULL;
   INT_PTR nPointer;
@@ -1583,9 +1583,9 @@ HRESULT STDMETHODCALLTYPE Document_MemAlloc(IDocument *this, VARIANT vtSize, VAR
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, VARIANT vtPointer, VARIANT vtData, DWORD dwType, int nDataLen, int *nBytes)
+HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *This, VARIANT vtPointer, VARIANT vtData, DWORD dwType, int nDataLen, int *nBytes)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
   UINT_PTR dwNumber;
   POINTERITEM *lpElement=NULL;
@@ -1694,9 +1694,9 @@ HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, VARIANT vtPointer, V
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, VARIANT vtPointer, DWORD dwType, int nDataLen, VARIANT *vtData)
+HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *This, VARIANT vtPointer, DWORD dwType, int nDataLen, VARIANT *vtData)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
   POINTERITEM *lpElement=NULL;
   wchar_t *wszString;
@@ -1793,7 +1793,7 @@ HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, VARIANT vtPointer, D
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemStrPtr(IDocument *this, BSTR wpString, BOOL bConvert, VARIANT *vtPointer)
+HRESULT STDMETHODCALLTYPE Document_MemStrPtr(IDocument *This, BSTR wpString, BOOL bConvert, VARIANT *vtPointer)
 {
   INT_PTR nPointer;
 
@@ -1805,7 +1805,7 @@ HRESULT STDMETHODCALLTYPE Document_MemStrPtr(IDocument *this, BSTR wpString, BOO
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemPtrStr(IDocument *this, VARIANT vtPointer, BSTR *wpString)
+HRESULT STDMETHODCALLTYPE Document_MemPtrStr(IDocument *This, VARIANT vtPointer, BSTR *wpString)
 {
   INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
   HRESULT hr=NOERROR;
@@ -1816,9 +1816,9 @@ HRESULT STDMETHODCALLTYPE Document_MemPtrStr(IDocument *this, VARIANT vtPointer,
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *this, VARIANT vtPointer)
+HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *This, VARIANT vtPointer)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   INT_PTR nPointer=GetVariantInt(&vtPointer, NULL);
   POINTERITEM *lpElement=NULL;
 
@@ -1836,25 +1836,25 @@ HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *this, VARIANT vtPointer)
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_DebugJIT(IDocument *this)
+HRESULT STDMETHODCALLTYPE Document_DebugJIT(IDocument *This)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
 
   if (lpScriptThread->bInitDebugJIT)
     lpScriptThread->objDebugApplication->lpVtbl->CauseBreak(lpScriptThread->objDebugApplication);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Debug(IDocument *this, DWORD dwDebug, DWORD *dwResult)
+HRESULT STDMETHODCALLTYPE Document_Debug(IDocument *This, DWORD dwDebug, DWORD *dwResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
 
   *dwResult=lpScriptThread->dwDebug;
   lpScriptThread->dwDebug=dwDebug;
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_VarType(IDocument *this, VARIANT vtData, int *nType)
+HRESULT STDMETHODCALLTYPE Document_VarType(IDocument *This, VARIANT vtData, int *nType)
 {
   VARIANT *pvtData=&vtData;
 
@@ -1864,15 +1864,15 @@ HRESULT STDMETHODCALLTYPE Document_VarType(IDocument *this, VARIANT vtData, int 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_VarDispatch(IDocument *this, VARIANT vtPointer, IDispatch **objDispatch)
+HRESULT STDMETHODCALLTYPE Document_VarDispatch(IDocument *This, VARIANT vtPointer, IDispatch **objDispatch)
 {
   *objDispatch=(IDispatch *)GetVariantInt(&vtPointer, NULL);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetArgLine(IDocument *this, BOOL bNoEncloseQuotes, BSTR *wpArgLine)
+HRESULT STDMETHODCALLTYPE Document_GetArgLine(IDocument *This, BOOL bNoEncloseQuotes, BSTR *wpArgLine)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HRESULT hr=NOERROR;
   wchar_t *wpNoQuote=lpScriptThread->wszArguments;
   int nNoQuoteLen=lpScriptThread->nArgumentsLen;
@@ -1895,9 +1895,9 @@ HRESULT STDMETHODCALLTYPE Document_GetArgLine(IDocument *this, BOOL bNoEncloseQu
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_GetArgValue(IDocument *this, BSTR wpArgName, VARIANT vtDefault, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_GetArgValue(IDocument *This, BSTR wpArgName, VARIANT vtDefault, VARIANT *vtResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   SCRIPTARG *lpScriptArg;
   wchar_t *wszArgValue;
   HRESULT hr=NOERROR;
@@ -1932,9 +1932,9 @@ HRESULT STDMETHODCALLTYPE Document_GetArgValue(IDocument *this, BSTR wpArgName, 
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_CreateDialog(IDocument *this, DWORD dwExStyle, VARIANT vtClassName, VARIANT vtTitle, DWORD dwStyle, int x, int y, int nWidth, int nHeight, VARIANT vtWndParent, VARIANT vtParam, SAFEARRAY **lpItems, VARIANT *vtWnd)
+HRESULT STDMETHODCALLTYPE Document_CreateDialog(IDocument *This, DWORD dwExStyle, VARIANT vtClassName, VARIANT vtTitle, DWORD dwStyle, int x, int y, int nWidth, int nHeight, VARIANT vtWndParent, VARIANT vtParam, SAFEARRAY **lpItems, VARIANT *vtWnd)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   CALLBACKITEM *lpCallback;
   wchar_t *wpClassName=(wchar_t *)GetVariantInt(&vtClassName, NULL);
   wchar_t *wpTitle=(wchar_t *)GetVariantInt(&vtTitle, NULL);
@@ -2405,9 +2405,9 @@ LOGFONTA* LogFontWtoA(const LOGFONTW *lfW, LOGFONTA *lfA)
   return lfA;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *this, BSTR wpClassName, SAFEARRAY **psa, WORD *wAtom)
+HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *This, BSTR wpClassName, SAFEARRAY **psa, WORD *wAtom)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   CALLBACKITEM *lpCallback;
   WNDCLASSW wndclass;
 
@@ -2437,9 +2437,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *this, BSTR wpC
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowUnregisterClass(IDocument *this, BSTR wpClassName, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_WindowUnregisterClass(IDocument *This, BSTR wpClassName, BOOL *bResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   CALLBACKITEM *lpCallback;
   CALLBACKITEM *lpCount;
   CALLBACKITEM *lpNextCount;
@@ -2464,9 +2464,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowUnregisterClass(IDocument *this, BSTR w
 }
 
 
-HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, VARIANT vtDlg, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *This, VARIANT vtDlg, BOOL *bResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HWND hDlg=(HWND)GetVariantInt(&vtDlg, NULL);
   CALLBACKITEM *lpCallback;
 
@@ -2485,9 +2485,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, VARIANT
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, VARIANT vtDlg, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *This, VARIANT vtDlg, BOOL *bResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HWND hDlg=(HWND)GetVariantInt(&vtDlg, NULL);
   CALLBACKITEM *lpCallback;
 
@@ -2501,9 +2501,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, VARIA
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this, DWORD dwFlags)
+HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *This, DWORD dwFlags)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   CALLBACKITEM *lpCallback;
   MSG msg;
 
@@ -2547,9 +2547,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this, DWORD dwFla
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, VARIANT vtWnd, IDispatch *objFunction, SAFEARRAY **psa, VARIANT *vtCallbackItem)
+HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *This, VARIANT vtWnd, IDispatch *objFunction, SAFEARRAY **psa, VARIANT *vtCallbackItem)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
   CALLBACKITEM *lpCallback=NULL;
   WNDPROC lpOldWndProc;
@@ -2622,7 +2622,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, VARIANT vtWnd
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, VARIANT vtCallbackItem, VARIANT vtWnd, UINT uMsg, VARIANT vtWParam, VARIANT vtLParam, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *This, VARIANT vtCallbackItem, VARIANT vtWnd, UINT uMsg, VARIANT vtWParam, VARIANT vtLParam, VARIANT *vtResult)
 {
   CALLBACKITEM *lpCallback=(CALLBACKITEM *)GetVariantInt(&vtCallbackItem, NULL);
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
@@ -2673,7 +2673,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, VARIANT vtCal
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, VARIANT vtCallbackItem)
+HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *This, VARIANT vtCallbackItem)
 {
   CALLBACKITEM *lpCallback=(CALLBACKITEM *)GetVariantInt(&vtCallbackItem, NULL);
 
@@ -2681,9 +2681,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, VARIANT vtC
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *this, VARIANT vtWnd)
+HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *This, VARIANT vtWnd)
 {
-  void *lpScriptThread=((IRealDocument *)this)->lpScriptThread;
+  void *lpScriptThread=((IRealDocument *)This)->lpScriptThread;
   HWND hWnd=(HWND)GetVariantInt(&vtWnd, NULL);
 
   return WindowUnsubClass(lpScriptThread, hWnd);
@@ -2735,9 +2735,9 @@ HRESULT WindowUnsubClass(void *lpScriptThread, HWND hWnd)
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDispatch *objCallback, DWORD dwThreadId, SAFEARRAY **psa, VARIANT *vtHook)
+HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *This, int idHook, IDispatch *objCallback, DWORD dwThreadId, SAFEARRAY **psa, VARIANT *vtHook)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HRESULT hr=NOERROR;
   HHOOK hHook=NULL;
 
@@ -2792,9 +2792,9 @@ HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDisp
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, VARIANT vtHook, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *This, VARIANT vtHook, BOOL *bResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   HHOOK hHook=(HHOOK)GetVariantInt(&vtHook, NULL);
   CALLBACKITEM *lpCallback;
   int nBusyIndex;
@@ -2811,9 +2811,9 @@ HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, VARIANT vtHook,
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *this, DWORD dwUnlockType, DWORD *dwResult)
+HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *This, DWORD dwUnlockType, DWORD *dwResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
 
   *dwResult=0;
 
@@ -2861,9 +2861,9 @@ HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *this, DWORD dwUnlock
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ScriptExitCode(IDocument *this, VARIANT vtExitCode, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE Document_ScriptExitCode(IDocument *This, VARIANT vtExitCode, BOOL *bResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   INT_PTR nExitCode=GetVariantValue(&vtExitCode, NULL, FALSE);
 
   if (lpScriptThread && lpScriptThread->pcs)
@@ -2876,7 +2876,7 @@ HRESULT STDMETHODCALLTYPE Document_ScriptExitCode(IDocument *this, VARIANT vtExi
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData, int nOperation, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *This, VARIANT vtData, int nOperation, VARIANT *vtResult)
 {
   UINT_PTR dwData=GetVariantValue(&vtData, NULL, FALSE);
   INT_PTR nResult=0;
@@ -2890,7 +2890,7 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
   }
   else if (nOperation == SH_THISSCRIPT)
   {
-    nResult=(INT_PTR)((IRealDocument *)this)->lpScriptThread;
+    nResult=(INT_PTR)((IRealDocument *)This)->lpScriptThread;
   }
   else if (nOperation == SH_FINDSCRIPT)
   {
@@ -2904,7 +2904,7 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
     SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)dwData;
 
     if (!lpScriptThread)
-      lpScriptThread=((IRealDocument *)this)->lpScriptThread;
+      lpScriptThread=((IRealDocument *)This)->lpScriptThread;
 
     if (lpScriptThread)
     {
@@ -2989,19 +2989,19 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Document_ConnectObject(IDocument *this, IDispatch *objConnectTo, BSTR wpPrefix, VARIANT vtIID, int *nCount)
+HRESULT STDMETHODCALLTYPE Document_ConnectObject(IDocument *This, IDispatch *objConnectTo, BSTR wpPrefix, VARIANT vtIID, int *nCount)
 {
-  return WScript_ConnectObject((IWScript *)this, objConnectTo, wpPrefix, vtIID, nCount);
+  return WScript_ConnectObject((IWScript *)This, objConnectTo, wpPrefix, vtIID, nCount);
 }
 
-HRESULT STDMETHODCALLTYPE Document_DisconnectObject(IDocument *this, IDispatch *objConnectTo)
+HRESULT STDMETHODCALLTYPE Document_DisconnectObject(IDocument *This, IDispatch *objConnectTo)
 {
-  return WScript_DisconnectObject((IWScript *)this, objConnectTo);
+  return WScript_DisconnectObject((IWScript *)This, objConnectTo);
 }
 
-HRESULT STDMETHODCALLTYPE Document_ActiveXThis(IDocument *this, IDispatch *objThis)
+HRESULT STDMETHODCALLTYPE Document_ActiveXThis(IDocument *This, IDispatch *objThis)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
   wchar_t *wpWScript=L"WScript";
   wchar_t *wpScriptFullName=L"ScriptFullName";
   VARIANT vtWScript;
@@ -3047,9 +3047,9 @@ HRESULT STDMETHODCALLTYPE Document_ActiveXThis(IDocument *this, IDispatch *objTh
   return hr;
 }
 
-HWND GetCurEdit(IDocument *this)
+HWND GetCurEdit(IDocument *This)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)This)->lpScriptThread;
 
   if (lpScriptThread && lpScriptThread->hWndPluginEdit)
     return lpScriptThread->hWndPluginEdit;
@@ -3690,7 +3690,7 @@ LRESULT CALLBACK SubclassSend(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WP
 {
   LRESULT lResult=0;
 
-  //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
+  //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from This thread to hWndScriptsThreadDummy.
   if (!lpCallback->hMsgIntStack.nElements || StackGetMessage(&lpCallback->hMsgIntStack, uMsg))
   {
     SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
@@ -3871,7 +3871,7 @@ LRESULT CALLBACK HookCallbackCommonProc(int nCallbackIndex, int nCode, WPARAM wP
 
         if (lpScriptThread->hWndScriptsThreadDummy)
         {
-          //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
+          //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from This thread to hWndScriptsThreadDummy.
           msgs.lpCallback=lpCallback;
           msgs.hWnd=NULL;
           msgs.uMsg=nCode;

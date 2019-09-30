@@ -268,7 +268,7 @@ LRESULT CALLBACK CBTMessageBoxProc(INT nCode, WPARAM wParam, LPARAM lParam)
 
 //// IActiveScriptSite implementation
 
-HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *this, REFIID riid, void **ppv)
+HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *This, const IID * riid, void **ppv)
 {
   SCRIPTTHREAD *lpScriptThread;
 
@@ -277,18 +277,18 @@ HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *this, REFIID riid, v
 
   if (AKD_IsEqualIID(riid, &IID_IUnknown) || AKD_IsEqualIID(riid, &IID_IActiveScriptSite))
   {
-    *ppv=this;
+    *ppv=This;
     AddRef(*ppv);
   }
   else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteWindow))
   {
-    lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
+    lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)This)->lpScriptThread;
     *ppv=&lpScriptThread->MyActiveScriptSiteWindow;
     SiteWindow_AddRef(*ppv);
   }
   else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteDebug))
   {
-    lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
+    lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)This)->lpScriptThread;
     if ((lpScriptThread->dwDebugJIT & JIT_DEBUG) && lpScriptThread->bInitDebugJIT)
     {
       *ppv=&lpScriptThread->MyActiveScriptSiteDebug;
@@ -300,17 +300,17 @@ HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *this, REFIID riid, v
   return S_OK;
 }
 
-ULONG STDMETHODCALLTYPE AddRef(IActiveScriptSite *this)
+ULONG STDMETHODCALLTYPE AddRef(IActiveScriptSite *This)
 {
-  return ++((IRealActiveScriptSite *)this)->dwCount;
+  return ++((IRealActiveScriptSite *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE Release(IActiveScriptSite *this)
+ULONG STDMETHODCALLTYPE Release(IActiveScriptSite *This)
 {
-  return --((IRealActiveScriptSite *)this)->dwCount;
+  return --((IRealActiveScriptSite *)This)->dwCount;
 }
 
-HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *this, LPCOLESTR objectName, DWORD dwReturnMask, IUnknown **objPtr, ITypeInfo **typeInfo)
+HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *This, LPCOLESTR objectName, DWORD dwReturnMask, IUnknown **objPtr, ITypeInfo **typeInfo)
 {
   HRESULT hr=E_FAIL;
 
@@ -349,9 +349,9 @@ HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *this, LPCOLESTR objectN
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *this, IActiveScriptError *scriptError)
+HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *This, IActiveScriptError *scriptError)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)This)->lpScriptThread;
   wchar_t wszScriptFile[MAX_PATH];
   INCLUDEITEM *lpIncludeItem=NULL;
   DWORD dwIncludeIndex=0;
@@ -457,34 +457,34 @@ HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *this, IActiveScriptEr
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE GetLCID(IActiveScriptSite *this, LCID *lcid)
+HRESULT STDMETHODCALLTYPE GetLCID(IActiveScriptSite *This, LCID *lcid)
 {
   *lcid=LOCALE_USER_DEFAULT;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE GetDocVersionString(IActiveScriptSite *this, BSTR *version)
+HRESULT STDMETHODCALLTYPE GetDocVersionString(IActiveScriptSite *This, BSTR *version)
 {
   *version=0;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE OnScriptTerminate(IActiveScriptSite *this, const VARIANT *pvr, const EXCEPINFO *pei)
+HRESULT STDMETHODCALLTYPE OnScriptTerminate(IActiveScriptSite *This, const VARIANT *pvr, const EXCEPINFO *pei)
 {
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE OnStateChange(IActiveScriptSite *this, SCRIPTSTATE state)
+HRESULT STDMETHODCALLTYPE OnStateChange(IActiveScriptSite *This, SCRIPTSTATE state)
 {
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE OnEnterScript(IActiveScriptSite *this)
+HRESULT STDMETHODCALLTYPE OnEnterScript(IActiveScriptSite *This)
 {
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE OnLeaveScript(IActiveScriptSite *this)
+HRESULT STDMETHODCALLTYPE OnLeaveScript(IActiveScriptSite *This)
 {
   return S_OK;
 }
@@ -492,30 +492,30 @@ HRESULT STDMETHODCALLTYPE OnLeaveScript(IActiveScriptSite *this)
 
 //// IActiveScriptSiteWindow implementation
 
-HRESULT STDMETHODCALLTYPE SiteWindow_QueryInterface(IActiveScriptSiteWindow *this, REFIID riid, void **ppv)
+HRESULT STDMETHODCALLTYPE SiteWindow_QueryInterface(IActiveScriptSiteWindow *This, const IID * riid, void **ppv)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteWindow *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteWindow *)This)->lpScriptThread;
 
   return QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
 }
 
-ULONG STDMETHODCALLTYPE SiteWindow_AddRef(IActiveScriptSiteWindow *this)
+ULONG STDMETHODCALLTYPE SiteWindow_AddRef(IActiveScriptSiteWindow *This)
 {
-  return ++((IRealActiveScriptSiteWindow *)this)->dwCount;
+  return ++((IRealActiveScriptSiteWindow *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE SiteWindow_Release(IActiveScriptSiteWindow *this)
+ULONG STDMETHODCALLTYPE SiteWindow_Release(IActiveScriptSiteWindow *This)
 {
-  return --((IRealActiveScriptSiteWindow *)this)->dwCount;
+  return --((IRealActiveScriptSiteWindow *)This)->dwCount;
 }
 
-HRESULT STDMETHODCALLTYPE GetSiteWindow(IActiveScriptSiteWindow *this, HWND *phwnd)
+HRESULT STDMETHODCALLTYPE GetSiteWindow(IActiveScriptSiteWindow *This, HWND *phwnd)
 {
   *phwnd=hMainWnd;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE EnableModeless(IActiveScriptSiteWindow *this, BOOL enable)
+HRESULT STDMETHODCALLTYPE EnableModeless(IActiveScriptSiteWindow *This, BOOL enable)
 {
   return S_OK;
 }
@@ -523,26 +523,26 @@ HRESULT STDMETHODCALLTYPE EnableModeless(IActiveScriptSiteWindow *this, BOOL ena
 
 //// IActiveScriptSiteDebug implementation
 
-HRESULT STDMETHODCALLTYPE SiteDebug_QueryInterface(IActiveScriptSiteDebug *this, REFIID riid, void **ppv)
+HRESULT STDMETHODCALLTYPE SiteDebug_QueryInterface(IActiveScriptSiteDebug *This, const IID * riid, void **ppv)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)This)->lpScriptThread;
 
   return QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
 }
 
-ULONG STDMETHODCALLTYPE SiteDebug_AddRef(IActiveScriptSiteDebug *this)
+ULONG STDMETHODCALLTYPE SiteDebug_AddRef(IActiveScriptSiteDebug *This)
 {
-  return ++((IRealActiveScriptSiteDebug *)this)->dwCount;
+  return ++((IRealActiveScriptSiteDebug *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE SiteDebug_Release(IActiveScriptSiteDebug *this)
+ULONG STDMETHODCALLTYPE SiteDebug_Release(IActiveScriptSiteDebug *This)
 {
-  return --((IRealActiveScriptSiteDebug *)this)->dwCount;
+  return --((IRealActiveScriptSiteDebug *)This)->dwCount;
 }
 
-HRESULT STDMETHODCALLTYPE SiteDebug_GetDocumentContextFromPosition(IActiveScriptSiteDebug *this, MYDWORD_PTR dwSourceContext, ULONG uCharacterOffset, ULONG uNumChars, IDebugDocumentContext **ppsc)
+HRESULT STDMETHODCALLTYPE SiteDebug_GetDocumentContextFromPosition(IActiveScriptSiteDebug *This, MYDWORD_PTR dwSourceContext, ULONG uCharacterOffset, ULONG uNumChars, IDebugDocumentContext **ppsc)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)This)->lpScriptThread;
   ULONG ulStartPos=0;
   HRESULT hr;
 
@@ -559,26 +559,26 @@ HRESULT STDMETHODCALLTYPE SiteDebug_GetDocumentContextFromPosition(IActiveScript
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE SiteDebug_GetApplication(IActiveScriptSiteDebug *this, IDebugApplication **ppda)
+HRESULT STDMETHODCALLTYPE SiteDebug_GetApplication(IActiveScriptSiteDebug *This, IDebugApplication **ppda)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)This)->lpScriptThread;
 
   if (!ppda) return E_POINTER;
   *ppda=lpScriptThread->objDebugApplication;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE SiteDebug_GetRootApplicationNode(IActiveScriptSiteDebug *this, IDebugApplicationNode **ppdanRoot)
+HRESULT STDMETHODCALLTYPE SiteDebug_GetRootApplicationNode(IActiveScriptSiteDebug *This, IDebugApplicationNode **ppdanRoot)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)This)->lpScriptThread;
 
   if (!ppdanRoot) return E_POINTER;
   return lpScriptThread->objDebugDocumentHelper->lpVtbl->GetDebugApplicationNode(lpScriptThread->objDebugDocumentHelper, ppdanRoot);
 }
 
-HRESULT STDMETHODCALLTYPE SiteDebug_OnScriptErrorDebug(IActiveScriptSiteDebug *this, IActiveScriptErrorDebug *pErrorDebug, BOOL *pfEnterDebugger, BOOL *pfCallOnScriptErrorWhenContinuing)
+HRESULT STDMETHODCALLTYPE SiteDebug_OnScriptErrorDebug(IActiveScriptSiteDebug *This, IActiveScriptErrorDebug *pErrorDebug, BOOL *pfEnterDebugger, BOOL *pfCallOnScriptErrorWhenContinuing)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)This)->lpScriptThread;
 
   if (pfEnterDebugger)
   {

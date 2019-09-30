@@ -57,46 +57,46 @@ CALLBACKBUSYNESS g_cbAsm[]={{(INT_PTR)AsmCallback1Proc,  FALSE},
 
 //// ISystemFunction
 
-HRESULT STDMETHODCALLTYPE SystemFunction_QueryInterface(ISystemFunction *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE SystemFunction_QueryInterface(ISystemFunction *This, const IID * vTableGuid, void **ppv)
 {
   if (!ppv) return E_POINTER;
 
   if (AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE SystemFunction_AddRef(ISystemFunction *this)
+ULONG STDMETHODCALLTYPE SystemFunction_AddRef(ISystemFunction *This)
 {
-  return ++((IRealSystemFunction *)this)->dwCount;
+  return ++((IRealSystemFunction *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE SystemFunction_Release(ISystemFunction *this)
+ULONG STDMETHODCALLTYPE SystemFunction_Release(ISystemFunction *This)
 {
-  if (--((IRealSystemFunction *)this)->dwCount == 0)
+  if (--((IRealSystemFunction *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealSystemFunction *)this)->dwCount;
+  return ((IRealSystemFunction *)This)->dwCount;
 }
 
 
 //// IDispatch
 
-HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfoCount(ISystemFunction *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfoCount(ISystemFunction *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfo(ISystemFunction *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfo(ISystemFunction *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   HRESULT hr;
 
@@ -120,7 +120,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfo(ISystemFunction *this, UINT
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_GetIDsOfNames(ISystemFunction *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE SystemFunction_GetIDsOfNames(ISystemFunction *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   if (!g_SystemFunctionTypeInfo)
   {
@@ -132,7 +132,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_GetIDsOfNames(ISystemFunction *this, RE
   return DispGetIDsOfNames(g_SystemFunctionTypeInfo, rgszNames, cNames, rgdispid);
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
   if (!AKD_IsEqualIID(riid, &IID_NULL))
     return DISP_E_UNKNOWNINTERFACE;
@@ -144,15 +144,15 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *this, DISPID di
     if ((hr=LoadTypeInfoFromFile(NULL, NULL)) != S_OK)
       return hr;
   }
-  return DispInvoke(this, g_SystemFunctionTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
+  return DispInvoke(This, g_SystemFunctionTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
 }
 
 
 //// ISystemFunction methods
 
-HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VARIANT vtParameter)
+HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *This, VARIANT vtParameter)
 {
-  SYSPARAMSTACK *hStack=&((IRealSystemFunction *)this)->sf.hSysParamStack;
+  SYSPARAMSTACK *hStack=&((IRealSystemFunction *)This)->sf.hSysParamStack;
   SYSPARAMITEM *lpSysParam;
   VARIANT *pvtParameter=&vtParameter;
 
@@ -166,9 +166,9 @@ HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VAR
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtDllFunction, SAFEARRAY **psa, VARIANT *vtResult)
+HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *This, VARIANT vtDllFunction, SAFEARRAY **psa, VARIANT *vtResult)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealSystemFunction *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealSystemFunction *)This)->lpScriptThread;
   VARIANT *pvtDllFunction=&vtDllFunction;
   SYSTEMFUNCTION *sf;
   HMODULE hModule=NULL;
@@ -182,7 +182,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtD
   BOOL bLoadLibrary=FALSE;
   int i;
 
-  sf=&((IRealSystemFunction *)this)->sf;
+  sf=&((IRealSystemFunction *)This)->sf;
   dwDllFunction=GetVariantValue(pvtDllFunction, &pvtDllFunction, FALSE);
   if (pvtDllFunction->vt == VT_BSTR && pvtDllFunction->bstrVal && pvtDllFunction->bstrVal[0])
     wpDllFunction=(wchar_t *)dwDllFunction;
@@ -204,7 +204,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtD
       for (dwElement=0; dwElement < dwElementSum; ++dwElement)
       {
         pvtParameter=(VARIANT *)(lpData + dwElement * sizeof(VARIANT));
-        SystemFunction_AddParameter(this, *pvtParameter);
+        SystemFunction_AddParameter(This, *pvtParameter);
       }
     }
   }
@@ -268,16 +268,16 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtD
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *this, DWORD *dwLastError)
+HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *This, DWORD *dwLastError)
 {
-  *dwLastError=((IRealSystemFunction *)this)->sf.dwLastError;
+  *dwLastError=((IRealSystemFunction *)This)->sf.dwLastError;
 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction)
+HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *This, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealSystemFunction *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealSystemFunction *)This)->lpScriptThread;
   wchar_t *wpLength=L"length";
   DISPID dispidCallbackName;
   DISPPARAMS dispp;
@@ -352,7 +352,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this,
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *this, IDispatch *objFunction)
+HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *This, IDispatch *objFunction)
 {
   CALLBACKITEM *lpCallback;
   int nBusyIndex;
@@ -722,7 +722,7 @@ LRESULT AsmCallbackHelper(INT_PTR *lpnFirstArg, int nCallbackIndex, int *lpnArgS
     dispp.cArgs=nArgCount;
     dispp.rgvarg=vtArg;
 
-    //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
+    //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from This thread to hWndScriptsThreadDummy.
     msgs.lpCallback=lpSysCallback;
     msgs.lParam=(LPARAM)&dispp;
     lResult=SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_CALLBACKSEND, 0, (LPARAM)&msgs);

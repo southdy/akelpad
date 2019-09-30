@@ -22,46 +22,46 @@ const IWArgumentsVtbl MyIWArgumentsVtbl={
 
 //// IWArguments
 
-HRESULT STDMETHODCALLTYPE WArguments_QueryInterface(IWArguments *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE WArguments_QueryInterface(IWArguments *This, const IID * vTableGuid, void **ppv)
 {
   if (!ppv) return E_POINTER;
 
   if (AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE WArguments_AddRef(IWArguments *this)
+ULONG STDMETHODCALLTYPE WArguments_AddRef(IWArguments *This)
 {
-  return ++((IRealWArguments *)this)->dwCount;
+  return ++((IRealWArguments *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE WArguments_Release(IWArguments *this)
+ULONG STDMETHODCALLTYPE WArguments_Release(IWArguments *This)
 {
-  if (--((IRealWArguments *)this)->dwCount == 0)
+  if (--((IRealWArguments *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealWArguments *)this)->dwCount;
+  return ((IRealWArguments *)This)->dwCount;
 }
 
 
 //// IDispatch
 
-HRESULT STDMETHODCALLTYPE WArguments_GetTypeInfoCount(IWArguments *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE WArguments_GetTypeInfoCount(IWArguments *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE WArguments_GetTypeInfo(IWArguments *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE WArguments_GetTypeInfo(IWArguments *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   HRESULT hr;
 
@@ -85,7 +85,7 @@ HRESULT STDMETHODCALLTYPE WArguments_GetTypeInfo(IWArguments *this, UINT itinfo,
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WArguments_GetIDsOfNames(IWArguments *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE WArguments_GetIDsOfNames(IWArguments *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   if (!g_WArgumentsTypeInfo)
   {
@@ -97,7 +97,7 @@ HRESULT STDMETHODCALLTYPE WArguments_GetIDsOfNames(IWArguments *this, REFIID rii
   return DispGetIDsOfNames(g_WArgumentsTypeInfo, rgszNames, cNames, rgdispid);
 }
 
-HRESULT STDMETHODCALLTYPE WArguments_Invoke(IWArguments *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE WArguments_Invoke(IWArguments *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
   if (!AKD_IsEqualIID(riid, &IID_NULL))
     return DISP_E_UNKNOWNINTERFACE;
@@ -109,15 +109,15 @@ HRESULT STDMETHODCALLTYPE WArguments_Invoke(IWArguments *this, DISPID dispid, RE
     if ((hr=LoadTypeInfoFromFile(NULL, NULL)) != S_OK)
       return hr;
   }
-  return DispInvoke(this, g_WArgumentsTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
+  return DispInvoke(This, g_WArgumentsTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
 }
 
 
 //// IWArguments methods
 
-HRESULT STDMETHODCALLTYPE WArguments_Item(IWArguments *this, int nIndex, BSTR *wpItem)
+HRESULT STDMETHODCALLTYPE WArguments_Item(IWArguments *This, int nIndex, BSTR *wpItem)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWArguments *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWArguments *)This)->lpScriptThread;
   SCRIPTARG *lpScriptArg;
   HRESULT hr=NOERROR;
 
@@ -134,17 +134,17 @@ HRESULT STDMETHODCALLTYPE WArguments_Item(IWArguments *this, int nIndex, BSTR *w
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WArguments_Length(IWArguments *this, int *nItems)
+HRESULT STDMETHODCALLTYPE WArguments_Length(IWArguments *This, int *nItems)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWArguments *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWArguments *)This)->lpScriptThread;
 
   *nItems=lpScriptThread->hArgStack.nElements;
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE WArguments_Count(IWArguments *this, int *nItems)
+HRESULT STDMETHODCALLTYPE WArguments_Count(IWArguments *This, int *nItems)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWArguments *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWArguments *)This)->lpScriptThread;
 
   *nItems=lpScriptThread->hArgStack.nElements;
   return NOERROR;

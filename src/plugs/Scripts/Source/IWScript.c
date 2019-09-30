@@ -42,44 +42,44 @@ const IDispatchVtbl MyISinkVtbl={
 
 //// IWScript
 
-HRESULT STDMETHODCALLTYPE WScript_QueryInterface(IWScript *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE WScript_QueryInterface(IWScript *This, const IID * vTableGuid, void **ppv)
 {
   if (AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IWScript) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE WScript_AddRef(IWScript *this)
+ULONG STDMETHODCALLTYPE WScript_AddRef(IWScript *This)
 {
-  return ++((IRealWScript *)this)->dwCount;
+  return ++((IRealWScript *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE WScript_Release(IWScript *this)
+ULONG STDMETHODCALLTYPE WScript_Release(IWScript *This)
 {
-  if (--((IRealWScript *)this)->dwCount == 0)
+  if (--((IRealWScript *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealWScript *)this)->dwCount;
+  return ((IRealWScript *)This)->dwCount;
 }
 
 
 //// IDispatch
 
-HRESULT STDMETHODCALLTYPE WScript_GetTypeInfoCount(IWScript *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE WScript_GetTypeInfoCount(IWScript *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_GetTypeInfo(IWScript *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE WScript_GetTypeInfo(IWScript *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   HRESULT hr;
 
@@ -103,7 +103,7 @@ HRESULT STDMETHODCALLTYPE WScript_GetTypeInfo(IWScript *this, UINT itinfo, LCID 
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_GetIDsOfNames(IWScript *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE WScript_GetIDsOfNames(IWScript *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   if (!g_WScriptTypeInfo)
   {
@@ -115,7 +115,7 @@ HRESULT STDMETHODCALLTYPE WScript_GetIDsOfNames(IWScript *this, REFIID riid, LPO
   return DispGetIDsOfNames(g_WScriptTypeInfo, rgszNames, cNames, rgdispid);
 }
 
-HRESULT STDMETHODCALLTYPE WScript_Invoke(IWScript *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE WScript_Invoke(IWScript *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
   if (!AKD_IsEqualIID(riid, &IID_NULL))
     return DISP_E_UNKNOWNINTERFACE;
@@ -127,15 +127,15 @@ HRESULT STDMETHODCALLTYPE WScript_Invoke(IWScript *this, DISPID dispid, REFIID r
     if ((hr=LoadTypeInfoFromFile(NULL, NULL)) != S_OK)
       return hr;
   }
-  return DispInvoke(this, g_WScriptTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
+  return DispInvoke(This, g_WScriptTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
 }
 
 
 //// IWScript methods
 
-HRESULT STDMETHODCALLTYPE WScript_Arguments(IWScript *this, IDispatch **objWArguments)
+HRESULT STDMETHODCALLTYPE WScript_Arguments(IWScript *This, IDispatch **objWArguments)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
   IRealWArguments *lpWArguments;
 
   if (!objWArguments) return E_POINTER;
@@ -154,9 +154,9 @@ HRESULT STDMETHODCALLTYPE WScript_Arguments(IWScript *this, IDispatch **objWArgu
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_ScriptFullName(IWScript *this, BSTR *wpScriptFullName)
+HRESULT STDMETHODCALLTYPE WScript_ScriptFullName(IWScript *This, BSTR *wpScriptFullName)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
   HRESULT hr=NOERROR;
 
   if (!(*wpScriptFullName=SysAllocString(lpScriptThread->wszScriptFile)))
@@ -165,9 +165,9 @@ HRESULT STDMETHODCALLTYPE WScript_ScriptFullName(IWScript *this, BSTR *wpScriptF
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_ScriptName(IWScript *this, BSTR *wpScriptName)
+HRESULT STDMETHODCALLTYPE WScript_ScriptName(IWScript *This, BSTR *wpScriptName)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
   HRESULT hr=NOERROR;
 
   if (!(*wpScriptName=SysAllocString(lpScriptThread->wszScriptName)))
@@ -176,9 +176,9 @@ HRESULT STDMETHODCALLTYPE WScript_ScriptName(IWScript *this, BSTR *wpScriptName)
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_ScriptBaseName(IWScript *this, BSTR *wpScriptBaseName)
+HRESULT STDMETHODCALLTYPE WScript_ScriptBaseName(IWScript *This, BSTR *wpScriptBaseName)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
   HRESULT hr=NOERROR;
 
   if (!(*wpScriptBaseName=SysAllocString(lpScriptThread->wszScriptBaseName)))
@@ -187,7 +187,7 @@ HRESULT STDMETHODCALLTYPE WScript_ScriptBaseName(IWScript *this, BSTR *wpScriptB
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_FullName(IWScript *this, BSTR *wpDllFullName)
+HRESULT STDMETHODCALLTYPE WScript_FullName(IWScript *This, BSTR *wpDllFullName)
 {
   HRESULT hr=NOERROR;
 
@@ -198,7 +198,7 @@ HRESULT STDMETHODCALLTYPE WScript_FullName(IWScript *this, BSTR *wpDllFullName)
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_Path(IWScript *this, BSTR *wpDllPath)
+HRESULT STDMETHODCALLTYPE WScript_Path(IWScript *This, BSTR *wpDllPath)
 {
   HRESULT hr=NOERROR;
 
@@ -208,7 +208,7 @@ HRESULT STDMETHODCALLTYPE WScript_Path(IWScript *this, BSTR *wpDllPath)
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_Name(IWScript *this, BSTR *wpDllName)
+HRESULT STDMETHODCALLTYPE WScript_Name(IWScript *This, BSTR *wpDllName)
 {
   HRESULT hr=NOERROR;
 
@@ -219,29 +219,29 @@ HRESULT STDMETHODCALLTYPE WScript_Name(IWScript *this, BSTR *wpDllName)
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_Echo(IWScript *this, BSTR wpText)
+HRESULT STDMETHODCALLTYPE WScript_Echo(IWScript *This, BSTR wpText)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
 
   MessageBoxW(hMainWnd, wpText, lpScriptThread->wszScriptName, MB_OK);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_Sleep(IWScript *this, int nTime)
+HRESULT STDMETHODCALLTYPE WScript_Sleep(IWScript *This, int nTime)
 {
   Sleep(nTime);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_Quit(IWScript *this, int nErrorCode)
+HRESULT STDMETHODCALLTYPE WScript_Quit(IWScript *This, int nErrorCode)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
 
   lpScriptThread->bQuiting=TRUE;
 
   if (!bOldWindows)
   {
-    //On Win9x this will cause crash, but it is necessary for VBScript code:
+    //On Win9x This will cause crash, but it is necessary for VBScript code:
     //  On Error Resume Next
     //  WScript.Quit
     //  MsgBox "Not quit"
@@ -254,9 +254,9 @@ HRESULT STDMETHODCALLTYPE WScript_Quit(IWScript *this, int nErrorCode)
   return SCRIPT_E_PROPAGATE;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_ConnectObject(IWScript *this, IDispatch *objConnectTo, BSTR wpPrefix, VARIANT vtIID, int *nCount)
+HRESULT STDMETHODCALLTYPE WScript_ConnectObject(IWScript *This, IDispatch *objConnectTo, BSTR wpPrefix, VARIANT vtIID, int *nCount)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
   VARIANT *pvtIID=&vtIID;
   IID *lpIID;
   SINKITEM *lpSinkItem;
@@ -355,9 +355,9 @@ HRESULT STDMETHODCALLTYPE WScript_ConnectObject(IWScript *this, IDispatch *objCo
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE WScript_DisconnectObject(IWScript *this, IDispatch *objConnectTo)
+HRESULT STDMETHODCALLTYPE WScript_DisconnectObject(IWScript *This, IDispatch *objConnectTo)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)this)->lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealWScript *)This)->lpScriptThread;
   SINKITEM *lpSinkItem;
   CONNECTITEM *lpConnectItem;
   IRealSink *objISink;
@@ -447,42 +447,42 @@ void StackFreeConnections(CONNECTSTACK *hStack)
 
 //// Events
 
-HRESULT STDMETHODCALLTYPE Sink_QueryInterface(IDispatch *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE Sink_QueryInterface(IDispatch *This, const IID * vTableGuid, void **ppv)
 {
-  if (((IRealSink *)this)->piidConnect && AKD_IsEqualIID(vTableGuid, ((IRealSink *)this)->piidConnect) ||
+  if (((IRealSink *)This)->piidConnect && AKD_IsEqualIID(vTableGuid, ((IRealSink *)This)->piidConnect) ||
       AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE Sink_AddRef(IDispatch *this)
+ULONG STDMETHODCALLTYPE Sink_AddRef(IDispatch *This)
 {
-  return ++((IRealSink *)this)->dwCount;
+  return ++((IRealSink *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE Sink_Release(IDispatch *this)
+ULONG STDMETHODCALLTYPE Sink_Release(IDispatch *This)
 {
-  if (--((IRealSink *)this)->dwCount == 0)
+  if (--((IRealSink *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealSink *)this)->dwCount;
+  return ((IRealSink *)This)->dwCount;
 }
 
-HRESULT STDMETHODCALLTYPE Sink_GetTypeInfoCount(IDispatch *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE Sink_GetTypeInfoCount(IDispatch *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE Sink_GetTypeInfo(IDispatch *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE Sink_GetTypeInfo(IDispatch *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   *pTypeInfo=NULL;
 
@@ -492,14 +492,14 @@ HRESULT STDMETHODCALLTYPE Sink_GetTypeInfo(IDispatch *this, UINT itinfo, LCID lc
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE Sink_GetIDsOfNames(IDispatch *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE Sink_GetIDsOfNames(IDispatch *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE Sink_Invoke(IDispatch *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE Sink_Invoke(IDispatch *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
-  IRealSink *objRealSink=(IRealSink *)this;
+  IRealSink *objRealSink=(IRealSink *)This;
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)objRealSink->lpScriptThread;
   ITypeLib *objTypeLib=NULL;
   ITypeInfo *objTypeInfo;

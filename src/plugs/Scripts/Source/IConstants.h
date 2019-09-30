@@ -8,15 +8,15 @@
 DECLARE_INTERFACE_ (INTERFACE, IDispatch)
 {
   // IUnknown
-  STDMETHOD_(HRESULT, Constants_QueryInterface)(THIS_ REFIID, void **) PURE;
+  STDMETHOD_(HRESULT, Constants_QueryInterface)(THIS_ const IID *, void **) PURE;
   STDMETHOD_(ULONG, Constants_AddRef)(THIS) PURE;
   STDMETHOD_(ULONG, Constants_Release)(THIS) PURE;
 
   // IDispatch
   STDMETHOD_(HRESULT, Constants_GetTypeInfoCount)(THIS_ UINT *) PURE;
   STDMETHOD_(HRESULT, Constants_GetTypeInfo)(THIS_ UINT, LCID, ITypeInfo **) PURE;
-  STDMETHOD_(HRESULT, Constants_GetIDsOfNames)(THIS_ REFIID, LPOLESTR *, UINT, LCID, DISPID *) PURE;
-  STDMETHOD_(HRESULT, Constants_Invoke)(THIS_ DISPID, REFIID, LCID, WORD, DISPPARAMS *, VARIANT *, EXCEPINFO *, UINT *) PURE;
+  STDMETHOD_(HRESULT, Constants_GetIDsOfNames)(THIS_ const IID *, LPOLESTR *, UINT, LCID, DISPID *) PURE;
+  STDMETHOD_(HRESULT, Constants_Invoke)(THIS_ DISPID, const IID *, LCID, WORD, DISPPARAMS *, VARIANT *, EXCEPINFO *, UINT *) PURE;
 
   STDMETHOD_(HRESULT, Constants_TCHAR)(THIS_ BSTR *) PURE;
   STDMETHOD_(HRESULT, Constants_vbTCHAR)(THIS_ BSTR *) PURE;
@@ -41,22 +41,22 @@ extern ITypeInfo *g_ConstantsTypeInfo;
 extern const IConstantsVtbl MyIConstantsVtbl;
 
 //Functions prototypes
-HRESULT STDMETHODCALLTYPE Constants_QueryInterface(IConstants *this, REFIID vTableGuid, void **ppv);
-ULONG STDMETHODCALLTYPE Constants_AddRef(IConstants *this);
-ULONG STDMETHODCALLTYPE Constants_Release(IConstants *this);
+HRESULT STDMETHODCALLTYPE Constants_QueryInterface(IConstants *This, const IID * vTableGuid, void **ppv);
+ULONG STDMETHODCALLTYPE Constants_AddRef(IConstants *This);
+ULONG STDMETHODCALLTYPE Constants_Release(IConstants *This);
 
-HRESULT STDMETHODCALLTYPE Constants_GetTypeInfoCount(IConstants *this, UINT *pCount);
-HRESULT STDMETHODCALLTYPE Constants_GetTypeInfo(IConstants *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo);
-HRESULT STDMETHODCALLTYPE Constants_GetIDsOfNames(IConstants *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid);
-HRESULT STDMETHODCALLTYPE Constants_Invoke(IConstants *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr);
+HRESULT STDMETHODCALLTYPE Constants_GetTypeInfoCount(IConstants *This, UINT *pCount);
+HRESULT STDMETHODCALLTYPE Constants_GetTypeInfo(IConstants *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo);
+HRESULT STDMETHODCALLTYPE Constants_GetIDsOfNames(IConstants *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid);
+HRESULT STDMETHODCALLTYPE Constants_Invoke(IConstants *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr);
 
-HRESULT STDMETHODCALLTYPE Constants_TCHAR(IConstants *this, BSTR *wpChar);
-HRESULT STDMETHODCALLTYPE Constants_vbTCHAR(IConstants *this, BSTR *wpChar);
-HRESULT STDMETHODCALLTYPE Constants_TSTR(IConstants *this, int *nStr);
-HRESULT STDMETHODCALLTYPE Constants_vbTSTR(IConstants *this, int *nStr);
-HRESULT STDMETHODCALLTYPE Constants_TSIZE(IConstants *this, int *nSize);
-HRESULT STDMETHODCALLTYPE Constants_vbTSIZE(IConstants *this, int *nSize);
-HRESULT STDMETHODCALLTYPE Constants_X64(IConstants *this, BOOL *b64);
-HRESULT STDMETHODCALLTYPE Constants_vbX64(IConstants *this, BOOL *b64);
+HRESULT STDMETHODCALLTYPE Constants_TCHAR(IConstants *This, BSTR *wpChar);
+HRESULT STDMETHODCALLTYPE Constants_vbTCHAR(IConstants *This, BSTR *wpChar);
+HRESULT STDMETHODCALLTYPE Constants_TSTR(IConstants *This, int *nStr);
+HRESULT STDMETHODCALLTYPE Constants_vbTSTR(IConstants *This, int *nStr);
+HRESULT STDMETHODCALLTYPE Constants_TSIZE(IConstants *This, int *nSize);
+HRESULT STDMETHODCALLTYPE Constants_vbTSIZE(IConstants *This, int *nSize);
+HRESULT STDMETHODCALLTYPE Constants_X64(IConstants *This, BOOL *b64);
+HRESULT STDMETHODCALLTYPE Constants_vbX64(IConstants *This, BOOL *b64);
 
 #endif

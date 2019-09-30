@@ -23,46 +23,46 @@ const IGlobalVtbl MyIGlobalVtbl={
 
 //// IGlobal
 
-HRESULT STDMETHODCALLTYPE Global_QueryInterface(IGlobal *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE Global_QueryInterface(IGlobal *This, const IID * vTableGuid, void **ppv)
 {
   if (!ppv) return E_POINTER;
 
   if (AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE Global_AddRef(IGlobal *this)
+ULONG STDMETHODCALLTYPE Global_AddRef(IGlobal *This)
 {
-  return ++((IRealGlobal *)this)->dwCount;
+  return ++((IRealGlobal *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE Global_Release(IGlobal *this)
+ULONG STDMETHODCALLTYPE Global_Release(IGlobal *This)
 {
-  if (--((IRealGlobal *)this)->dwCount == 0)
+  if (--((IRealGlobal *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealGlobal *)this)->dwCount;
+  return ((IRealGlobal *)This)->dwCount;
 }
 
 
 //// IDispatch
 
-HRESULT STDMETHODCALLTYPE Global_GetTypeInfoCount(IGlobal *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE Global_GetTypeInfoCount(IGlobal *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE Global_GetTypeInfo(IGlobal *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE Global_GetTypeInfo(IGlobal *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   HRESULT hr;
 
@@ -86,7 +86,7 @@ HRESULT STDMETHODCALLTYPE Global_GetTypeInfo(IGlobal *this, UINT itinfo, LCID lc
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Global_GetIDsOfNames(IGlobal *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE Global_GetIDsOfNames(IGlobal *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   if (!g_GlobalTypeInfo)
   {
@@ -98,7 +98,7 @@ HRESULT STDMETHODCALLTYPE Global_GetIDsOfNames(IGlobal *this, REFIID riid, LPOLE
   return DispGetIDsOfNames(g_GlobalTypeInfo, rgszNames, cNames, rgdispid);
 }
 
-HRESULT STDMETHODCALLTYPE Global_Invoke(IGlobal *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE Global_Invoke(IGlobal *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
   if (!AKD_IsEqualIID(riid, &IID_NULL))
     return DISP_E_UNKNOWNINTERFACE;
@@ -110,10 +110,10 @@ HRESULT STDMETHODCALLTYPE Global_Invoke(IGlobal *this, DISPID dispid, REFIID rii
     if ((hr=LoadTypeInfoFromFile(NULL, NULL)) != S_OK)
       return hr;
   }
-  return DispInvoke(this, g_GlobalTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
+  return DispInvoke(This, g_GlobalTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
 }
 
-HRESULT STDMETHODCALLTYPE Global_PtrAdd(IGlobal *this, VARIANT vtPointer1, VARIANT vtPointer2, VARIANT *vtPointerResult)
+HRESULT STDMETHODCALLTYPE Global_PtrAdd(IGlobal *This, VARIANT vtPointer1, VARIANT vtPointer2, VARIANT *vtPointerResult)
 {
   INT_PTR nPointer1=GetVariantInt(&vtPointer1, NULL);
   INT_PTR nPointer2=GetVariantInt(&vtPointer2, NULL);
@@ -122,12 +122,12 @@ HRESULT STDMETHODCALLTYPE Global_PtrAdd(IGlobal *this, VARIANT vtPointer1, VARIA
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Global_vbPtrAdd(IGlobal *this, VARIANT vtPointer1, VARIANT vtPointer2, VARIANT *vtPointerResult)
+HRESULT STDMETHODCALLTYPE Global_vbPtrAdd(IGlobal *This, VARIANT vtPointer1, VARIANT vtPointer2, VARIANT *vtPointerResult)
 {
-  return Global_PtrAdd(this, vtPointer1, vtPointer2, vtPointerResult);
+  return Global_PtrAdd(This, vtPointer1, vtPointer2, vtPointerResult);
 }
 
-HRESULT STDMETHODCALLTYPE Global_PtrMath(IGlobal *this, VARIANT vtPointer1, BSTR wpSign, VARIANT vtPointer2, VARIANT *vtPointerResult)
+HRESULT STDMETHODCALLTYPE Global_PtrMath(IGlobal *This, VARIANT vtPointer1, BSTR wpSign, VARIANT vtPointer2, VARIANT *vtPointerResult)
 {
   INT_PTR nPointer1=GetVariantInt(&vtPointer1, NULL);
   INT_PTR nPointer2=GetVariantInt(&vtPointer2, NULL);
@@ -172,7 +172,7 @@ HRESULT STDMETHODCALLTYPE Global_PtrMath(IGlobal *this, VARIANT vtPointer1, BSTR
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Global_vbPtrMath(IGlobal *this, VARIANT vtPointer1, BSTR wpSign, VARIANT vtPointer2, VARIANT *vtPointerResult)
+HRESULT STDMETHODCALLTYPE Global_vbPtrMath(IGlobal *This, VARIANT vtPointer1, BSTR wpSign, VARIANT vtPointer2, VARIANT *vtPointerResult)
 {
-  return Global_PtrMath(this, vtPointer1, wpSign, vtPointer2, vtPointerResult);
+  return Global_PtrMath(This, vtPointer1, wpSign, vtPointer2, vtPointerResult);
 }

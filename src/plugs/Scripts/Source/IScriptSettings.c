@@ -24,46 +24,46 @@ const IScriptSettingsVtbl MyIScriptSettingsVtbl={
 
 //// IScriptSettings
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_QueryInterface(IScriptSettings *this, REFIID vTableGuid, void **ppv)
+HRESULT STDMETHODCALLTYPE ScriptSettings_QueryInterface(IScriptSettings *This, const IID * vTableGuid, void **ppv)
 {
   if (!ppv) return E_POINTER;
 
   if (AKD_IsEqualIID(vTableGuid, &IID_IUnknown) || AKD_IsEqualIID(vTableGuid, &IID_IDispatch))
   {
-    *ppv=this;
-    this->lpVtbl->AddRef(this);
+    *ppv=This;
+    This->lpVtbl->AddRef(This);
     return NOERROR;
   }
   *ppv=NULL;
   return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE ScriptSettings_AddRef(IScriptSettings *this)
+ULONG STDMETHODCALLTYPE ScriptSettings_AddRef(IScriptSettings *This)
 {
-  return ++((IRealScriptSettings *)this)->dwCount;
+  return ++((IRealScriptSettings *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE ScriptSettings_Release(IScriptSettings *this)
+ULONG STDMETHODCALLTYPE ScriptSettings_Release(IScriptSettings *This)
 {
-  if (--((IRealScriptSettings *)this)->dwCount == 0)
+  if (--((IRealScriptSettings *)This)->dwCount == 0)
   {
-    GlobalFree(this);
+    GlobalFree(This);
     InterlockedDecrement(&g_nObjs);
     return 0;
   }
-  return ((IRealScriptSettings *)this)->dwCount;
+  return ((IRealScriptSettings *)This)->dwCount;
 }
 
 
 //// IDispatch
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_GetTypeInfoCount(IScriptSettings *this, UINT *pCount)
+HRESULT STDMETHODCALLTYPE ScriptSettings_GetTypeInfoCount(IScriptSettings *This, UINT *pCount)
 {
   *pCount=1;
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_GetTypeInfo(IScriptSettings *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
+HRESULT STDMETHODCALLTYPE ScriptSettings_GetTypeInfo(IScriptSettings *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo)
 {
   HRESULT hr;
 
@@ -87,7 +87,7 @@ HRESULT STDMETHODCALLTYPE ScriptSettings_GetTypeInfo(IScriptSettings *this, UINT
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_GetIDsOfNames(IScriptSettings *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
+HRESULT STDMETHODCALLTYPE ScriptSettings_GetIDsOfNames(IScriptSettings *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid)
 {
   if (!g_ScriptSettingsTypeInfo)
   {
@@ -99,7 +99,7 @@ HRESULT STDMETHODCALLTYPE ScriptSettings_GetIDsOfNames(IScriptSettings *this, RE
   return DispGetIDsOfNames(g_ScriptSettingsTypeInfo, rgszNames, cNames, rgdispid);
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_Invoke(IScriptSettings *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
+HRESULT STDMETHODCALLTYPE ScriptSettings_Invoke(IScriptSettings *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr)
 {
   if (!AKD_IsEqualIID(riid, &IID_NULL))
     return DISP_E_UNKNOWNINTERFACE;
@@ -111,16 +111,16 @@ HRESULT STDMETHODCALLTYPE ScriptSettings_Invoke(IScriptSettings *this, DISPID di
     if ((hr=LoadTypeInfoFromFile(NULL, NULL)) != S_OK)
       return hr;
   }
-  return DispInvoke(this, g_ScriptSettingsTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
+  return DispInvoke(This, g_ScriptSettingsTypeInfo, dispid, wFlags, params, result, pexcepinfo, puArgErr);
 }
 
 
 //// IScriptSettings methods
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_Begin(IScriptSettings *this, BSTR wpScriptName, DWORD dwFlags, VARIANT *vtOptions)
+HRESULT STDMETHODCALLTYPE ScriptSettings_Begin(IScriptSettings *This, BSTR wpScriptName, DWORD dwFlags, VARIANT *vtOptions)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealScriptSettings *)this)->lpScriptThread;
-  HANDLE *lphOptions=&((IRealScriptSettings *)this)->hOptions;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealScriptSettings *)This)->lpScriptThread;
+  HANDLE *lphOptions=&((IRealScriptSettings *)This)->hOptions;
 
   if (!wpScriptName || !*wpScriptName)
     wpScriptName=lpScriptThread->wszScriptBaseName;
@@ -129,9 +129,9 @@ HRESULT STDMETHODCALLTYPE ScriptSettings_Begin(IScriptSettings *this, BSTR wpScr
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_Read(IScriptSettings *this, VARIANT vtOptionName, DWORD dwType, VARIANT vtDefault, VARIANT *vtData)
+HRESULT STDMETHODCALLTYPE ScriptSettings_Read(IScriptSettings *This, VARIANT vtOptionName, DWORD dwType, VARIANT vtDefault, VARIANT *vtData)
 {
-  HANDLE hOptions=((IRealScriptSettings *)this)->hOptions;
+  HANDLE hOptions=((IRealScriptSettings *)This)->hOptions;
   const wchar_t *wpOptionName;
   unsigned char *lpData;
   INT_PTR nDataSize;
@@ -191,9 +191,9 @@ HRESULT STDMETHODCALLTYPE ScriptSettings_Read(IScriptSettings *this, VARIANT vtO
   return hr;
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_Write(IScriptSettings *this, BSTR wpOptionName, DWORD dwType, VARIANT vtData, int nDataSize, int *nResult)
+HRESULT STDMETHODCALLTYPE ScriptSettings_Write(IScriptSettings *This, BSTR wpOptionName, DWORD dwType, VARIANT vtData, int nDataSize, int *nResult)
 {
-  HANDLE hOptions=((IRealScriptSettings *)this)->hOptions;
+  HANDLE hOptions=((IRealScriptSettings *)This)->hOptions;
   unsigned char *lpData=NULL;
   VARIANT *pvtData=&vtData;
   UINT_PTR dwNumber=0;
@@ -238,17 +238,17 @@ HRESULT STDMETHODCALLTYPE ScriptSettings_Write(IScriptSettings *this, BSTR wpOpt
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_Delete(IScriptSettings *this, BSTR wpOptionName, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE ScriptSettings_Delete(IScriptSettings *This, BSTR wpOptionName, BOOL *bResult)
 {
-  HANDLE hOptions=((IRealScriptSettings *)this)->hOptions;
+  HANDLE hOptions=((IRealScriptSettings *)This)->hOptions;
 
   *bResult=(BOOL)WideOption(hOptions, wpOptionName, PO_REMOVE, NULL, 0);
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE ScriptSettings_End(IScriptSettings *this, BOOL *bResult)
+HRESULT STDMETHODCALLTYPE ScriptSettings_End(IScriptSettings *This, BOOL *bResult)
 {
-  HANDLE *lphOptions=&((IRealScriptSettings *)this)->hOptions;
+  HANDLE *lphOptions=&((IRealScriptSettings *)This)->hOptions;
 
   *bResult=(BOOL)SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)*lphOptions, 0);
   *lphOptions=NULL;

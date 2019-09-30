@@ -8,15 +8,15 @@
 DECLARE_INTERFACE_ (INTERFACE, IDispatch)
 {
   // IUnknown
-  STDMETHOD_(HRESULT, SystemFunction_QueryInterface)(THIS_ REFIID, void **) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_QueryInterface)(THIS_ const IID *, void **) PURE;
   STDMETHOD_(ULONG, SystemFunction_AddRef)(THIS) PURE;
   STDMETHOD_(ULONG, SystemFunction_Release)(THIS) PURE;
 
   // IDispatch
   STDMETHOD_(HRESULT, SystemFunction_GetTypeInfoCount)(THIS_ UINT *) PURE;
   STDMETHOD_(HRESULT, SystemFunction_GetTypeInfo)(THIS_ UINT, LCID, ITypeInfo **) PURE;
-  STDMETHOD_(HRESULT, SystemFunction_GetIDsOfNames)(THIS_ REFIID, LPOLESTR *, UINT, LCID, DISPID *) PURE;
-  STDMETHOD_(HRESULT, SystemFunction_Invoke)(THIS_ DISPID, REFIID, LCID, WORD, DISPPARAMS *, VARIANT *, EXCEPINFO *, UINT *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_GetIDsOfNames)(THIS_ const IID *, LPOLESTR *, UINT, LCID, DISPID *) PURE;
+  STDMETHOD_(HRESULT, SystemFunction_Invoke)(THIS_ DISPID, const IID *, LCID, WORD, DISPPARAMS *, VARIANT *, EXCEPINFO *, UINT *) PURE;
 
   // ISystemFunction methods
   STDMETHOD_(HRESULT, SystemFunction_AddParameter)(THIS_ VARIANT) PURE;
@@ -62,20 +62,20 @@ extern CALLBACKSTACK g_hSysCallbackStack;
 extern const ISystemFunctionVtbl MyISystemFunctionVtbl;
 
 //Functions prototypes
-HRESULT STDMETHODCALLTYPE SystemFunction_QueryInterface(ISystemFunction *this, REFIID vTableGuid, void **ppv);
-ULONG STDMETHODCALLTYPE SystemFunction_AddRef(ISystemFunction *this);
-ULONG STDMETHODCALLTYPE SystemFunction_Release(ISystemFunction *this);
+HRESULT STDMETHODCALLTYPE SystemFunction_QueryInterface(ISystemFunction *This, const IID * vTableGuid, void **ppv);
+ULONG STDMETHODCALLTYPE SystemFunction_AddRef(ISystemFunction *This);
+ULONG STDMETHODCALLTYPE SystemFunction_Release(ISystemFunction *This);
 
-HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfoCount(ISystemFunction *this, UINT *pCount);
-HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfo(ISystemFunction *this, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo);
-HRESULT STDMETHODCALLTYPE SystemFunction_GetIDsOfNames(ISystemFunction *this, REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid);
-HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *this, DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr);
+HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfoCount(ISystemFunction *This, UINT *pCount);
+HRESULT STDMETHODCALLTYPE SystemFunction_GetTypeInfo(ISystemFunction *This, UINT itinfo, LCID lcid, ITypeInfo **pTypeInfo);
+HRESULT STDMETHODCALLTYPE SystemFunction_GetIDsOfNames(ISystemFunction *This, const IID * riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgdispid);
+HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *This, DISPID dispid, const IID * riid, LCID lcid, WORD wFlags, DISPPARAMS *params, VARIANT *result, EXCEPINFO *pexcepinfo, UINT *puArgErr);
 
-HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VARIANT vtParameter);
-HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, VARIANT vtDllFunction, SAFEARRAY **psa, VARIANT *vtResult);
-HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *this, DWORD *dwLastError);
-HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction);
-HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *this, IDispatch *objFunction);
+HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *This, VARIANT vtParameter);
+HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *This, VARIANT vtDllFunction, SAFEARRAY **psa, VARIANT *vtResult);
+HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *This, DWORD *dwLastError);
+HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *This, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction);
+HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *This, IDispatch *objFunction);
 SYSPARAMITEM* StackInsertSysParam(SYSPARAMSTACK *hStack);
 void StackSaveSysParam(SYSPARAMSTACK *hFromStack, SYSPARAMSTACK *hToStack);
 void StackFreeSysParams(SYSPARAMSTACK *hStack);

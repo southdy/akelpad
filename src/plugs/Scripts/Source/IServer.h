@@ -25,15 +25,15 @@ extern const IClassFactoryVtbl MyIClassFactoryVtbl;
 //Functions prototypes
 HRESULT LoadTypeInfoFromFile(const GUID *guid, ITypeInfo **ppTypeInfo);
 
-HRESULT STDMETHODCALLTYPE Class_QueryInterface(IClassFactory *this, REFIID factoryGuid, void **ppv);
-ULONG STDMETHODCALLTYPE Class_AddRef(IClassFactory *this);
-ULONG STDMETHODCALLTYPE Class_Release(IClassFactory *this);
-HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *this, IUnknown *punkOuter, REFIID vTableGuid, void **objHandle);
-HRESULT STDMETHODCALLTYPE Class_LockServer(IClassFactory *this, BOOL flock);
+HRESULT STDMETHODCALLTYPE Class_QueryInterface(IClassFactory *This, const IID * factoryGuid, void **ppv);
+ULONG STDMETHODCALLTYPE Class_AddRef(IClassFactory *This);
+ULONG STDMETHODCALLTYPE Class_Release(IClassFactory *This);
+HRESULT STDMETHODCALLTYPE Class_CreateInstance(IClassFactory *This, IUnknown *punkOuter, const IID * vTableGuid, void **objHandle);
+HRESULT STDMETHODCALLTYPE Class_LockServer(IClassFactory *This, BOOL flock);
 
 BOOL AKD_IsEqualIID(const GUID *rguid1, const GUID *rguid2);
 
-HRESULT WINAPI DllGetClassObject(REFCLSID objGuid, REFIID factoryGuid, void **factoryHandle);
+HRESULT WINAPI DllGetClassObject(REFCLSID objGuid, const IID * factoryGuid, void **factoryHandle);
 HRESULT WINAPI DllCanUnloadNow(void);
 HRESULT WINAPI DllRegisterServer();
 HRESULT WINAPI DllUnregisterServer();

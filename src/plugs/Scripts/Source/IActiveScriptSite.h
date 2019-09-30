@@ -46,7 +46,7 @@ HRESULT GetScriptEngineA(char *szExt, GUID *guidEngine);
 int CBTMessageBox(HWND hWnd, const wchar_t *wpText, const wchar_t *wpCaption, UINT uType);
 LRESULT CALLBACK CBTMessageBoxProc(INT nCode, WPARAM wParam, LPARAM lParam);
 
-HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *, REFIID, void **);
+HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *, const IID *, void **);
 ULONG STDMETHODCALLTYPE AddRef(IActiveScriptSite *);
 ULONG STDMETHODCALLTYPE Release(IActiveScriptSite *);
 HRESULT STDMETHODCALLTYPE GetLCID(IActiveScriptSite *, LCID *);
@@ -58,13 +58,13 @@ HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *, IActiveScriptError 
 HRESULT STDMETHODCALLTYPE OnEnterScript(IActiveScriptSite *);
 HRESULT STDMETHODCALLTYPE OnLeaveScript(IActiveScriptSite *);
 
-HRESULT STDMETHODCALLTYPE SiteWindow_QueryInterface(IActiveScriptSiteWindow *, REFIID, void **);
+HRESULT STDMETHODCALLTYPE SiteWindow_QueryInterface(IActiveScriptSiteWindow *, const IID *, void **);
 ULONG STDMETHODCALLTYPE SiteWindow_AddRef(IActiveScriptSiteWindow *);
 ULONG STDMETHODCALLTYPE SiteWindow_Release(IActiveScriptSiteWindow *);
 HRESULT STDMETHODCALLTYPE GetSiteWindow(IActiveScriptSiteWindow *, HWND *);
 HRESULT STDMETHODCALLTYPE EnableModeless(IActiveScriptSiteWindow *, BOOL);
 
-HRESULT STDMETHODCALLTYPE SiteDebug_QueryInterface(IActiveScriptSiteDebug *, REFIID, void **);
+HRESULT STDMETHODCALLTYPE SiteDebug_QueryInterface(IActiveScriptSiteDebug *, const IID *, void **);
 ULONG STDMETHODCALLTYPE SiteDebug_AddRef(IActiveScriptSiteDebug *);
 ULONG STDMETHODCALLTYPE SiteDebug_Release(IActiveScriptSiteDebug *);
 HRESULT STDMETHODCALLTYPE SiteDebug_GetDocumentContextFromPosition(IActiveScriptSiteDebug *, MYDWORD_PTR, ULONG, ULONG, IDebugDocumentContext **);
