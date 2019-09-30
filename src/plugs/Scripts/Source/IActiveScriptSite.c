@@ -25,11 +25,11 @@ DEFINE_GUID(CLSID_ProcessDebugManager, 0x78a51822, 0x51f4, 0x11d0, 0x8f, 0x20, 0
 
 //Global variables
 IActiveScriptSiteVtbl MyIActiveScriptSiteVtbl={
-  QueryInterface,
-  AddRef,
-  Release,
-  GetLCID,
-  GetItemInfo,
+  ActiveScriptSite_QueryInterface,
+  ActiveScriptSite_AddRef,
+  ActiveScriptSite_Release,
+  ActiveScriptSite_GetLCID,
+  ActiveScriptSite_GetItemInfo,
   GetDocVersionString,
   OnScriptTerminate,
   OnStateChange,
@@ -268,7 +268,7 @@ LRESULT CALLBACK CBTMessageBoxProc(INT nCode, WPARAM wParam, LPARAM lParam)
 
 //// IActiveScriptSite implementation
 
-HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *This, const IID * riid, void **ppv)
+HRESULT STDMETHODCALLTYPE ActiveScriptSite_QueryInterface(IActiveScriptSite *This, const IID * riid, void **ppv)
 {
   SCRIPTTHREAD *lpScriptThread;
 
@@ -278,7 +278,7 @@ HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *This, const IID * ri
   if (AKD_IsEqualIID(riid, &IID_IUnknown) || AKD_IsEqualIID(riid, &IID_IActiveScriptSite))
   {
     *ppv=This;
-    AddRef(*ppv);
+    ActiveScriptSite_AddRef(*ppv);
   }
   else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteWindow))
   {
@@ -300,17 +300,17 @@ HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *This, const IID * ri
   return S_OK;
 }
 
-ULONG STDMETHODCALLTYPE AddRef(IActiveScriptSite *This)
+ULONG STDMETHODCALLTYPE ActiveScriptSite_AddRef(IActiveScriptSite *This)
 {
   return ++((IRealActiveScriptSite *)This)->dwCount;
 }
 
-ULONG STDMETHODCALLTYPE Release(IActiveScriptSite *This)
+ULONG STDMETHODCALLTYPE ActiveScriptSite_Release(IActiveScriptSite *This)
 {
   return --((IRealActiveScriptSite *)This)->dwCount;
 }
 
-HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *This, LPCOLESTR objectName, DWORD dwReturnMask, IUnknown **objPtr, ITypeInfo **typeInfo)
+HRESULT STDMETHODCALLTYPE ActiveScriptSite_GetItemInfo(IActiveScriptSite *This, LPCOLESTR objectName, DWORD dwReturnMask, IUnknown **objPtr, ITypeInfo **typeInfo)
 {
   HRESULT hr=E_FAIL;
 
@@ -457,7 +457,7 @@ HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *This, IActiveScriptEr
   return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE GetLCID(IActiveScriptSite *This, LCID *lcid)
+HRESULT STDMETHODCALLTYPE ActiveScriptSite_GetLCID(IActiveScriptSite *This, LCID *lcid)
 {
   *lcid=LOCALE_USER_DEFAULT;
   return S_OK;
@@ -496,7 +496,7 @@ HRESULT STDMETHODCALLTYPE SiteWindow_QueryInterface(IActiveScriptSiteWindow *Thi
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteWindow *)This)->lpScriptThread;
 
-  return QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
+  return ActiveScriptSite_QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
 }
 
 ULONG STDMETHODCALLTYPE SiteWindow_AddRef(IActiveScriptSiteWindow *This)
@@ -527,7 +527,7 @@ HRESULT STDMETHODCALLTYPE SiteDebug_QueryInterface(IActiveScriptSiteDebug *This,
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)This)->lpScriptThread;
 
-  return QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
+  return ActiveScriptSite_QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
 }
 
 ULONG STDMETHODCALLTYPE SiteDebug_AddRef(IActiveScriptSiteDebug *This)

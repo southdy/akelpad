@@ -46,11 +46,11 @@ HRESULT GetScriptEngineA(char *szExt, GUID *guidEngine);
 int CBTMessageBox(HWND hWnd, const wchar_t *wpText, const wchar_t *wpCaption, UINT uType);
 LRESULT CALLBACK CBTMessageBoxProc(INT nCode, WPARAM wParam, LPARAM lParam);
 
-HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *, const IID *, void **);
-ULONG STDMETHODCALLTYPE AddRef(IActiveScriptSite *);
-ULONG STDMETHODCALLTYPE Release(IActiveScriptSite *);
-HRESULT STDMETHODCALLTYPE GetLCID(IActiveScriptSite *, LCID *);
-HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *, LPCOLESTR, DWORD, IUnknown **, ITypeInfo **);
+HRESULT STDMETHODCALLTYPE ActiveScriptSite_QueryInterface(IActiveScriptSite *, const IID *, void **);
+ULONG STDMETHODCALLTYPE ActiveScriptSite_AddRef(IActiveScriptSite *);
+ULONG STDMETHODCALLTYPE ActiveScriptSite_Release(IActiveScriptSite *);
+HRESULT STDMETHODCALLTYPE ActiveScriptSite_GetLCID(IActiveScriptSite *, LCID *);
+HRESULT STDMETHODCALLTYPE ActiveScriptSite_GetItemInfo(IActiveScriptSite *, LPCOLESTR, DWORD, IUnknown **, ITypeInfo **);
 HRESULT STDMETHODCALLTYPE GetDocVersionString(IActiveScriptSite *, BSTR *);
 HRESULT STDMETHODCALLTYPE OnScriptTerminate(IActiveScriptSite *, const VARIANT *, const EXCEPINFO *);
 HRESULT STDMETHODCALLTYPE OnStateChange(IActiveScriptSite *, SCRIPTSTATE);
