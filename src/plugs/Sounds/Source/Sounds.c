@@ -853,7 +853,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  if (uMsg == WM_CHAR)
+  if (uMsg == WM_CHAR || uMsg == WM_IME_CHAR)
   {
     if (bEnableTheme)
     {
